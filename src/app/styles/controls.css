@@ -14,6 +14,7 @@
 .button.ghost { border-color: transparent; }
 .button.ghost:hover { background: var(--surface-2); }
 .button.small { height: 36px; padding: 0 14px; font-size: 0.875rem; }
+@media (pointer: coarse) { .button.small { min-height: 44px; } }
 .button.danger { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 55%, transparent); }
 .button:disabled { opacity: 0.45; }
 .button[aria-busy="true"] { cursor: progress; }

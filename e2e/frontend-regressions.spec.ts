@@ -81,13 +81,17 @@ test("strategy feedback and phone customization leave their controls usable", as
   if (isMobile) {
     await expect(page.locator(".editor-footer .save-state")).toHaveText("Saved",{ useInnerText: true });
     await page.getByRole("navigation",{ name: "Workspace",exact: true }).getByRole("link",{ name: "Dashboard",exact: true }).click();
-    await page.getByRole("button",{ name: "Customize",exact: true }).click();
+    const customize = page.getByRole("button",{ name: "Customize",exact: true });
+    await expect(customize).toBeVisible();
+    expect((await customize.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+    await customize.click();
     const toolbar = page.locator(".plate-toolbar").first();
     for (const button of await toolbar.getByRole("button").all()) {
       if (!await button.isVisible()) continue;
       const box = await button.boundingBox(); expect(box!.width).toBeGreaterThanOrEqual(44); expect(box!.height).toBeGreaterThanOrEqual(44);
     }
     expect((await page.locator(".customize-bar").boundingBox())!.height).toBeLessThan(104);
+    for (const button of await page.locator(".customize-bar").getByRole("button").all()) expect((await button.boundingBox())!.height).toBeGreaterThanOrEqual(44);
     await expect(page.getByText("Move with arrows. Hide what you don’t need.",{ exact: true })).toBeVisible();
   }
 });
