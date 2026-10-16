@@ -28,6 +28,8 @@ For a PostgreSQL/Supabase deployment, set `DATABASE_URL`. Production refuses to 
 
 Next.js App Router, React, strict TypeScript, Zod, PostgreSQL through `pg`, PGlite for local development/tests, Motion, Lucide, and self-hosted Inter/Space Grotesk. No paid AI dependency.
 
+Font copyright and license notices are retained in [Inter OFL](docs/licenses/Inter-OFL.txt) and [Space Grotesk OFL](docs/licenses/Space-Grotesk-OFL.txt). Black Orbit supplies visual inspiration; the orbit mark and application composition are original.
+
 ```text
 src/app/             Next.js pages, layouts and API route handlers
 src/components/      Interactive frontend and workspace composition
