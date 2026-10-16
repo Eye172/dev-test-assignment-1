@@ -197,7 +197,7 @@ test("layout changes and appearance preferences survive a full reload", async ({
   const later = page.getByRole("button",{ name: "Move Strategy readout later",exact: true });
   if (await later.isEnabled()) await later.click();
   else await page.getByRole("button",{ name: "Move Strategy readout earlier",exact: true }).click();
-  if (!isMobile) await page.getByRole("button",{ name: "Strategy readout: Half",exact: true }).click();
+  if (!isMobile) await page.getByRole("button",{ name: "Strategy readout: M, Half",exact: true }).click();
   await page.getByRole("button",{ name: "Hide Profile snapshot",exact: true }).click();
   const saved = page.waitForResponse(r => r.request().method() === "PATCH" && r.url().endsWith(`/api/startups/${id}`));
   await page.getByRole("button",{ name: "Done",exact: true }).click();

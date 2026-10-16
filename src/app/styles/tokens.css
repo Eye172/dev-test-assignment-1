@@ -9,7 +9,7 @@
   --surface-3: #1d241f;
   --ink: #f5f7f5;
   --muted: #97a098;
-  --faint: #6f7a72;
+  --faint: #829087;
   --line: #232a25;
   --line-strong: #66726a;
   --accent: #20fa80;
@@ -84,6 +84,10 @@
 [data-accent="blue"] { --accent: #7aa7ff; --accent-ink: #8fb3ff; --accent-soft: rgb(122 167 255 / 0.13); --accent-glow: rgb(122 167 255 / 0.22); --on-accent: #06120a; --inst-accent: #8fb3ff; --focus: #8fb3ff; }
 [data-theme="light"][data-accent="lime"] { --accent-ink: #4a6b00; --accent-soft: #f1fcd0; --focus: #06120a; }
 [data-theme="light"][data-accent="blue"] { --accent-ink: #1f55d6; --accent-soft: #e6eeff; --focus: #06120a; }
+@media (prefers-color-scheme: light) {
+  [data-theme-system][data-accent="lime"] { --accent-ink: #4a6b00; --accent-soft: #f1fcd0; --focus: #06120a; }
+  [data-theme-system][data-accent="blue"] { --accent-ink: #1f55d6; --accent-soft: #e6eeff; --focus: #06120a; }
+}
 
 :root {
   --font-sans: "Inter Variable", Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;

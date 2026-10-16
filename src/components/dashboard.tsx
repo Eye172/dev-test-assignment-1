@@ -154,7 +154,7 @@ export function Dashboard() {
             <button type="button" className="icon-button" disabled={i === 0} aria-label={`Move ${plateCatalog[p.id].title} earlier`} onClick={() => move(p.id, -1)}><ArrowUp size={16}/></button>
             <button type="button" className="icon-button" disabled={i === visible.length - 1} aria-label={`Move ${plateCatalog[p.id].title} later`} onClick={() => move(p.id, 1)}><ArrowDown size={16}/></button>
             {p.id !== "readout" && <button type="button" className="icon-button" aria-label={`Hide ${plateCatalog[p.id].title}`} onClick={() => { patch(p.id, { hidden: true }); setAnnouncement(`${plateCatalog[p.id].title} hidden. Restore it from Hidden plates.`); }}><EyeOff size={16}/></button>}
-            <div className="sizes" role="group" aria-label="Size">{plateCatalog[p.id].allowedSizes.map(s => <button type="button" key={s} aria-pressed={p.size === s} title={sizeNames[s]} aria-label={`${plateCatalog[p.id].title}: ${sizeNames[s]}`} onClick={() => patch(p.id, { size: s })}>{s}</button>)}</div>
+            <div className="sizes" role="group" aria-label="Size">{plateCatalog[p.id].allowedSizes.map(s => <button type="button" key={s} aria-pressed={p.size === s} title={sizeNames[s]} aria-label={`${plateCatalog[p.id].title}: ${s}, ${sizeNames[s]}`} onClick={() => patch(p.id, { size: s })}>{s}</button>)}</div>
           </div> : null}/>
         </motion.div>)}
       </div>

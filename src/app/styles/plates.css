@@ -77,7 +77,6 @@
 }
 .plate-frame { position: relative; min-width: 0; }
 .plate-frame.editing > .plate { outline: 1px dashed var(--line-strong); outline-offset: 4px; }
-.plate-frame.editing > .plate > :not(.plate-toolbar) { opacity: 0.55; }
 .plate-frame.lifted { z-index: 10; }
 .plate-frame.lifted > .plate { box-shadow: var(--float-shadow); outline-color: var(--accent-ink); }
 .plate-toolbar {
