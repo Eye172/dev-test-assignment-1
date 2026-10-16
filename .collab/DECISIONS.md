@@ -11,3 +11,7 @@ Save incomplete strategy sections independently. Required inputs determine compl
 ## 2026-10-16 — Roadmap reconciliation
 
 Generate 8–10 current tasks using explicit rules, with title, week, status and deliverable. Stable rule keys reconcile regeneration; completed task content and statuses survive. Superseded tasks stay in history. User-created tasks are never overwritten. Each task exposes why it was suggested. Changes use optimistic concurrency revisions.
+
+## 2026-10-16 — Authored dashboard layout and latest frontend ownership
+
+Claude now owns frontend implementation as explicitly requested by the owner; GPT leads backend, integration, QA and delivery. Accepted Claude's eight-plate layout proposal: preferences.dashboardLayout version 1, database persisted, server validated. Required strategy/gaps/next-actions summary remains visible even when plates are hidden. The interim four-panel panelOrder/workspaceLayout fields are superseded before the frontend milestone. Motion decisions follow purpose, comfort, performance and accessibility; earlier agent recommendations about limiting animation must not be attributed to the owner as restrictions.

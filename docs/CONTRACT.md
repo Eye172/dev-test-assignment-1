@@ -6,13 +6,17 @@ An independent synthetic-data demo helping founders record a GTM strategy and ac
 
 ## Roles
 
-GPT implements and integrates the entire application. Claude owns official visual-reference research, frontend design specification, and UX/motion evaluation. Design documents live in docs/design. The owner's preferences: simple, flexible, personal, adaptable, fluid, accessible. Required inputs cannot be removed; incomplete strategy drafts can be saved without completing a forced wizard.
+GPT is technical lead and owns backend, shared contracts, final integration, testing and delivery. Claude Code owns official visual-reference research, frontend design and implementation, and UX/motion self-review. An independent critic checks concrete evidence. The owner's latest allocation supersedes earlier design-only proposals. Design documents live in docs/design. The owner's preferences: simple, flexible, personal, adaptable, fluid, accessible. Required inputs cannot be removed; incomplete strategy drafts can be saved without completing a forced wizard.
 
 ## Data and naming
 
 Shared runtime schemas and TypeScript types live in src/lib/domain. JSON uses camelCase. IDs are UUIDs. All mutation responses include the updated record and revision. Dates are ISO strings.
 
-Startup: name, description, businessModel (B2B/B2C/B2G), stage (Idea/MVP/Early Traction), targetMarket, customerSegment, websiteUrl (optional valid http/https URL), context (optional), customFields (optional string map), preferences ({theme: dark/light/system, density: comfortable/compact, motion: full/reduced, accent: green/lime/blue}). Required profile fields must be valid on creation/update. Startup id, revision, createdAt, updatedAt are server-owned.
+Startup: name, description, businessModel (B2B/B2C/B2G), stage (Idea/MVP/Early Traction), targetMarket, customerSegment, websiteUrl (optional valid http/https URL), context (optional), customFields (optional string map), preferences ({theme: dark/light/system, density: comfortable/compact, motion: full/reduced, accent: green/lime/blue, dashboardLayout: null | {version: 1, plates: [{id,size,hidden}]}}). Required profile fields must be valid on creation/update. Startup id, revision, createdAt, updatedAt are server-owned.
+
+Dashboard layout is database-backed. `null` restores the authored default. Every version-1 layout contains exactly the eight known plate IDs, once each: readout, next, decisions, gaps, week, risks, channels, profile. Sizes are S/M/L/XL as allowed by `src/lib/domain/dashboard.ts`. The readout cannot be hidden. Unknown IDs, duplicates, missing plates, invalid sizes and hidden readouts are rejected. The frontend must retain a compact mandatory strategy/gaps/next-actions summary outside the hideable plates, so personalization never hides required assignment information. Grid order follows DOM order; phones use one column and explicit move controls. Layout changes are saved through the existing profile preferences PATCH and revision protection.
+
+The revised authored default starts with this week's work and risks, followed by the readout, upcoming actions, decisions and gaps. Channels and the profile snapshot start in the restorable hidden tray; their data remains accessible through strategy/profile routes. The week plate additionally allows size L to accommodate the active experiment. Existing explicit layouts retain their saved order, sizes and visibility. This is a compatible expansion of the version-1 size catalog.
 
 Strategy keys and draft data:
 
@@ -26,9 +30,11 @@ Every section also accepts notes. Empty strings/arrays are valid drafts. Complet
 
 Roadmap task: id, startupId, ruleKey (null for custom), title, deliverable, rationale, week (1–4), status (todo/in_progress/done/skipped), notes, source (generated/custom), archived, revision, createdAt, updatedAt. User may edit title, deliverable, week, notes and status. Regeneration preserves these edits and statuses, keeps completed content unchanged, archives superseded rules without deletion, and retains custom tasks. A current generated plan contains 8–10 suggestions; historical and custom tasks can increase the overall count.
 
+Preparation and subsequent market experiments have distinct rule identities. Completed preparation stays in history when saved inputs unlock the experiment. Automatic archival is separate from the founder's explicit archive choice: restoring a channel reactivates its task and notes unless deliberately archived. `roadmapProgress.total` counts all nonarchived tasks; `skipped` is separate and the percentage is `done / (total - skipped)`, or zero when there are no actionable tasks. Display the actionable denominator beside progress and label skipped work separately; never call skipped work completed.
+
 ## HTTP contract
 
-Same-origin JSON API. Success {data: T}; error {error: {code, message, fields?}}. Errors: 400 malformed JSON, 413 oversized request, 415 wrong content type, 422 invalid inputs, 404 missing record, 409 revision conflict, 429 limit, 503 unavailable database. API responses are no-store. Optional request Origin must match the application origin on writes.
+Same-origin JSON API. Success {data: T}; error {error: {code, message, fields?}}. Errors: 400 malformed JSON, 413 oversized request, 415 wrong content type, 422 invalid inputs, 404 missing record, 409 revision conflict, 429 limit, 503 unavailable database. API responses are no-store. Optional request Origin must match the application origin on writes. A 429 includes the remaining bucket interval in `Retry-After`; respect it rather than repeatedly retrying after a fixed short delay.
 
 | Method | Route | Input / result |
 | --- | --- | --- |

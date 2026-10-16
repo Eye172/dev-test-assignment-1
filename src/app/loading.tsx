@@ -1,0 +1,1 @@
+export default function Loading() { return <main id="content" className="workspace-main" aria-busy="true" aria-label="Loading workspace"><div className="skeleton skeleton-title"/><div className="skeleton-grid"><div className="skeleton skeleton-panel"/><div className="skeleton skeleton-panel"/></div><p className="field-help" role="status">Opening your workspace…</p></main>; }
