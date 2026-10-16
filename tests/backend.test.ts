@@ -137,6 +137,9 @@ describe("database persistence and reconciliation", () => {
     const layout = defaultDashboardLayout(); layout.plates.reverse(); layout.plates.find(p => p.id === "channels")!.hidden = true;
     await store.updateStartup(p.id,{ expectedRevision: next.revision,patch: { preferences: { ...next.preferences,dashboardLayout: layout } } });
     expect((await store.workspace(p.id)).startup.preferences.dashboardLayout).toEqual(layout);
+    const last = (await store.workspace(p.id)).startup;
+    await store.updateStartup(p.id,{ expectedRevision: last.revision,patch: { preferences: { theme: "light" } } });
+    expect((await store.workspace(p.id)).startup.preferences).toMatchObject({ theme: "light",density: "compact",motion: "reduced",dashboardLayout: layout });
   });
   it("reconciles generation without duplicates, loss of status, edits or completed work", async () => {
     const workspace = await cloneDemo(store); const id = workspace.startup.id;

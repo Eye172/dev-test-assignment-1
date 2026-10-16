@@ -16,8 +16,8 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "verify": "npm run lint && npm run typecheck && npm test && npm run build",
-    "db:migrate": "tsx --conditions=react-server scripts/migrate.ts",
-    "db:seed": "tsx --conditions=react-server scripts/seed.ts"
+    "db:migrate": "tsx --wasm-num-compilation-tasks=1 --conditions=react-server scripts/migrate.ts",
+    "db:seed": "tsx --wasm-num-compilation-tasks=1 --conditions=react-server scripts/seed.ts"
   },
   "dependencies": {
     "@electric-sql/pglite": "0.5.10",
