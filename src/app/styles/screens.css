@@ -142,9 +142,8 @@ kbd { font-family: var(--font-mono); font-size: 0.75rem; padding: 2px 6px; borde
   .editor-footer .button { padding: 0 14px; }
   .editor-footer .next-btn { flex: none; }
   .next-label { display: none; } .next-short { display: inline; }
-  /* While typing, the soft keyboard owns the bottom: hide the dock and let the save bar take its place. */
+  /* Keep the save target stationary when focus leaves an input during a tap. */
   .app-surface:has(.editor :is(input, textarea):focus) .workspace-dock { display: none; }
-  .app-surface:has(.editor :is(input, textarea):focus) .editor-footer { bottom: 0; }
 }
 .repeat-group { display: grid; gap: var(--s-4); margin-bottom: var(--s-5); }
 .repeat-group > .button { justify-self: start; }

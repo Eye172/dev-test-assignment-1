@@ -153,8 +153,10 @@ test("layout changes and appearance preferences survive a full reload", async ({
   const preferences = page.getByRole("dialog",{ name: "Workspace preferences",exact: true });
   for (const value of ["light","compact","reduced"]) {
     const saved = page.waitForResponse(r => r.request().method() === "PATCH" && r.url().endsWith(`/api/startups/${id}`));
-    await preferences.getByRole("radio",{ name: value,exact: true }).check();
+    const radio = preferences.getByRole("radio",{ name: value,exact: true });
+    await radio.click();
     expect((await saved).status()).toBe(200);
+    await expect(radio).toBeChecked();
   }
   await preferences.getByRole("button",{ name: "Close",exact: true }).click();
   await page.getByRole("button",{ name: "Customize",exact: true }).click();

@@ -1,13 +1,13 @@
 name: Verify Orbit GTM Studio
 on:
   push:
-    branches: [main, 'gpt/**', 'claude/**']
-  pull_request:
     branches: [main]
+  pull_request:
+    branches: [main, 'gpt/implementation']
 permissions:
   contents: read
 concurrency:
-  group: verify-${{ github.ref }}
+  group: verify-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 jobs:
   verify:
