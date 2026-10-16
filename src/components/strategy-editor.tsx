@@ -180,6 +180,17 @@ function SectionEditor({ section, index, onDirtyChange, onLive, onNext, onPrev, 
 
   // Fields stay editable while a save is in flight. If typing continued, the newer text is kept and saved next.
   const savingRef = useRef(false);
+  // A reviewed AI apply (or another saved update) may advance context while this
+  // editor is mounted. Clean editors follow it; dirty drafts retain their base
+  // revision and are never silently rebased over the new saved decision.
+  /* eslint-disable react-hooks/set-state-in-effect -- Synchronize an external authoritative server revision, only when it advances. Dirty local state is preserved. */
+  useEffect(() => {
+    if (section.revision <= revision || savingRef.current) return;
+    if (dirty) { setError(new ClientError("This section changed while you were editing. Copy your draft or load the latest saved decision.",409,"REVISION_CONFLICT")); return; }
+    setData(section.data); setNotes(section.notes); setRevision(section.revision);
+    setBaseline(JSON.stringify({ data: section.data, notes: section.notes })); setSavedAt(section.updatedAt);
+  }, [section, revision, dirty]);
+  /* eslint-enable react-hooks/set-state-in-effect */
   async function save(silent: boolean) {
     if (savingRef.current) return;
     savingRef.current = true; setSaving(true); setError(null);

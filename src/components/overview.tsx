@@ -55,6 +55,8 @@ export function Overview() {
       </motion.div>
     </section>
 
+    <Link href={`${base}/agents`} className="ai-overview-entry"><div><span className="eyebrow">Your GTM team</span><h2>A sharper next move.</h2><p>Research the alternatives. Challenge the offer. Design an experiment.</p></div><ArrowUpRight size={26} aria-hidden/></Link>
+
     <motion.section className="next-move instrument" aria-labelledby="next-title" {...enter(2)}>
       <div className="next-move-copy">
         <h2 id="next-title" className="label">Next move</h2>

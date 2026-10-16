@@ -2,7 +2,7 @@
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
-import { ArrowRight, Compass, CornerDownLeft, Download, LayoutGrid, Link2, ListChecks, Moon, Orbit, Plus, Route, Settings2 } from "lucide-react";
+import { ArrowRight, Compass, CornerDownLeft, Download, LayoutGrid, Link2, ListChecks, Moon, Orbit, Plus, Route, Settings2, Users } from "lucide-react";
 import type { Workspace } from "@/lib/domain/types";
 import { confirmLeave } from "./ui";
 
@@ -31,6 +31,7 @@ function PaletteBody({ onClose, workspace, base, actions }: Props) {
       { id: "s", group: "Go to", title: "Strategy", hint: "G S", icon: <Compass size={16}/>, run: go(`${base}/strategy`) },
       { id: "d", group: "Go to", title: "Dashboard", hint: "G D", icon: <LayoutGrid size={16}/>, run: go(`${base}/dashboard`) },
       { id: "r", group: "Go to", title: "Roadmap", hint: "G R", icon: <Route size={16}/>, run: go(`${base}/roadmap`) },
+      { id: "a", group: "Go to", title: "AI studio", hint: "G A", icon: <Users size={16}/>, run: go(`${base}/agents`) },
     ];
     const sections: Item[] = workspace.completion.sections.map(s => ({
       id: `sec-${s.key}`, group: "Strategy sections", title: s.title, hint: s.complete ? "Complete" : `${s.missing.length} missing`,

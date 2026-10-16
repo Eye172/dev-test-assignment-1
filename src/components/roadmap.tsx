@@ -235,7 +235,8 @@ function TaskCard({ task, compact, draggable, onDropWeek, onHoverWeek }: { task:
             {Object.entries(statusLabels).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
           </select>
           {busy && <Spinner/>}
-          {task.source === "custom" && <Badge status="custom"/>}{task.edited && task.source !== "custom" && <span className="badge">Edited</span>}
+          {task.source === "custom" && <Badge status="custom"/>}{task.source === "ai" && <span className="badge">AI proposal</span>}{task.edited && task.source !== "custom" && <span className="badge">Edited</span>}
+          {task.source === "ai" && <details className="why"><summary>Experiment & provenance</summary><p>{task.rationale}</p><p className="faint rule-label">AI artifact: {task.ruleKey?.split(":")[1]}</p><p style={{whiteSpace:"pre-line"}}>{task.notes}</p></details>}
           {rule && task.rationale && !compact && <details className="why"><summary>Why this task</summary><p>{task.rationale}</p><p className="faint rule-label">Rule: {rule}</p></details>}
           <span className="task-buttons">
             <button type="button" className="icon-button small" aria-label={`Edit ${task.title}`} disabled={busy || !hydrated} onClick={() => setEditing(true)}><Pencil size={15}/></button>
