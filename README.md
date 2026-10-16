@@ -85,6 +85,8 @@ npm run test:e2e
 
 `verify` runs ESLint, strict type checking, domain/SQL/API tests and a production build. The browser suite runs the production build at desktop and mobile sizes. GitHub Actions additionally runs the SQL/API suite against PostgreSQL 17. Tests require an isolated database and use in-memory PGlite locally; an on-disk test also closes and reopens the engine to verify durability.
 
+With the server running, `npx tsx --conditions=react-server scripts/smoke.ts` exercises the real HTTP API and creates one synthetic acceptance workspace. Set `SMOKE_BASE_URL` explicitly to run this check against a deployed demo. It saves all five sections, checks 100% completion, generates a plan, preserves a done task through regeneration, and verifies JSON export.
+
 ## Deployment and handover
 
 See [DEPLOYMENT.md](docs/DEPLOYMENT.md), [HANDOVER.md](docs/HANDOVER.md), and [SUBMISSION.md](docs/SUBMISSION.md). The repository includes Vercel configuration, a standalone Dockerfile, and Docker Compose with PostgreSQL 17.
