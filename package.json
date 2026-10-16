@@ -7,17 +7,17 @@
     "node": ">=22"
   },
   "scripts": {
-    "dev": "next dev --hostname 127.0.0.1 --port 3000",
+    "dev": "node --v8-pool-size=1 node_modules/next/dist/bin/next dev --hostname 127.0.0.1 --port 3000",
     "build": "next build",
-    "start": "next start --hostname 0.0.0.0 --port 3000",
+    "start": "node --v8-pool-size=1 node_modules/next/dist/bin/next start --hostname 0.0.0.0 --port 3000",
     "lint": "eslint .",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "verify": "npm run lint && npm run typecheck && npm test && npm run build",
-    "db:migrate": "tsx --conditions=react-server scripts/migrate.ts",
-    "db:seed": "tsx --conditions=react-server scripts/seed.ts"
+    "db:migrate": "tsx --wasm-num-compilation-tasks=1 --conditions=react-server scripts/migrate.ts",
+    "db:seed": "tsx --wasm-num-compilation-tasks=1 --conditions=react-server scripts/seed.ts"
   },
   "dependencies": {
     "@electric-sql/pglite": "0.5.10",

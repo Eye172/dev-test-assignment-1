@@ -57,7 +57,7 @@ export class Store {
     return this.db.transaction(async tx => {
       const current = await this.findStartup(id, tx, true);
       if (current.revision !== expectedRevision) throw conflict();
-      const p = startupInputSchema.parse({ ...currentProfile(current), ...patch });
+      const p = startupInputSchema.parse({ ...currentProfile(current), ...patch,preferences: { ...current.preferences,...patch.preferences } });
       const [row] = await tx.query(`UPDATE startups SET name=$2,description=$3,business_model=$4,stage=$5,target_market=$6,customer_segment=$7,website_url=$8,context=$9,custom_fields=$10::jsonb,preferences=$11::jsonb,revision=revision+1,updated_at=now() WHERE id=$1 RETURNING *`,
         [id,p.name,p.description,p.businessModel,p.stage,p.targetMarket,p.customerSegment,p.websiteUrl,p.context,JSON.stringify(p.customFields),JSON.stringify(p.preferences)]);
       return startupFromRow(row);

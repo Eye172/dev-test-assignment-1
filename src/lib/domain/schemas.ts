@@ -1,15 +1,25 @@
 import { z } from "zod";
+import { dashboardPlateIds, plateCatalog } from "./dashboard";
 
 const text = (max = 3000) => z.string().trim().max(max).default("");
 export const sectionKeys = ["icp", "value", "channels", "pricing", "assumptions"] as const;
 export type SectionKey = (typeof sectionKeys)[number];
+export const dashboardLayoutSchema = z.object({
+  version: z.literal(1),
+  plates: z.array(z.object({ id: z.enum(dashboardPlateIds),size: z.enum(["S","M","L","XL"]),hidden: z.boolean() }).strict()).length(8),
+}).strict().superRefine((layout,ctx) => {
+  if (new Set(layout.plates.map(p => p.id)).size !== 8) ctx.addIssue({ code: "custom",path: ["plates"],message: "Each known plate must appear exactly once." });
+  layout.plates.forEach((plate,index) => {
+    if (!plateCatalog[plate.id].allowedSizes.includes(plate.size)) ctx.addIssue({ code: "custom",path: ["plates",index,"size"],message: "Choose an allowed size for this plate." });
+    if (plate.id === "readout" && plate.hidden) ctx.addIssue({ code: "custom",path: ["plates",index,"hidden"],message: "Keep the strategy readout visible." });
+  });
+});
 export const preferencesSchema = z.object({
   theme: z.enum(["dark", "light", "system"]).default("dark"),
   density: z.enum(["comfortable", "compact"]).default("comfortable"),
   motion: z.enum(["full", "reduced"]).default("full"),
   accent: z.enum(["green", "lime", "blue"]).default("green"),
-  panelOrder: z.array(z.enum(["strategy", "next", "risk", "roadmap"])).length(4).refine(v => new Set(v).size === 4, "Each panel must appear once.").default(["strategy", "next", "risk", "roadmap"]),
-  workspaceLayout: z.enum(["canvas", "list"]).default("canvas"),
+  dashboardLayout: dashboardLayoutSchema.nullable().default(null),
 }).strict();
 export const startupInputSchema = z.object({
   name: z.string().trim().min(1, "Give your startup a name.").max(120),
@@ -21,9 +31,22 @@ export const startupInputSchema = z.object({
   websiteUrl: z.union([z.literal(""), z.url().refine(v => /^https?:\/\//i.test(v), "Use an http or https website URL.")]).default(""),
   context: text(5000),
   customFields: z.record(z.string().trim().min(1).max(80), z.string().max(1000)).refine(v => Object.keys(v).length <= 12, "Keep up to 12 custom fields.").default({}),
-  preferences: preferencesSchema.default({ theme: "dark", density: "comfortable", motion: "full", accent: "green", panelOrder: ["strategy", "next", "risk", "roadmap"], workspaceLayout: "canvas" }),
+  preferences: preferencesSchema.default({ theme: "dark", density: "comfortable", motion: "full", accent: "green", dashboardLayout: null }),
 }).strict();
-export const startupPatchSchema = startupInputSchema.partial().strict().refine(v => Object.keys(v).length > 0, "No changes provided.");
+// Defaults belong to creation, never to a PATCH: an omitted field must stay omitted.
+export const preferencesPatchSchema = z.object({
+  theme: preferencesSchema.shape.theme.removeDefault().optional(),
+  density: preferencesSchema.shape.density.removeDefault().optional(),
+  motion: preferencesSchema.shape.motion.removeDefault().optional(),
+  accent: preferencesSchema.shape.accent.removeDefault().optional(),
+  dashboardLayout: preferencesSchema.shape.dashboardLayout.removeDefault().optional(),
+}).strict();
+export const startupPatchSchema = startupInputSchema.omit({ websiteUrl: true,context: true,customFields: true,preferences: true }).partial().extend({
+  websiteUrl: startupInputSchema.shape.websiteUrl.removeDefault().optional(),
+  context: startupInputSchema.shape.context.removeDefault().optional(),
+  customFields: startupInputSchema.shape.customFields.removeDefault().optional(),
+  preferences: preferencesPatchSchema.optional(),
+}).strict().refine(v => Object.keys(v).length > 0, "No changes provided.");
 export const sectionSchemas = {
   icp: z.object({ buyerType: text(), industry: text(), painPoint: text(), buyingTrigger: text() }).strict(),
   value: z.object({ problem: text(), outcome: text(), differentiation: text(), proof: text() }).strict(),

@@ -1,0 +1,27 @@
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: orbit
+      POSTGRES_DB: orbit
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-orbit-local-only}
+    volumes:
+      - orbit_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U orbit -d orbit"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+  web:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgres://orbit:${POSTGRES_PASSWORD:-orbit-local-only}@db:5432/orbit
+      DEMO_MODE: "true"
+      APP_ORIGIN: http://localhost:3000
+    depends_on:
+      db:
+        condition: service_healthy
+volumes:
+  orbit_pg:

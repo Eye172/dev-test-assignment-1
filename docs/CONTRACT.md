@@ -12,7 +12,9 @@ GPT implements and integrates the entire application. Claude owns official visua
 
 Shared runtime schemas and TypeScript types live in src/lib/domain. JSON uses camelCase. IDs are UUIDs. All mutation responses include the updated record and revision. Dates are ISO strings.
 
-Startup: name, description, businessModel (B2B/B2C/B2G), stage (Idea/MVP/Early Traction), targetMarket, customerSegment, websiteUrl (optional valid http/https URL), context (optional), customFields (optional string map), preferences ({theme: dark/light/system, density: comfortable/compact, motion: full/reduced, accent: green/lime/blue}). Required profile fields must be valid on creation/update. Startup id, revision, createdAt, updatedAt are server-owned.
+Startup: name, description, businessModel (B2B/B2C/B2G), stage (Idea/MVP/Early Traction), targetMarket, customerSegment, websiteUrl (optional valid http/https URL), context (optional), customFields (optional string map), preferences ({theme: dark/light/system, density: comfortable/compact, motion: full/reduced, accent: green/lime/blue, dashboardLayout: null | {version: 1, plates: [{id,size,hidden}]}}). Required profile fields must be valid on creation/update. Startup id, revision, createdAt, updatedAt are server-owned.
+
+Dashboard layout is database-backed. `null` restores the authored default. Every version-1 layout contains exactly the eight known plate IDs, once each: readout, next, decisions, gaps, week, risks, channels, profile. Sizes are S/M/L/XL as allowed by `src/lib/domain/dashboard.ts`. The readout cannot be hidden. Unknown IDs, duplicates, missing plates, invalid sizes and hidden readouts are rejected. The frontend must retain a compact mandatory strategy/gaps/next-actions summary outside the hideable plates, so personalization never hides required assignment information. Grid order follows DOM order; phones use one column and explicit move controls. Layout changes are saved through the existing profile preferences PATCH and revision protection.
 
 Strategy keys and draft data:
 

@@ -1,9 +1,14 @@
 import { beforeAll, afterAll, describe, expect, it } from "vitest";
+import { mkdtemp, rm } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 import { calculateCompletion, emptySection } from "@/lib/domain/completion";
 import { generateRoadmap } from "@/lib/domain/roadmap";
 import { sectionKeys, sectionSchemas, startupInputSchema } from "@/lib/domain/schemas";
 import type { Startup, StrategySection } from "@/lib/domain/types";
-import { getDatabase, type Database } from "@/server/database";
+import { createDatabase, getDatabase, type Database } from "@/server/database";
+import { defaultDashboardLayout } from "@/lib/domain/dashboard";
+import { dashboardLayoutSchema } from "@/lib/domain/schemas";
 import { Store } from "@/server/store";
 import { demoProfile, demoStrategy, ensureDemo, cloneDemo } from "@/server/demo";
 import { POST as createRoute } from "@/app/api/startups/route";
@@ -19,7 +24,7 @@ const startup = { ...demoProfile,id: "11111111-1111-4111-8111-111111111111",revi
 const request = (method: string, body?: unknown, origin = "http://localhost") => new Request("http://localhost/api/startups", {
   method,headers: { "content-type": "application/json",origin }, ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
 });
-beforeAll(async () => { process.env.PGLITE_DATA_DIR = "memory://"; db = await getDatabase(); store = new Store(db); });
+beforeAll(async () => { process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || ""; process.env.PGLITE_DATA_DIR = "memory://"; db = await getDatabase(); store = new Store(db); });
 afterAll(async () => { await db.close(); });
 
 describe("strategy completeness and flexible validation", () => {
@@ -49,6 +54,16 @@ describe("strategy completeness and flexible validation", () => {
     }
     expect(startupInputSchema.parse({ ...demoProfile,websiteUrl: "",customFields: { "Sales cycle": "6 weeks" } }).customFields).toEqual({ "Sales cycle": "6 weeks" });
   });
+  it("validates a complete dashboard layout and prevents invalid personalization", () => {
+    const layout = defaultDashboardLayout();
+    expect(dashboardLayoutSchema.parse(layout)).toEqual(layout);
+    for (const mutate of [
+      (v: typeof layout) => { v.plates[0].hidden = true; },
+      (v: typeof layout) => { v.plates[1].id = "readout"; },
+      (v: typeof layout) => { v.plates[0].size = "XL"; },
+      (v: typeof layout) => { v.plates.pop(); },
+    ]) { const invalid = structuredClone(layout); mutate(invalid); expect(dashboardLayoutSchema.safeParse(invalid).success).toBe(false); }
+  });
 });
 
 describe("transparent roadmap rules", () => {
@@ -74,6 +89,28 @@ describe("transparent roadmap rules", () => {
 });
 
 describe("database persistence and reconciliation", () => {
+  it("reopens an on-disk PostgreSQL workspace after the engine is closed", async () => {
+    const dir = await mkdtemp(path.join(os.tmpdir(),"orbit-persistence-"));
+    let disk: Database | undefined;
+    try {
+      disk = await createDatabase(dir); const first = new Store(disk);
+      const p = await first.createStartup(demoProfile);
+      await first.saveSection(p.id,"value",{ expectedRevision: 0,data: { problem: "Persistent draft" } });
+      const generated = await first.generate(p.id);
+      await first.updateTask(p.id,generated.tasks[0].id,{ expectedRevision: 1,patch: { status: "done" } });
+      await disk.close(); disk = undefined;
+      disk = await createDatabase(dir);
+      const reopened = await new Store(disk).workspace(p.id);
+      expect(reopened.startup.name).toBe(demoProfile.name);
+      expect(reopened.sections.find(s => s.key === "value")!.data).toMatchObject({ problem: "Persistent draft" });
+      expect(reopened.roadmapProgress.done).toBe(1);
+    } finally {
+      if (disk) await disk.close();
+      const relative = path.relative(os.tmpdir(),dir);
+      if (relative.startsWith("..") || path.isAbsolute(relative) || !path.basename(dir).startsWith("orbit-persistence-")) throw new Error("Refusing cleanup outside the test's temporary directory.");
+      await rm(dir,{ recursive: true,force: true });
+    }
+  });
   it("saves drafts independently, reopens saved data, and detects stale saves", async () => {
     const p = await store.createStartup(demoProfile);
     const section = await store.saveSection(p.id,"icp",{ expectedRevision: 0,data: { buyerType: "Founder" },notes: "Our first draft" });
@@ -94,8 +131,18 @@ describe("database persistence and reconciliation", () => {
     expect(results.filter(r => r.status === "fulfilled")).toHaveLength(1);
     expect(results.filter(r => r.status === "rejected")).toHaveLength(1);
     const latest = (await store.workspace(p.id)).startup;
+    expect(latest.context).toBe(demoProfile.context);
+    expect(latest.websiteUrl).toBe(demoProfile.websiteUrl);
+    expect(latest.customFields).toEqual(demoProfile.customFields);
     await store.updateStartup(p.id,{ expectedRevision: latest.revision,patch: { preferences: { ...latest.preferences,density: "compact",motion: "reduced" } } });
     expect((await store.workspace(p.id)).startup.preferences).toMatchObject({ density: "compact",motion: "reduced" });
+    const next = (await store.workspace(p.id)).startup;
+    const layout = defaultDashboardLayout(); layout.plates.reverse(); layout.plates.find(p => p.id === "channels")!.hidden = true;
+    await store.updateStartup(p.id,{ expectedRevision: next.revision,patch: { preferences: { ...next.preferences,dashboardLayout: layout } } });
+    expect((await store.workspace(p.id)).startup.preferences.dashboardLayout).toEqual(layout);
+    const last = (await store.workspace(p.id)).startup;
+    await store.updateStartup(p.id,{ expectedRevision: last.revision,patch: { preferences: { theme: "light" } } });
+    expect((await store.workspace(p.id)).startup.preferences).toMatchObject({ theme: "light",density: "compact",motion: "reduced",dashboardLayout: layout });
   });
   it("reconciles generation without duplicates, loss of status, edits or completed work", async () => {
     const workspace = await cloneDemo(store); const id = workspace.startup.id;
@@ -118,6 +165,11 @@ describe("database persistence and reconciliation", () => {
     const changed = await store.generate(id);
     expect(changed.tasks.find(t => t.id === channel.id)).toMatchObject({ status: "done",archived: true,title: channel.title });
     expect(changed.tasks.filter(t => !t.archived)).toHaveLength(8);
+  });
+  it("preserves founder-archived generated tasks during repeated generation", async () => {
+    const workspace = await cloneDemo(store); const task = workspace.tasks[0];
+    await store.updateTask(workspace.startup.id,task.id,{ expectedRevision: task.revision,patch: { archived: true } });
+    expect((await store.generate(workspace.startup.id)).tasks.find(t => t.id === task.id)!.archived).toBe(true);
   });
   it("scopes tasks to their startup and initializes demo without resetting edits", async () => {
     const a = await cloneDemo(store); const b = await store.createStartup(demoProfile);
