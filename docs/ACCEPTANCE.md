@@ -2,7 +2,7 @@
 
 This checklist follows the supplied Orbit GTM Studio assignment. A row marked pending has not yet passed the corresponding acceptance gate. Backend evidence is separate from browser or deployed evidence.
 
-Local evidence, 16 October 2026: `npm run verify` passes (lint, types, 23 domain/SQL/API regressions, production build). The packaged standalone server passed 16 API/desktop/phone scenarios. A subsequent focused run also verified pointer dragging and keyboard cancellation, plus resize/hide/reset on desktop and phone. Final CI/public-deployment evidence and the requested visual revision remain pending.
+Verified on 16 October 2026: `npm run verify` passes (lint, types, 23 domain/SQL/API regressions, production build). [CI run 38894116138](https://github.com/Eye172/dev-test-assignment-1/actions/runs/38894116138) is green against PostgreSQL 17, including 17 HTTP/desktop/phone scenarios. The phone drag test is deliberately skipped because phones use explicit move controls; those are tested. Pointer dragging, keyboard cancellation, resize/hide/reset, custom-task history and recovery run against the packaged standalone server. Public-deployment evidence and the requested visual revision remain pending.
 
 | Required behavior | Implementation boundary | Evidence |
 | --- | --- | --- |

@@ -2,6 +2,8 @@
 
 ## Vercel with PostgreSQL or Supabase
 
+The current dedicated infrastructure is the free `orbit-gtm-studio-db` Neon database in Frankfurt, connected through the existing Vercel integration. `vercel.json` pins functions to Frankfurt (`fra1`) beside that database; static assets remain CDN-served. If relocating the database, update the function region too. See [Vercel's region configuration](https://vercel.com/docs/functions/configuring-functions/region).
+
 1. Import `Eye172/dev-test-assignment-1` as a Next.js project. Use Node.js 24, the repository root, `npm ci`, and `npm run build`.
 2. Provision a separate database for synthetic demo data. For Supabase, use the Connect panel's session pooler URI when IPv4 compatibility is required; use the provider's documented TLS settings. Vercel server instances use a small `pg` pool.
 3. Configure `DATABASE_URL` as a sensitive server-only variable, `DEMO_MODE=true`, and `TRUST_PROXY=true`. Never prefix database credentials with `NEXT_PUBLIC_`. Leave `ALLOW_LOCAL_DATABASE` unset/false. `APP_ORIGIN` can remain blank so previews and the production domain each check their own request origin.
