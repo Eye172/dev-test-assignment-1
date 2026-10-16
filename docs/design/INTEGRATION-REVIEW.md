@@ -27,7 +27,7 @@ The current shell uses shared active-navigation and section markers, short route
 
 Automated axe checks cover all six routes, profile/channel/assumption editing, skipped tasks, task/preferences dialogs, customization and the open share menu, plus dark/light/system with three accents at desktop and phone sizes. No elements or rules are excluded. Separate browser regressions verify keyboard menu behavior, phone field placement, unobscured save feedback, touch targets, history recovery, delayed writes and conflicts. Automated checks complement the manual review; they are not a WCAG certification.
 
-Final acceptance requires the integrated PostgreSQL browser run and the same core flow on the public deployment. See docs/ACCEPTANCE.md for the latest completed gates and remaining work.
+The integrated PostgreSQL browser run and the same core flow on the public deployment passed for the delivered baseline. See docs/ACCEPTANCE.md for the latest completed gates and evidence.
 
 ## Welcome refinement after the delivered baseline
 

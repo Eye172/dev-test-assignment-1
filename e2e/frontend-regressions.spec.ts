@@ -21,6 +21,15 @@ async function copyDemo(page: Page, plan = false) {
 async function saved(page: Page, id: string) {
   return (await (await page.request.get(`/api/startups/${id}`)).json()).data as Workspace;
 }
+
+async function minimumTouchTarget(control: Locator) {
+  // Position springs can briefly yield 43.999969px for a 44px button. Wait for the
+  // rendered target to settle; retain the exact minimum rather than lowering it.
+  await expect.poll(async () => {
+    const box = await control.boundingBox();
+    return box ? Math.min(box.width, box.height) : 0;
+  }, { message: "The settled touch target must be at least 44px in both dimensions" }).toBeGreaterThanOrEqual(44);
+}
 test("form and task controls wait for hydration and retain typed input", async ({ page }) => {
   const ws = await copyDemo(page);
   async function hydrate(path: string,control: Locator) {
@@ -100,15 +109,15 @@ test("strategy feedback and phone customization leave their controls usable", as
     await page.getByRole("navigation",{ name: "Workspace",exact: true }).getByRole("link",{ name: "Dashboard",exact: true }).click();
     const customize = page.getByRole("button",{ name: "Customize",exact: true });
     await expect(customize).toBeVisible();
-    expect((await customize.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+    await minimumTouchTarget(customize);
     await customize.click();
     const toolbar = page.locator(".plate-toolbar").first();
     for (const button of await toolbar.getByRole("button").all()) {
       if (!await button.isVisible()) continue;
-      const box = await button.boundingBox(); expect(box!.width).toBeGreaterThanOrEqual(44); expect(box!.height).toBeGreaterThanOrEqual(44);
+      await minimumTouchTarget(button);
     }
     expect((await page.locator(".customize-bar").boundingBox())!.height).toBeLessThan(104);
-    for (const button of await page.locator(".customize-bar").getByRole("button").all()) expect((await button.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+    for (const button of await page.locator(".customize-bar").getByRole("button").all()) await minimumTouchTarget(button);
     await expect(page.getByText("Move with arrows. Hide what you don’t need.",{ exact: true })).toBeVisible();
   }
 });
