@@ -3,12 +3,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import { ArrowRight, Check, Circle, Plus, Save, X } from "lucide-react";
+import { z } from "zod";
 import { calculateCompletion, fieldLabels, sectionCompletion, sectionTitles } from "@/lib/domain/completion";
 import { sectionKeys, sectionSchemas, type SectionKey, type StrategyData } from "@/lib/domain/schemas";
 import type { StrategySection, Workspace } from "@/lib/domain/types";
 import { api, ClientError } from "@/lib/client-api";
-import { Badge, Choice, DraftOffer, ErrorNotice, Field, SaveState, Spinner, useDirtyGuard, useDraftRecovery } from "./ui";
+import { Badge, Choice, ErrorNotice, Field, SaveState, Spinner, useDirtyGuard } from "./ui";
 import { spring, useWorkspace } from "./workspace";
+import { clearSubmittedDraft, useDraftRecovery } from "./draft-recovery";
 
 const sectionHelp: Record<SectionKey, string> = {
   icp: "Who has the problem badly enough to act first?",
@@ -89,6 +91,7 @@ export function StrategyEditor() {
         </motion.div>
       </AnimatePresence>
       <aside className="plate instrument quick-check" aria-labelledby="qc-title">
+        <span className="screw tl"/><span className="screw tr"/>
         <div className="plate-head"><h2 id="qc-title">Quick check</h2><span className="plate-meta mono">{workspace.completion.completed}/5</span></div>
         <div className="screen">
           <p className="inst-row"><span>{sectionTitles[selected]}</span><strong>{live.complete ? "READY" : `${live.missing.length} MISSING`}</strong></p>
@@ -116,8 +119,12 @@ function SectionEditor({ section, index, onDirtyChange, onLive, onNext, nextTitl
   const form = useRef<HTMLFormElement>(null);
   const dirty = JSON.stringify({ data, notes }) !== baseline;
   useDirtyGuard(dirty);
-  const recovery = useDraftRecovery(`orbit:draft:${workspace.startup.id}:section:${section.key}`, { data, notes }, dirty, revision, { data: section.data, notes: section.notes });
-  function restoreDraft() { const o = recovery.accept(); if (o) { setData(o.value.data); setNotes(o.value.notes); setRevision(o.revision); } }
+  const draftKey = `strategy:${workspace.startup.id}:${section.key}`;
+  useDraftRecovery(draftKey,{ data,notes,revision,baseline },dirty,value => {
+    const recovered = z.object({ data: sectionSchemas[section.key],notes: z.string(),revision: z.number().int().nonnegative(),baseline: z.string() }).parse(value);
+    setData(recovered.data); setNotes(recovered.notes); setRevision(recovered.revision); setBaseline(recovered.baseline);
+    notify("Unsaved section draft restored. Save to keep it in the workspace.");
+  });
   useEffect(() => { onDirtyChange(dirty); }, [dirty, onDirtyChange]);
   const completion = sectionCompletion(section.key, data);
   const completionKey = JSON.stringify(completion.missing);
@@ -128,9 +135,10 @@ function SectionEditor({ section, index, onDirtyChange, onLive, onNext, nextTitl
   }, []);
 
   async function save(event: React.FormEvent) {
-    event.preventDefault(); setSaving(true); setError(null);
+    event.preventDefault(); if (saving) return; setSaving(true); setError(null);
     try {
       const result = await api<StrategySection>(`/api/startups/${workspace.startup.id}/strategy/${section.key}`, { method: "PUT", body: JSON.stringify({ expectedRevision: revision, data, notes }) });
+      clearSubmittedDraft(draftKey,{ data,notes,revision,baseline });
       setData(result.data); setNotes(result.notes); setRevision(result.revision); setSavedAt(result.updatedAt);
       setBaseline(JSON.stringify({ data: result.data, notes: result.notes }));
       setWorkspace(ws => {
@@ -149,6 +157,7 @@ function SectionEditor({ section, index, onDirtyChange, onLive, onNext, nextTitl
     try {
       const latest = await api<Workspace>(`/api/startups/${workspace.startup.id}`);
       const next = latest.sections.find(s => s.key === section.key)!;
+      clearSubmittedDraft(draftKey,{ data,notes,revision,baseline });
       setData(next.data); setNotes(next.notes); setRevision(next.revision); setSavedAt(next.updatedAt);
       setBaseline(JSON.stringify({ data: next.data, notes: next.notes })); setError(null); setWorkspace(latest);
     } catch (err) { setError(err as Error); }
@@ -162,7 +171,6 @@ function SectionEditor({ section, index, onDirtyChange, onLive, onNext, nextTitl
       <Badge status={status}/>
     </div>
     <p className="muted editor-lead">{sectionHelp[section.key]}</p>
-    <DraftOffer offer={recovery.offer} currentRevision={revision} onRestore={restoreDraft} onDiscard={recovery.discard}/>
     <ErrorNotice error={conflict ? "This section changed elsewhere since you opened it. Load the latest version, or copy your draft first." : error}
       onReload={conflict ? () => void reload() : undefined} onRetry={!conflict && error ? () => form.current?.requestSubmit() : undefined}
       onCopy={conflict ? () => void navigator.clipboard.writeText(JSON.stringify({ data, notes }, null, 2)) : undefined}/>

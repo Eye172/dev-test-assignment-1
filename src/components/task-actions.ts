@@ -5,44 +5,39 @@ import { calculateRoadmapProgress } from "@/lib/domain/completion";
 import type { Task } from "@/lib/domain/types";
 import { useWorkspace } from "./workspace";
 
-type TaskPatch = Partial<Pick<Task, "status" | "title" | "deliverable" | "week" | "notes" | "archived">>;
-
-/* One write per task at a time. A second write would carry a stale revision and its rollback could
-   overwrite the first acknowledged result, so callers check `isTaskPending` and disable their controls. */
 const pending = new Set<string>();
+const empty: ReadonlySet<string> = new Set();
+let snapshot: ReadonlySet<string> = empty;
 const listeners = new Set<() => void>();
-const emit = () => listeners.forEach(l => l());
-const subscribe = (l: () => void) => { listeners.add(l); return () => { listeners.delete(l); }; };
-export function useTaskPending(id: string) {
-  return useSyncExternalStore(subscribe, () => pending.has(id), () => false);
-}
+const subscribe = (listener: () => void) => { listeners.add(listener); return () => { listeners.delete(listener); }; };
+function emit() { snapshot = new Set(pending); listeners.forEach(listener => listener()); }
+export function useTaskPending(id: string) { return useSyncExternalStore(subscribe,() => snapshot.has(id),() => false); }
 
-/**
- * `optimistic: true` (status, archive) shows the change immediately and rolls back on failure.
- * `optimistic: false` (editor fields) leaves the card untouched until the server acknowledges,
- * so a failed save never unmounts the editor or loses the draft.
- * Every response is applied to the latest workspace state, never to a captured snapshot.
- */
+/** Edit mutations wait for acknowledgment. Locked status toggles can respond immediately. */
 export function useTaskUpdate() {
   const { workspace, setWorkspace, notify } = useWorkspace();
-  return useCallback(async (task: Task, patch: TaskPatch, opts: { message?: string; optimistic?: boolean } = {}) => {
-    if (pending.has(task.id)) throw new ClientError("This task is still saving. Try again in a moment.", 0, "PENDING");
-    const optimistic = opts.optimistic ?? true;
-    const apply = (next: (t: Task) => Task) => setWorkspace(ws => {
-      const tasks = ws.tasks.map(t => t.id === task.id ? next(t) : t);
+  const busy = useSyncExternalStore(subscribe,() => snapshot,() => empty);
+  const update = useCallback(async (task: Task, patch: Partial<Pick<Task, "status" | "title" | "deliverable" | "week" | "notes" | "archived">>, message?: string) => {
+    if (pending.has(task.id)) throw new ClientError("This task is still saving. Please wait a moment.",0,"PENDING");
+    pending.add(task.id); emit();
+    const apply = (next: Task) => setWorkspace(ws => {
+      const tasks = ws.tasks.map(t => t.id === next.id && t.revision <= next.revision ? next : t);
       return { ...ws, tasks, roadmapProgress: calculateRoadmapProgress(tasks) };
     });
-    pending.add(task.id); emit();
-    const before = workspace.tasks.find(t => t.id === task.id) ?? task;
-    if (optimistic) apply(t => ({ ...t, ...patch }));
+    const optimisticStatus = Object.keys(patch).length === 1 && patch.status !== undefined;
+    if (optimisticStatus) apply({ ...task,status: patch.status! });
     try {
-      const saved = await api<Task>(`/api/startups/${workspace.startup.id}/tasks/${task.id}`, { method: "PATCH", body: JSON.stringify({ expectedRevision: before.revision, patch }) });
-      apply(() => saved);
-      if (opts.message) notify(opts.message);
+      const saved = await api<Task>(`/api/startups/${workspace.startup.id}/tasks/${task.id}`, { method: "PATCH", body: JSON.stringify({ expectedRevision: task.revision, patch }) });
+      apply(saved);
+      if (message) notify(message);
       return saved;
     } catch (error) {
-      if (optimistic) apply(t => ({ ...t, ...Object.fromEntries(Object.keys(patch).map(k => [k, before[k as keyof Task]])) }));
+      if (optimisticStatus) setWorkspace(ws => {
+        const tasks = ws.tasks.map(current => current.id === task.id && current.revision === task.revision && current.status === patch.status ? task : current);
+        return { ...ws,tasks,roadmapProgress: calculateRoadmapProgress(tasks) };
+      });
       throw error;
     } finally { pending.delete(task.id); emit(); }
-  }, [workspace.startup.id, workspace.tasks, setWorkspace, notify]);
+  }, [workspace.startup.id, setWorkspace, notify]);
+  return { update,isPending: (id: string) => busy.has(id) };
 }

@@ -244,7 +244,7 @@ kbd { font-family: var(--font-mono); font-size: 0.75rem; padding: 2px 6px; borde
 .task-card:target, li:target > .task-card { border-color: var(--accent-ink); }
 .task-card.status-done { background: color-mix(in srgb, var(--surface) 70%, var(--bg)); }
 .task-card.status-done .task-title { color: var(--muted); }
-.task-card.status-skipped { opacity: 0.7; }
+.task-card.status-skipped { border-style: dashed; }
 .task-card.editing { padding: var(--s-5); }
 .task-card.editing .field + .field { margin-top: var(--s-4); }
 .task-top { display: flex; justify-content: space-between; align-items: center; gap: var(--s-2); }

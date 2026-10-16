@@ -16,6 +16,8 @@ Startup: name, description, businessModel (B2B/B2C/B2G), stage (Idea/MVP/Early T
 
 Dashboard layout is database-backed. `null` restores the authored default. Every version-1 layout contains exactly the eight known plate IDs, once each: readout, next, decisions, gaps, week, risks, channels, profile. Sizes are S/M/L/XL as allowed by `src/lib/domain/dashboard.ts`. The readout cannot be hidden. Unknown IDs, duplicates, missing plates, invalid sizes and hidden readouts are rejected. The frontend must retain a compact mandatory strategy/gaps/next-actions summary outside the hideable plates, so personalization never hides required assignment information. Grid order follows DOM order; phones use one column and explicit move controls. Layout changes are saved through the existing profile preferences PATCH and revision protection.
 
+The revised authored default starts with this week's work and risks, followed by the readout, upcoming actions, decisions and gaps. Channels and the profile snapshot start in the restorable hidden tray; their data remains accessible through strategy/profile routes. The week plate additionally allows size L to accommodate the active experiment. Existing explicit layouts retain their saved order, sizes and visibility. This is a compatible expansion of the version-1 size catalog.
+
 Strategy keys and draft data:
 
 - icp: buyerType, industry, painPoint, buyingTrigger.

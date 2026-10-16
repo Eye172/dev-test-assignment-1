@@ -12,11 +12,15 @@ export function SectionSegments({ workspace, labels = true }: { workspace: Works
     {workspace.completion.sections.map(s => {
       const saved = workspace.sections.find(x => x.key === s.key)?.revision ?? 0;
       const state = s.complete ? "complete" : saved ? "draft" : "empty";
-      return <Link key={s.key} href={`${base}?section=${s.key}`} className={state} aria-label={`${s.title}: ${s.complete ? "complete" : saved ? "draft" : "not started"}`}>
+      return <Link key={s.key} href={`${base}?section=${s.key}`} className={state} aria-label={`${short[s.key]} — ${s.title}: ${s.complete ? "complete" : saved ? "draft" : "not started"}`}>
         <span className="bar"/>{labels && <span aria-hidden>{short[s.key]}</span>}
       </Link>;
     })}
   </div>;
+}
+
+export function RoadmapBar({ progress: { done,total,skipped,percentage } }: { progress: Workspace["roadmapProgress"] }) {
+  return <div className="progress" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={percentage} aria-label={`Roadmap ${done} of ${total - skipped} actionable tasks done; ${skipped} skipped`}><span style={{ width: `${percentage}%` }}/></div>;
 }
 
 /** The single most useful next move, derived from saved data. */

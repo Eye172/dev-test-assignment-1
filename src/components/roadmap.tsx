@@ -3,14 +3,18 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion } from "motion/react";
 import { Archive, ArchiveRestore, Info, Pencil, Plus, RefreshCw } from "lucide-react";
-import { api } from "@/lib/client-api";
+import { z } from "zod";
+import { api, ClientError } from "@/lib/client-api";
 import type { RoadmapProgress, Task, Workspace } from "@/lib/domain/types";
-import { Badge, clearDraft, Dialog, DraftOffer, ErrorNotice, Field, Spinner, useDirtyGuard, useDraftRecovery, useHasDraft } from "./ui";
+import { Badge, Dialog, ErrorNotice, Field, Spinner, useDirtyGuard } from "./ui";
+import { clearDraft, clearSubmittedDraft, useDraftRecovery, useHasDraft } from "./draft-recovery";
 import { useTaskPending, useTaskUpdate } from "./task-actions";
 import { spring, useWorkspace } from "./workspace";
 
 const statusLabels = { todo: "To do", in_progress: "In progress", done: "Done", skipped: "Skipped" } as const;
 const weekDays = (w: number) => w === 4 ? "Days 22–30" : `Days ${(w - 1) * 7 + 1}–${w * 7}`;
+
+const taskDraftSchema = z.object({ title: z.string(),deliverable: z.string(),week: z.number().int().min(1).max(4),notes: z.string() });
 
 /** Human names for generation rules. Internal identifiers never reach the interface. */
 export function ruleName(key: string | null): string | null {
@@ -58,8 +62,6 @@ export function Roadmap() {
   const archived = workspace.tasks.filter(t => t.archived);
   const p = workspace.roadmapProgress;
   const incomplete = workspace.completion.sections.filter(s => !s.complete);
-  const newTaskKey = `orbit:draft:${workspace.startup.id}:new-task`;
-  const newDraftWaiting = useHasDraft(newTaskKey);
 
   useEffect(() => {
     const id = location.hash.slice(1);
@@ -84,10 +86,6 @@ export function Roadmap() {
       </div>
     </div>
     {error && <ErrorNotice error={`Couldn't generate the plan. ${error.message}`} onRetry={generate}/>}
-    {newDraftWaiting && !adding && <div className="draft-offer" role="region" aria-label="Unsaved draft found">
-      <p><strong>Unsaved custom task found in this tab.</strong> Continue where you left off, or discard it.</p>
-      <div className="draft-offer-actions"><button type="button" className="button small primary" onClick={() => setAdding(true)}>Continue task</button><button type="button" className="button small ghost" onClick={() => clearDraft(newTaskKey)}>Discard</button></div>
-    </div>}
 
     {!active.length ? <section className="plate roadmap-empty">
       <h2>No plan yet</h2>
@@ -131,15 +129,15 @@ export function Roadmap() {
       <ul className="rule-list">{rules.map(([week, name, text]) => <li key={name}><span className="rule-name"><span className="faint mono">{week}</span> {name}</span><span>{text}</span></li>)}</ul>
       <p className="field-help">Refreshing keeps completed tasks, your edits and custom tasks. Tasks that no longer apply are archived, not deleted.</p>
     </Dialog>
-    <AddTaskDialog open={adding} storageKey={newTaskKey} onClose={() => setAdding(false)}/>
+    <AddTaskDialog open={adding} onClose={() => setAdding(false)} onRecover={() => setAdding(true)}/>
   </div>;
 }
 
 function TaskCard({ task }: { task: Task }) {
-  const update = useTaskUpdate();
+  const { update } = useTaskUpdate();
   const busy = useTaskPending(task.id);
   const { workspace } = useWorkspace();
-  const draftKey = `orbit:draft:${workspace.startup.id}:task:${task.id}`;
+  const draftKey = `task:${workspace.startup.id}:${task.id}`;
   const [editingOpen, setEditing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // A task draft left behind by Back/Forward or a reload reopens its editor.
@@ -147,13 +145,13 @@ function TaskCard({ task }: { task: Task }) {
   const editing = editingOpen || draftWaiting;
   async function run(patch: Parameters<typeof update>[1], message?: string) {
     setError(null);
-    try { await update(task, patch, { message }); } catch (e) { setError((e as Error).message); }
+    try { await update(task, patch, message); } catch (e) { setError((e as Error).message); }
   }
   const rule = task.source === "generated" ? ruleName(task.ruleKey) : null;
-  return <motion.article layout="size" transition={spring} className={`task-card status-${task.status} ${editing ? "is-editing" : ""}`} aria-labelledby={`t-${task.id}`} aria-busy={busy || undefined}>
+  return <motion.article layout="size" transition={spring} className={`task-card status-${task.status} ${editing ? "is-editing" : ""}`} aria-label={editing ? "Edit task" : undefined} aria-labelledby={editing ? undefined : `t-${task.id}`} aria-busy={busy || undefined}>
     <AnimatePresence mode="popLayout" initial={false}>
       {editing ? <motion.div key="edit" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.14 }}>
-        <TaskEditor task={task} draftKey={draftKey} onDone={() => setEditing(false)}/>
+        <TaskEditor task={task} onDone={() => setEditing(false)} onReloaded={() => setEditing(true)}/>
       </motion.div> : <motion.div key="view" className="task-view" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.14 }}>
         <div className="task-top">
           <label className="sr-only" htmlFor={`s-${task.id}`}>Status for {task.title}</label>
@@ -181,30 +179,45 @@ function TaskCard({ task }: { task: Task }) {
 }
 
 type TaskDraft = { title: string; deliverable: string; week: number; notes: string };
-function TaskEditor({ task, draftKey, onDone }: { task: Task; draftKey: string; onDone: () => void }) {
-  const update = useTaskUpdate();
-  const original: TaskDraft = { title: task.title, deliverable: task.deliverable, week: task.week, notes: task.notes };
-  const [d, setD] = useState<TaskDraft>(original);
-  const [revision, setRevision] = useState(task.revision);
-  const [error, setError] = useState<string | null>(null);
+function TaskEditor({ task, onDone, onReloaded }: { task: Task; onDone: () => void; onReloaded: () => void }) {
+  const { update } = useTaskUpdate();
+  const { workspace,setWorkspace } = useWorkspace();
+  const [d, setD] = useState({ title: task.title, deliverable: task.deliverable, week: task.week, notes: task.notes });
+  const [error, setError] = useState<Error | null>(null);
   const [saving, setSaving] = useState(false);
-  const dirty = JSON.stringify(d) !== JSON.stringify(original);
+  const [revision, setRevision] = useState(task.revision);
+  const [baseline, setBaseline] = useState(JSON.stringify(d));
+  const dirty = JSON.stringify(d) !== baseline;
   useDirtyGuard(dirty);
-  const recovery = useDraftRecovery(draftKey, d, dirty, revision, original);
-  function restore() { const o = recovery.accept(); if (o) { setD(o.value); setRevision(o.revision); } }
+  const draftKey = `task:${task.startupId}:${task.id}`;
+  useDraftRecovery(draftKey,{ d,revision,baseline },dirty,value => {
+    const recovered = z.object({ d: taskDraftSchema,revision: z.number().int().nonnegative(),baseline: z.string() }).parse(value);
+    setD(recovered.d); setRevision(recovered.revision); setBaseline(recovered.baseline);
+  });
+  function cancel() { if (!saving && (!dirty || window.confirm("Discard task edits?"))) { clearDraft(draftKey); onDone(); } }
   async function save(e: React.FormEvent) {
-    e.preventDefault();
-    if (!d.title.trim() || !d.deliverable.trim()) { setError("Title and deliverable are required."); return; }
-    if (!dirty) { clearDraft(draftKey); onDone(); return; }
+    e.preventDefault(); if (saving) return;
+    if (!d.title.trim() || !d.deliverable.trim()) { setError(new Error("Title and deliverable are required.")); return; }
+    if (!dirty) { onDone(); return; }
     setSaving(true); setError(null);
-    // Not optimistic: a week change moves the card to another group, so nothing changes until the server confirms.
-    try { await update({ ...task, revision }, d, { message: "Task saved", optimistic: false }); clearDraft(draftKey); onDone(); }
-    catch (err) { setError(`${(err as Error).message} Your edits are still here.`); setSaving(false); }
+    try { await update({ ...task,revision }, d, "Task saved"); clearSubmittedDraft(draftKey,{ d,revision,baseline }); onDone(); } catch (err) { setError(err as Error); setSaving(false); }
   }
-  const cancel = () => { if (!dirty || window.confirm("Discard task edits?")) { clearDraft(draftKey); onDone(); } };
-  return <form className="task-editor" onSubmit={save} onKeyDown={e => { if (e.key === "Escape" && !saving) { e.stopPropagation(); cancel(); } }}>
-    <DraftOffer offer={recovery.offer} currentRevision={task.revision} onRestore={restore} onDiscard={recovery.discard} what="task edit"/>
-    {error && <p className="field-error" role="alert">{error}</p>}
+  async function loadLatest() {
+    if (!window.confirm("Replace your task edits with the latest saved version? Copy your draft first if you want to keep it.")) return;
+    try {
+      const latest = await api<Workspace>(`/api/startups/${workspace.startup.id}`);
+      const saved = latest.tasks.find(next => next.id === task.id);
+      if (!saved) throw new Error("This task is unavailable. Your draft is still here.");
+      const next = { title: saved.title,deliverable: saved.deliverable,week: saved.week,notes: saved.notes };
+      onReloaded();
+      clearSubmittedDraft(draftKey,{ d,revision,baseline }); setD(next); setBaseline(JSON.stringify(next)); setRevision(saved.revision); setError(null); setWorkspace(latest);
+    } catch (err) { setError(err as Error); }
+  }
+  const conflict = error instanceof ClientError && error.status === 409;
+  return <form className="task-editor" onSubmit={save} onKeyDown={e => { if (e.key === "Escape") { e.preventDefault(); cancel(); } }}>
+    <ErrorNotice error={conflict ? "This task changed elsewhere. Load the latest version, or copy your draft first." : error}
+      onReload={conflict ? () => void loadLatest() : undefined}
+      onCopy={conflict ? () => void navigator.clipboard.writeText(JSON.stringify(d,null,2)).catch(() => {}) : undefined}/>
     <fieldset disabled={saving}>
       <Field name={`edit-title-${task.id}`} label="Title" value={d.title} onChange={title => setD({ ...d, title })} required maxLength={240}/>
       <Field name={`edit-deliv-${task.id}`} label="Deliverable" value={d.deliverable} onChange={deliverable => setD({ ...d, deliverable })} required textarea/>
@@ -221,42 +234,34 @@ function WeekSelect({ id, value, onChange }: { id: string; value: number; onChan
 }
 
 function ArchivedRow({ task }: { task: Task }) {
-  const update = useTaskUpdate(); const busy = useTaskPending(task.id); const [error, setError] = useState<string | null>(null);
+  const { update } = useTaskUpdate(); const busy = useTaskPending(task.id); const [error, setError] = useState<string | null>(null);
   return <li><span>{task.title}</span><span className="faint mono">W{task.week}</span>
-    <button type="button" className="button small" disabled={busy} onClick={() => void update(task, { archived: false }, { message: "Task restored" }).catch(e => setError((e as Error).message))}><ArchiveRestore size={14} aria-hidden/>Restore</button>
+    <button type="button" className="button small" disabled={busy} onClick={() => void update(task, { archived: false }, "Task restored").catch(e => setError((e as Error).message))}><ArchiveRestore size={14} aria-hidden/>Restore</button>
     {error && <span className="field-error" role="alert">{error}</span>}</li>;
 }
 
 const emptyTask: TaskDraft = { title: "", deliverable: "", week: 1, notes: "" };
-function AddTaskDialog({ open, onClose, storageKey }: { open: boolean; onClose: () => void; storageKey: string }) {
+function AddTaskDialog({ open, onClose, onRecover }: { open: boolean; onClose: () => void; onRecover: () => void }) {
   const { workspace, setWorkspace, refresh, notify } = useWorkspace();
-  const [d, setD] = useState<TaskDraft>(emptyTask);
-  const [error, setError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
+  const [d, setD] = useState(emptyTask); const [error, setError] = useState<string | null>(null); const [saving, setSaving] = useState(false);
   const dirty = JSON.stringify(d) !== JSON.stringify(emptyTask);
-  useDirtyGuard(dirty);
-  const recovery = useDraftRecovery(storageKey, d, dirty, 0, emptyTask);
-  function restore() { const o = recovery.accept(); if (o) setD(o.value); }
+  const draftKey = `new-task:${workspace.startup.id}`;
+  useDirtyGuard(open && dirty);
+  useDraftRecovery(draftKey,d,dirty,value => { setD(taskDraftSchema.parse(value)); onRecover(); notify("Unsaved task draft restored."); });
   async function save(e: React.FormEvent) {
-    e.preventDefault();
+    e.preventDefault(); if (saving) return;
     if (!d.title.trim() || !d.deliverable.trim()) { setError("Add a title and a deliverable."); return; }
     setSaving(true); setError(null);
     try {
       const task = await api<Task>(`/api/startups/${workspace.startup.id}/tasks`, { method: "POST", body: JSON.stringify(d) });
-      setWorkspace(ws => ({ ...ws, tasks: [...ws.tasks, task] })); void refresh().catch(() => {});
-      clearDraft(storageKey); setD(emptyTask); notify("Custom task added"); onClose();
-    } catch (err) { setError(`${(err as Error).message} Your task is still here.`); }
+      clearSubmittedDraft(draftKey,d);
+      setWorkspace(ws => ({ ...ws, tasks: [...ws.tasks, task] })); await refresh().catch(() => {});
+      notify("Custom task added"); setD(emptyTask); onClose();
+    } catch (err) { setError((err as Error).message); }
     finally { setSaving(false); }
   }
-  // While the request is pending the dialog cannot be dismissed, so an accepted "Discard" can never race a create.
-  const close = () => {
-    if (saving) return;
-    if (!dirty) { onClose(); return; }
-    if (window.confirm("Discard this task?")) { clearDraft(storageKey); setD(emptyTask); setError(null); onClose(); }
-  };
-  return <Dialog open={open} onClose={close} title="Add a custom task" locked={saving}>
+  return <Dialog open={open} onClose={() => { if (!saving && (!dirty || window.confirm("Discard this task?"))) { clearDraft(draftKey); setD(emptyTask); setError(null); onClose(); } }} title="Add a custom task" locked={saving}>
     <form onSubmit={save}>
-      <DraftOffer offer={recovery.offer} currentRevision={0} onRestore={restore} onDiscard={recovery.discard} what="custom task"/>
       {error && <p className="field-error" role="alert">{error}</p>}
       <fieldset disabled={saving}>
         <Field name="new-title" label="Title" value={d.title} onChange={title => setD({ ...d, title })} required maxLength={240}/>
