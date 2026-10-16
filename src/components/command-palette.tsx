@@ -31,6 +31,7 @@ function PaletteBody({ onClose, workspace, base, actions }: Props) {
       { id: "s", group: "Go to", title: "Strategy", hint: "G S", icon: <Compass size={16}/>, run: go(`${base}/strategy`) },
       { id: "d", group: "Go to", title: "Dashboard", hint: "G D", icon: <LayoutGrid size={16}/>, run: go(`${base}/dashboard`) },
       { id: "r", group: "Go to", title: "Roadmap", hint: "G R", icon: <Route size={16}/>, run: go(`${base}/roadmap`) },
+      { id: "a", group: "Go to", title: "Agents and evidence", hint: "G A", icon: <Compass size={16}/>, run: go(`${base}/agents`) },
     ];
     const sections: Item[] = workspace.completion.sections.map(s => ({
       id: `sec-${s.key}`, group: "Strategy sections", title: s.title, hint: s.complete ? "Complete" : `${s.missing.length} missing`,

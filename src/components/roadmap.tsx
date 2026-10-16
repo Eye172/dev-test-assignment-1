@@ -81,9 +81,9 @@ export function Roadmap() {
   }, []);
 
   async function generate() {
-    if (active.length && !window.confirm("Refresh the plan from your current strategy? Completed tasks, your edits and custom tasks are kept. Tasks that no longer apply move to Archived.")) return;
+    if (workspace.activePlan ? !window.confirm("Switch to the rule-based plan? Untouched pending AI suggestions move to history. Completed, edited, custom and in-progress work stays; review any overlaps after switching.") : active.length && !window.confirm("Refresh the plan from your current strategy? Completed tasks, your edits and custom tasks are kept. Tasks that no longer apply move to Archived.")) return;
     setGenerating(true); setError(null);
-    try { const ws = await track(api<Workspace>(`/api/startups/${workspace.startup.id}/roadmap`, { method: "POST" })); setWorkspace(ws); notify(active.length ? "Plan refreshed from your strategy" : "30-day plan generated"); }
+    try { const ws = await track(api<Workspace>(`/api/startups/${workspace.startup.id}/roadmap`, { method: "POST",...(workspace.activePlan?{body:JSON.stringify({replaceAiPlan:true,expectedPlanId:workspace.activePlan.id})}:{}) })); setWorkspace(ws); notify(active.length ? "Plan refreshed from your strategy" : "30-day plan generated"); }
     catch (e) { setError(e as Error); }
     finally { setGenerating(false); }
   }
@@ -96,7 +96,7 @@ export function Roadmap() {
 
   return <div className="roadmap">
     <div className="page-heading">
-      <div><p className="eyebrow">Thirty days</p><h1 tabIndex={-1}>30-day roadmap</h1><p className="lead">Built by visible rules from your saved strategy. Statuses, edits and moves are yours; refreshing never erases them.</p></div>
+      <div><p className="eyebrow">Thirty days</p><h1 tabIndex={-1}>30-day roadmap</h1><p className="lead">{workspace.activePlan?`Your reviewed AI plan${workspace.activePlan.conditional?", with disclosed resource uncertainties":""}. Superseded suggestions stay in history.`:"Built by visible rules from your saved strategy. Statuses, edits and moves are yours; refreshing never erases them."}</p></div>
       <div className="page-heading-actions">
         {active.length > 0 && <div className="view-switch" role="group" aria-label="Roadmap view">
           <button type="button" aria-pressed={board} disabled={!hydrated} onClick={() => setView("board")}>{board && <motion.span layoutId="view-active" className="view-active" transition={spring}/>}<Columns3 size={15} aria-hidden/><span>Board</span></button>
@@ -104,7 +104,7 @@ export function Roadmap() {
         </div>}
         <button className="button small ghost" onClick={() => setRulesOpen(true)}><Info size={15} aria-hidden/>How tasks are chosen</button>
         {active.length > 0 && <button className="button small" onClick={() => setAdding(true)}><Plus size={15} aria-hidden/>Add task</button>}
-        <button className={`button small ${active.length ? "" : "primary"}`} onClick={generate} disabled={generating} aria-busy={generating}>{generating ? <><Spinner/>Working…</> : <><RefreshCw size={15} aria-hidden/>{active.length ? "Refresh plan" : "Generate plan"}</>}</button>
+        <button className={`button small ${active.length ? "" : "primary"}`} onClick={generate} disabled={generating} aria-busy={generating}>{generating ? <><Spinner/>Working…</> : <><RefreshCw size={15} aria-hidden/>{workspace.activePlan?"Switch to rule plan":active.length ? "Refresh plan" : "Generate plan"}</>}</button>
       </div>
     </div>
     {error && <ErrorNotice error={`Couldn't generate the plan. ${error.message}`} onRetry={generate}/>}
@@ -116,7 +116,7 @@ export function Roadmap() {
       {incomplete.length > 0 && <p className="field-help">Incomplete: {incomplete.map(s => s.title).join(", ")}. Those tasks will start with defining the missing inputs. <Link className="text-link" href={`/startups/${workspace.startup.id}/strategy?section=${incomplete[0].key}`}>Complete strategy</Link></p>}
       <button className="button primary" onClick={generate} disabled={generating}>{generating ? <><Spinner/>Generating…</> : "Generate 30-day plan"}</button>
     </section> : <>
-      <ProgressTrack progress={p} tasks={workspace.tasks}/>
+      <ProgressTrack progress={p} tasks={workspace.tasks} activePlanCreatedAt={workspace.activePlan?.createdAt}/>
       {moveError && <p className="field-error" role="alert">{moveError}</p>}
       <LayoutGroup>
         <div className={`weeks ${board ? "board" : "list"} ${dropWeek ? "dragging" : ""}`}>{[1, 2, 3, 4].map(w => {
@@ -156,10 +156,10 @@ export function Roadmap() {
 }
 
 /** 30 day cells in four weeks, lit by finished work, with a marker on today's plan day. */
-function ProgressTrack({ progress: p, tasks }: { progress: RoadmapProgress; tasks: Task[] }) {
+function ProgressTrack({ progress: p, tasks, activePlanCreatedAt }: { progress: RoadmapProgress; tasks: Task[]; activePlanCreatedAt?:string }) {
   const hydrated = useHydrated();
   const weeks = weekDone(tasks);
-  const day = hydrated ? planDay(tasks.filter(t => !t.archived)) : null;
+  const day = hydrated ? planDay(tasks.filter(t => !t.archived),activePlanCreatedAt) : null;
   return <section className="roadmap-readout instrument" aria-label="Roadmap progress">
     <div className="readout-main">
       <p className="readout xl"><Counter value={p.percentage}/><small>%</small></p>
@@ -227,6 +227,7 @@ function TaskCard({ task, compact, draggable, onDropWeek, onHoverWeek }: { task:
         </div>
         {!compact && <p className="task-deliverable"><span className="label">Deliverable</span>{task.deliverable}</p>}
         {task.notes && !compact && <p className="task-notes">{task.notes}</p>}
+        {task.experiment&&!compact&&<details className="task-experiment"><summary>Experiment decision criteria</summary><dl><dt>Success</dt><dd>{task.experiment.measurement.success}</dd><dt>Failure</dt><dd>{task.experiment.measurement.failure}</dd><dt>Inconclusive</dt><dd>{task.experiment.measurement.inconclusive}</dd><dt>Sample and deadline</dt><dd>{task.experiment.measurement.minimumSample??"Not specified"} {task.experiment.measurement.unit} · day {task.experiment.measurement.deadlineDay}</dd><dt>Resource estimate</dt><dd>{task.experiment.effortMinutes??"Unknown"} minutes · {task.experiment.costs.map(c=>`${c.currency} ${c.amount??"unknown"}`).join(" + ")||"No cash outlay proposed"}</dd></dl><p className="field-help">{task.edited?"Task scope or schedule was edited. These are the accepted experiment criteria; review their fit before executing.":"Completion records activity. Judge the outcome against these criteria and record an observation in Research & decisions."}</p></details>}
         {error && <p className="field-error" role="alert">{error} The change was undone.</p>}
         <div className="task-actions">
           <label className="sr-only" htmlFor={`s-${task.id}`}>Status for {task.title}</label>
@@ -236,6 +237,7 @@ function TaskCard({ task, compact, draggable, onDropWeek, onHoverWeek }: { task:
           </select>
           {busy && <Spinner/>}
           {task.source === "custom" && <Badge status="custom"/>}{task.edited && task.source !== "custom" && <span className="badge">Edited</span>}
+          {task.source==="ai"&&<span className="badge">Reviewed AI proposal</span>}
           {rule && task.rationale && !compact && <details className="why"><summary>Why this task</summary><p>{task.rationale}</p><p className="faint rule-label">Rule: {rule}</p></details>}
           <span className="task-buttons">
             <button type="button" className="icon-button small" aria-label={`Edit ${task.title}`} disabled={busy || !hydrated} onClick={() => setEditing(true)}><Pencil size={15}/></button>

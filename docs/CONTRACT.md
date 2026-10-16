@@ -10,6 +10,10 @@ GPT is technical lead and owns backend, shared contracts, final integration, tes
 
 Latest owner allocation: Claude is revising design independently under the owner's direction. GPT continues AI/backend implementation and supplies stable interfaces; GPT does not direct Claude's design work.
 
+17 October evidence-workspace expansion: the owner authorized implementation of the architecture review, including the usable full cycle. GPT integrates the new AI analysis functionality into the current UI without replacing Claude's independent visual work. Version 2 AI artifacts add case-specific alternative comparisons, captured source passages, versioned hypotheses/decisions, explicit observation links, and typed resource/dependency contracts. Private AI data remains behind the owner gate. The original five-section completion and public rule-based journey remain intact.
+
+The AI endpoint adds `memory`, `remember`, `layout`, and `preview_plan` actions. Applying version-2 roadmap proposals requires an unchanged preview hash and the reviewed plan selection. One active AI plan reconciles selected old suggestions and retained human work; restoring the rule plan is an explicit action. Superseded suggestions stay in history and do not silently reactivate. Analysis display preferences have their own version-1 registry and do not alter the eight-plate public dashboard schema. See AI-BACKEND.md for payload details.
+
 ## Data and naming
 
 Shared runtime schemas and TypeScript types live in src/lib/domain. JSON uses camelCase. IDs are UUIDs. All mutation responses include the updated record and revision. Dates are ISO strings.

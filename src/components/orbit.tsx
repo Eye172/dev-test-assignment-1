@@ -15,8 +15,8 @@ export const sectionShort = short;
 const dayMs = 86_400_000;
 
 /** Day of the 30-day plan, counted from when the plan was first generated. Client-only (uses the clock). */
-export function planDay(tasks: Task[]): number | null {
-  const generated = tasks.filter(t => t.source === "generated").map(t => Date.parse(t.createdAt)).filter(Number.isFinite);
+export function planDay(tasks: Task[], activePlanCreatedAt?:string): number | null {
+  const generated = activePlanCreatedAt?[Date.parse(activePlanCreatedAt)].filter(Number.isFinite):tasks.filter(t => t.source === "generated"||t.source==="ai").map(t => Date.parse(t.createdAt)).filter(Number.isFinite);
   if (!generated.length) return null;
   return Math.min(30, Math.max(1, Math.floor((Date.now() - Math.min(...generated)) / dayMs) + 1));
 }
@@ -36,7 +36,7 @@ export function useOrbitModel(workspace: Workspace): OrbitModel {
     return { key: s.key, title: s.title, missing: s.missing.length, state: (s.complete ? "complete" : saved ? "draft" : "empty") as SectionState };
   });
   const active = workspace.tasks.filter(t => !t.archived);
-  return { sections, completion: workspace.completion.percentage, weeks: weekDone(workspace.tasks), planDay: hydrated ? planDay(active) : null,
+  return { sections, completion: workspace.completion.percentage, weeks: weekDone(workspace.tasks), planDay: hydrated ? planDay(active,workspace.activePlan?.createdAt) : null,
     plan: workspace.roadmapProgress.percentage, hasPlan: active.length > 0 };
 }
 
