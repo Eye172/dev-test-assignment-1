@@ -44,6 +44,7 @@ jobs:
       - run: npm run test:e2e
         env:
           DATABASE_URL: postgres://orbit:orbit-ci-only@localhost:5432/orbit_test
+          E2E_ISOLATE_CLIENTS: 'true'
       - uses: actions/upload-artifact@v4
         if: always()
         with:
