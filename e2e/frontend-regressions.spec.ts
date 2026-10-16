@@ -65,6 +65,7 @@ test("strategy feedback and phone customization leave their controls usable", as
   const ws = await copyDemo(page);
   await page.goto(`/startups/${ws.startup.id}/strategy?section=icp`);
   const buyer = page.getByLabel(/^Buyer type/);
+  await expect(buyer).toBeVisible();
   if (isMobile) {
     const field = await buyer.boundingBox();
     expect(field!.y + field!.height).toBeLessThan(page.viewportSize()!.height - 64);
