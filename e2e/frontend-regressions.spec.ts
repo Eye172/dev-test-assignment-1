@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page, type Locator } from "@playwright/test";
 import type { Workspace } from "../src/lib/domain/types";
 
 // Regressions for issue #3 comment 6214760795 plus the draft-mirror update loop found while recording.
@@ -21,10 +21,27 @@ async function copyDemo(page: Page, plan = false) {
 async function saved(page: Page, id: string) {
   return (await (await page.request.get(`/api/startups/${id}`)).json()).data as Workspace;
 }
-test("typing in the strategy editor does not loop or remount the field", async ({ page }) => {
+test("form and task controls wait for hydration and retain typed input", async ({ page }) => {
   const ws = await copyDemo(page);
-  await page.goto(`/startups/${ws.startup.id}/strategy?section=pricing`);
+  async function hydrate(path: string,control: Locator) {
+    const scripts = /\/_next\/static\/.*\.js(?:\?.*)?$/;
+    let pending = 0;
+    let releaseScripts!: () => void;
+    const ready = new Promise<void>(resolve => { releaseScripts = resolve; });
+    await page.route(scripts,async route => { pending++; await ready; await route.continue(); });
+    await page.goto(path,{ waitUntil: "commit" });
+    // A readable SSR control must not accept edits before its change handler exists.
+    try {
+      await expect(control).toBeVisible(); await expect(control).toBeDisabled();
+      await expect.poll(() => pending).toBeGreaterThan(0);
+    } finally { releaseScripts(); }
+    await expect(control).toBeEnabled();
+    await page.unroute(scripts);
+  }
+  await hydrate("/startups/new",page.getByLabel(/^Startup name/));
+  await hydrate(`/startups/${ws.startup.id}/roadmap`,page.getByLabel(`Status for ${ws.tasks[0].title}`,{ exact: true }));
   const price = page.getByLabel(/^Initial price assumption/);
+  await hydrate(`/startups/${ws.startup.id}/strategy?section=pricing`,price);
   await price.fill("");
   await price.pressSequentially("$29 per seat",{ delay: 15 });
   await expect(price).toHaveValue("$29 per seat");

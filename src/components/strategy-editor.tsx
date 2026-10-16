@@ -8,7 +8,7 @@ import { calculateCompletion, fieldLabels, sectionCompletion, sectionTitles } fr
 import { sectionKeys, sectionSchemas, type SectionKey, type StrategyData } from "@/lib/domain/schemas";
 import type { StrategySection, Workspace } from "@/lib/domain/types";
 import { api, ClientError } from "@/lib/client-api";
-import { Badge, Choice, ErrorNotice, Field, SaveState, Spinner, useDirtyGuard } from "./ui";
+import { Badge, Choice, ErrorNotice, Field, SaveState, Spinner, useDirtyGuard, useHydrated } from "./ui";
 import { spring, useWorkspace } from "./workspace";
 import { clearSubmittedDraft, useDraftRecovery } from "./draft-recovery";
 
@@ -109,6 +109,7 @@ function SectionEditor({ section, index, onDirtyChange, onLive, onNext, nextTitl
   section: StrategySection; index: number; onDirtyChange: (v: boolean) => void; onLive: (c: ReturnType<typeof sectionCompletion>) => void; onNext: () => void; nextTitle: string;
 }) {
   const { workspace, setWorkspace, refresh, notify } = useWorkspace();
+  const hydrated = useHydrated();
   const [data, setData] = useState<StrategyData>(section.data);
   const [notes, setNotes] = useState(section.notes);
   const [revision, setRevision] = useState(section.revision);
@@ -174,7 +175,7 @@ function SectionEditor({ section, index, onDirtyChange, onLive, onNext, nextTitl
     <ErrorNotice error={conflict ? "This section changed elsewhere since you opened it. Load the latest version, or copy your draft first." : error}
       onReload={conflict ? () => void reload() : undefined} onRetry={!conflict && error ? () => form.current?.requestSubmit() : undefined}
       onCopy={conflict ? () => void navigator.clipboard.writeText(JSON.stringify({ data, notes }, null, 2)) : undefined}/>
-    <fieldset disabled={saving} className="editor-fields">
+    <fieldset disabled={saving || !hydrated} className="editor-fields">
       {textFields[section.key]?.map(key => <Field key={key} name={key} label={fieldLabels[key]} required textarea={!shortFields.has(key)}
         value={String((data as Record<string, unknown>)[key] ?? "")} onChange={v => setData(c => ({ ...c, [key]: v }))}
         help={hints[key]} maxLength={["initialPrice", "paymentUnit"].includes(key) ? 500 : 3000}/>)}
@@ -186,9 +187,9 @@ function SectionEditor({ section, index, onDirtyChange, onLive, onNext, nextTitl
       </details>
     </fieldset>
     <div className="editor-footer">
-      <button className="button primary" disabled={saving} aria-busy={saving} aria-keyshortcuts="Control+S" aria-label={saving ? "Saving section" : "Save section"}>{saving ? <><Spinner/>Saving…</> : <><Save size={16} aria-hidden/>Save<span className="save-section-label"> section</span></>}</button>
+      <button className="button primary" disabled={saving || !hydrated} aria-busy={saving} aria-keyshortcuts="Control+S" aria-label={saving ? "Saving section" : "Save section"}>{saving ? <><Spinner/>Saving…</> : <><Save size={16} aria-hidden/>Save<span className="save-section-label"> section</span></>}</button>
       <SaveState saving={saving} dirty={dirty} savedAt={savedAt} failed={!!error && !conflict}/>
-      <button type="button" className="button ghost next-btn" onClick={onNext}><span className="next-label">Next: {nextTitle}</span><span className="next-short">Next</span><ArrowRight size={16} aria-hidden/></button>
+      <button type="button" className="button ghost next-btn" disabled={!hydrated} onClick={onNext}><span className="next-label">Next: {nextTitle}</span><span className="next-short">Next</span><ArrowRight size={16} aria-hidden/></button>
     </div>
   </form>;
 }

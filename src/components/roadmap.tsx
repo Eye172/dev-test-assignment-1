@@ -6,7 +6,7 @@ import { Archive, ArchiveRestore, Info, Pencil, Plus, RefreshCw } from "lucide-r
 import { z } from "zod";
 import { api, ClientError } from "@/lib/client-api";
 import type { RoadmapProgress, Task, Workspace } from "@/lib/domain/types";
-import { Badge, Dialog, ErrorNotice, Field, Spinner, useDirtyGuard } from "./ui";
+import { Badge, Dialog, ErrorNotice, Field, Spinner, useDirtyGuard, useHydrated } from "./ui";
 import { clearDraft, clearSubmittedDraft, useDraftRecovery, useHasDraft } from "./draft-recovery";
 import { useTaskPending, useTaskUpdate } from "./task-actions";
 import { spring, useWorkspace } from "./workspace";
@@ -134,6 +134,7 @@ export function Roadmap() {
 }
 
 function TaskCard({ task }: { task: Task }) {
+  const hydrated = useHydrated();
   const { update } = useTaskUpdate();
   const busy = useTaskPending(task.id);
   const { workspace } = useWorkspace();
@@ -155,7 +156,7 @@ function TaskCard({ task }: { task: Task }) {
       </motion.div> : <motion.div key="view" className="task-view" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.14 }}>
         <div className="task-top">
           <label className="sr-only" htmlFor={`s-${task.id}`}>Status for {task.title}</label>
-          <select id={`s-${task.id}`} className={`status-select ${task.status}`} value={task.status} disabled={busy}
+          <select id={`s-${task.id}`} className={`status-select ${task.status}`} value={task.status} disabled={busy || !hydrated}
             onChange={e => void run({ status: e.target.value as Task["status"] })}>
             {Object.entries(statusLabels).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
           </select>
@@ -169,8 +170,8 @@ function TaskCard({ task }: { task: Task }) {
         <div className="task-actions">
           {rule && task.rationale && <details className="why"><summary>Why this task</summary><p>{task.rationale}</p><p className="faint rule-label">Rule: {rule}</p></details>}
           <span className="task-buttons">
-            <button type="button" className="icon-button" aria-label={`Edit ${task.title}`} disabled={busy} onClick={() => setEditing(true)}><Pencil size={16}/></button>
-            <button type="button" className="icon-button" aria-label={`Archive ${task.title}`} disabled={busy} onClick={() => void run({ archived: true }, "Task archived")}><Archive size={16}/></button>
+            <button type="button" className="icon-button" aria-label={`Edit ${task.title}`} disabled={busy || !hydrated} onClick={() => setEditing(true)}><Pencil size={16}/></button>
+            <button type="button" className="icon-button" aria-label={`Archive ${task.title}`} disabled={busy || !hydrated} onClick={() => void run({ archived: true }, "Task archived")}><Archive size={16}/></button>
           </span>
         </div>
       </motion.div>}

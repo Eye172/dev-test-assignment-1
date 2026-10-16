@@ -6,7 +6,7 @@ import { z } from "zod";
 import { api, ClientError } from "@/lib/client-api";
 import { startupInputSchema, type StartupInput } from "@/lib/domain/schemas";
 import type { Startup, Workspace } from "@/lib/domain/types";
-import { Choice, ErrorNotice, Field, Spinner, useDirtyGuard } from "./ui";
+import { Choice, ErrorNotice, Field, Spinner, useDirtyGuard, useHydrated } from "./ui";
 import { clearDraft, clearSubmittedDraft, useDraftRecovery } from "./draft-recovery";
 
 const editable = ["name", "description", "businessModel", "stage", "targetMarket", "customerSegment", "websiteUrl", "context"] as const;
@@ -22,6 +22,7 @@ const recoverySchema = z.object({
 
 export function ProfileForm({ initial, onSaved, onCancel, onReloaded }: { initial?: Startup; onSaved?: (startup: Startup) => void | Promise<void>; onCancel?: () => void; onReloaded?: (workspace: Workspace) => void }) {
   const router = useRouter();
+  const hydrated = useHydrated();
   const [data, setData] = useState<Draft>(() => initial ? fromStartup(initial) : blank);
   const [custom, setCustom] = useState<[string, string][]>(() => Object.entries(initial?.customFields ?? {}));
   const [revision, setRevision] = useState(initial?.revision ?? 0);
@@ -103,7 +104,7 @@ export function ProfileForm({ initial, onSaved, onCancel, onReloaded }: { initia
         onCopy={conflict ? () => void navigator.clipboard.writeText(JSON.stringify({ ...data, customFields: Object.fromEntries(custom) }, null, 2)) : undefined}/>
       {invalid.length > 0 && <ul>{invalid.map(k => <li key={k}><a href={`#field-${k}`} onClick={e => { e.preventDefault(); document.getElementById(`field-${k}`)?.focus(); }}>{fieldNames[k]}: {fields[k]}</a></li>)}</ul>}
     </div>}
-    <fieldset disabled={saving}>
+    <fieldset disabled={saving || !hydrated}>
       <Field name="name" label="Startup name" value={data.name} onChange={v => update("name", v)} error={fields.name} required maxLength={120} autoComplete="organization"/>
       <Field name="description" label="Description" value={data.description} onChange={v => update("description", v)} error={fields.description} textarea required maxLength={2000} help="What you build, for whom, and why it matters. Two or three sentences."/>
       <div className="form-columns">

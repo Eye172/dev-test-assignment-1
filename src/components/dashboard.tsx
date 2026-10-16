@@ -160,7 +160,7 @@ export function Dashboard() {
   return <div className={`dashboard ${editing ? "is-editing" : ""}`}>
     <div className="page-heading">
       <div><h1 tabIndex={-1}>Dashboard</h1><p className="lead">This week’s work first, then your riskiest belief, decisions and gaps.</p></div>
-      {!editing && <div className="page-heading-actions"><button className="button small" onClick={start}><LayoutTemplate size={15} aria-hidden/>Customize</button></div>}
+      {!editing && <div className="page-heading-actions"><button className="button small" disabled={!hydrated} onClick={start}><LayoutTemplate size={15} aria-hidden/>Customize</button></div>}
     </div>
     <Summary workspace={workspace}/>
     <AnimatePresence>{editing && <motion.div className="customize-bar" initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8, transition: { duration: 0.12 } }}>
@@ -344,16 +344,18 @@ function WeekPlate({ workspace, base, toolbar }: PlateProps) {
   </PaperPlate>;
 }
 function FocusActions({ task, onSet }: { task: Task; onSet: (t: Task, s: Task["status"]) => Promise<void> }) {
+  const hydrated = useHydrated();
   const busy = useTaskPending(task.id);
   return <div className="focus-actions">
-    {task.status === "todo" && <button type="button" className="button small" disabled={busy} onClick={() => void onSet(task, "in_progress")}>Start</button>}
-    <button type="button" className="button small primary" disabled={busy} aria-busy={busy} onClick={() => void onSet(task, "done")}>{busy ? <><Spinner/>Saving…</> : <><Check size={15} aria-hidden/>Mark done</>}</button>
+    {task.status === "todo" && <button type="button" className="button small" disabled={busy || !hydrated} onClick={() => void onSet(task, "in_progress")}>Start</button>}
+    <button type="button" className="button small primary" disabled={busy || !hydrated} aria-busy={busy} onClick={() => void onSet(task, "done")}>{busy ? <><Spinner/>Saving…</> : <><Check size={15} aria-hidden/>Mark done</>}</button>
   </div>;
 }
 function WeekCheck({ task, onSet }: { task: Task; onSet: (t: Task, s: Task["status"]) => Promise<void> }) {
+  const hydrated = useHydrated();
   const busy = useTaskPending(task.id);
   return <li><label className={task.status === "done" ? "is-done" : ""}>
-    <input type="checkbox" checked={task.status === "done"} disabled={busy || task.status === "skipped"} onChange={e => void onSet(task, e.target.checked ? "done" : "todo")}/>
+    <input type="checkbox" checked={task.status === "done"} disabled={busy || !hydrated || task.status === "skipped"} onChange={e => void onSet(task, e.target.checked ? "done" : "todo")}/>
     <span>{task.title}{task.status === "skipped" && <span className="faint"> · skipped</span>}</span>
   </label></li>;
 }

@@ -19,6 +19,7 @@ The independent critic rated the first rendered milestone approximately 5.5/10, 
 - A custom task's acknowledged POST immediately updates the workspace and closes the dialog; a slow follow-up GET does not block it.
 - An acknowledged profile update similarly closes from the returned profile. A delayed background read cannot leave it locked or turn a successful write into a misleading failure.
 - Generated interview deliverables introduce the saved pain point as a quoted statement, avoiding an ungrammatical sentence splice.
+- Initial strategy/profile fields and task mutation controls wait until their client handlers are attached. A deliberately delayed-JavaScript regression covers onboarding, roadmap status and strategy typing, avoiding early edits being replaced during hydration. This was found by investigating a CI retry rather than accepting its green result at face value.
 
 ## Motion and accessibility evidence
 
