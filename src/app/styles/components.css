@@ -8,9 +8,9 @@
 .orbit-dial .dial-ticks line.lit { stroke: var(--inst-accent); }
 .orbit-dial .dial-track { fill: none; stroke: var(--inst-line); stroke-width: 10; stroke-linecap: round; }
 .orbit-dial .dial-seg { fill: none; stroke-width: 10; stroke-linecap: round; transition: stroke-width var(--d-base) var(--ease-spring), stroke var(--d-slow) var(--ease-out); }
-.orbit-dial .dial-seg.complete, .orbit-dial .dial-seg.empty { stroke-dasharray: 1 1; animation: dial-draw 900ms var(--ease-in-out) both; }
-.orbit-dial .dial-seg.draft { stroke-dasharray: 0.015 0.045; animation: dial-fade 600ms var(--ease-out) both; }
-.orbit-dial .dial-ticks line { animation: dial-fade 300ms var(--ease-out) both; }
+.orbit-dial .dial-seg.complete, .orbit-dial .dial-seg.empty { stroke-dasharray: 1 1; animation: dial-draw 900ms var(--ease-in-out) backwards; }
+.orbit-dial .dial-seg.draft { stroke-dasharray: 0.015 0.045; animation: dial-fade 600ms var(--ease-out) backwards; }
+.orbit-dial .dial-ticks line { animation: dial-fade 300ms var(--ease-out) backwards; }
 @keyframes dial-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
 @keyframes dial-fade { from { opacity: 0; } }
 .orbit-dial .dial-seg.complete { filter: drop-shadow(0 0 6px color-mix(in srgb, var(--inst-accent) 55%, transparent)); }

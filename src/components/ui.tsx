@@ -13,7 +13,8 @@ export function Mark({ size = 30 }: { size?: number }) {
   </svg>;
 }
 export function Brand() {
-  return <Link href="/" className="brand" aria-label="Orbit GTM Studio, home"><Mark/><span className="brand-word">Orbit<span className="brand-gtm">GTM</span></span></Link>;
+  // The accessible name starts with the visible words, so voice control users can say what they see.
+  return <Link href="/" className="brand"><Mark/><span className="brand-word">Orbit <span className="brand-gtm">GTM</span></span><span className="sr-only"> Studio, home</span></Link>;
 }
 export function ArrowLink({ href, children, className = "" }: { href: string; children: ReactNode; className?: string }) {
   return <Link href={href} className={`button primary ${className}`}>{children}<ArrowUpRight size={17} aria-hidden/></Link>;

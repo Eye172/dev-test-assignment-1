@@ -64,8 +64,9 @@
 
 /* ================= Strategy ================= */
 .writing-toggles { gap: 18px; }
-.toggle { display: inline-flex; align-items: center; gap: 10px; font-size: 0.875rem; font-weight: 600; cursor: pointer; min-height: 44px; user-select: none; }
-.toggle input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.toggle { position: relative; display: inline-flex; align-items: center; gap: 10px; font-size: 0.875rem; font-weight: 600; cursor: pointer; min-height: 44px; user-select: none; }
+/* The real switch covers the whole label, so every click lands on it directly. */
+.toggle input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; z-index: 1; }
 .toggle-track { position: relative; width: 38px; height: 22px; border-radius: 99px; background: var(--surface-3); transition: background-color var(--d-base) var(--ease-out); box-shadow: inset 0 0 0 1px var(--line); }
 .toggle-thumb { position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: var(--surface); box-shadow: 0 1px 3px rgb(0 0 0 / 0.3); transition: transform var(--d-base) var(--ease-spring); }
 .toggle input:checked + .toggle-track { background: var(--ink); }
@@ -174,6 +175,13 @@
   .live-check:has(.qc-ok) { display: none; }
 }
 @media (max-width: 599px) {
+  /* Phones: the first prompt must sit above the fold; the section prompt carries the explanation. */
+  .strategy-heading { margin-bottom: var(--s-4); gap: 4px; }
+  .strategy-heading .lead, .strategy-heading .eyebrow { display: none; }
+  .strategy-heading .writing-toggles { gap: 14px; }
+  .strategy-layout { gap: var(--s-4); }
+  .editor-head { padding-bottom: var(--s-4); margin-bottom: var(--s-4); gap: 10px; }
+  .editor-lead { font-size: 0.9375rem; margin-top: 4px; }
   .editor-index { font-size: 2.25rem; }
   .editor-head { grid-template-columns: auto 1fr; }
   .editor-head .badge { grid-column: 1 / -1; justify-self: start; }
@@ -212,7 +220,13 @@
 .customize-pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--inst-accent); box-shadow: 0 0 0 0 var(--inst-accent); animation: ping 1.6s var(--ease-out) infinite; }
 @keyframes ping { to { box-shadow: 0 0 0 10px transparent; } }
 .customize-help-phone { display: none; }
-@media (max-width: 767px) { .customize-help-wide { display: none; } .customize-help-phone { display: inline; } .customize-bar { border-radius: var(--r-lg); } }
+@media (max-width: 767px) {
+  .customize-help-wide { display: none; } .customize-help-phone { display: inline; }
+  .customize-bar { border-radius: var(--r-lg); padding: 8px; gap: 6px; }
+  .customize-bar p { flex-basis: 100%; font-size: 0.8125rem; padding-left: 4px; }
+  .customize-pulse { display: none; }
+  .customize-reset span { display: none; }
+}
 
 .plate-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 20px; align-items: stretch; }
 .plate-frame { position: relative; display: flex; min-width: 0; grid-column: span 12; }
@@ -339,7 +353,8 @@
 .task-card.dragging { cursor: grabbing; }
 .task-card.status-done { background: color-mix(in srgb, var(--surface) 60%, transparent); }
 .task-card.status-done .task-title { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--line-strong); }
-.task-card.status-skipped { opacity: 0.6; }
+.task-card.status-skipped { border-style: dashed; background: transparent; }
+.task-card.status-skipped .task-title { color: var(--muted); }
 .task-card.status-in_progress { border-color: color-mix(in srgb, var(--info) 45%, var(--line)); box-shadow: inset 3px 0 0 var(--info); }
 li.flash > .task-card { animation: flash 1.6s var(--ease-out); }
 @keyframes flash { 0%, 30% { box-shadow: 0 0 0 4px var(--accent-glow); border-color: var(--accent-ink); } }

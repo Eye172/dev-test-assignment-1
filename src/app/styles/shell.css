@@ -99,7 +99,9 @@ summary.demo-tag { cursor: pointer; }
     width: min(420px, calc(100% - 24px)); justify-content: space-between;
   }
   .workspace-nav > a:not(.rail-dial) { flex: 1; height: 56px; }
-  .search-text, .save-indicator { display: none; }
+  .save-indicator { display: none; }
+  /* Icon-only on phones; the text stays as the button's accessible name. */
+  .search-text { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   .search-trigger { min-width: 0; width: 44px; height: 44px; padding: 0; justify-content: center; margin: 0; border-color: transparent; background: transparent; }
   .search-trigger kbd { display: none; }
   .header-context { max-width: 14ch; font-size: 0.875rem; }
@@ -163,7 +165,8 @@ summary.demo-tag { cursor: pointer; }
 .menu-pop [role=menuitem]:hover, .menu-pop [role=menuitem]:focus-visible { background: var(--surface-2); outline: none; }
 
 /* Toast */
-.toast-region { position: fixed; z-index: 80; left: 50%; transform: translateX(-50%); bottom: calc(24px + var(--dock-space) + env(safe-area-inset-bottom)); pointer-events: none; }
+/* Top-centre, under the bar: never collides with sticky save bars or the phone dock at the bottom. */
+.toast-region { position: fixed; z-index: 80; left: 50%; transform: translateX(-50%); top: calc(var(--topbar-h) + 12px); pointer-events: none; }
 .toast {
   pointer-events: auto; display: flex; align-items: center; gap: 10px; padding: 6px 6px 6px 8px; min-height: 48px;
   background: var(--inst-body); color: var(--inst-ink); border-radius: var(--r-pill); box-shadow: var(--lift-shadow);

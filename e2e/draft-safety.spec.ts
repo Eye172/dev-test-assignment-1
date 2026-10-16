@@ -1,6 +1,10 @@
 import { test, expect, type Page, type Route } from "@playwright/test";
 import type { Task, Workspace } from "../src/lib/domain/types";
 
+// These scenarios cover the explicit-save path: a draft must never reach the database without a save.
+// Autosave is a per-device option (on by default) with its own scenario in workspace.spec.ts.
+test.beforeEach(async ({ page }) => { await page.addInitScript(() => localStorage.setItem("orbit:device:autosave", "off")); });
+
 async function copyDemo(page: Page): Promise<Workspace> {
   const response = await page.request.post("/api/demo");
   expect(response.status()).toBe(201);

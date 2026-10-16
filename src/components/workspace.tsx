@@ -31,6 +31,7 @@ export const easeOut = [0.23, 1, 0.32, 1] as const;
 export function themeAttributes(preferences: Pick<Preferences, "theme" | "accent" | "density" | "motion">) {
   return {
     "data-theme": preferences.theme === "system" ? undefined : preferences.theme,
+    "data-theme-system": preferences.theme === "system" ? "" : undefined,
     "data-accent": preferences.accent, "data-density": preferences.density, "data-motion": preferences.motion,
   };
 }
@@ -131,7 +132,7 @@ export function WorkspaceShell({ initial, children }: { initial: Workspace; chil
           <span className="header-context" title={workspace.startup.name}>{workspace.startup.name}</span>
           <SaveIndicator busy={inFlight > 0} savedAt={lastSaved}/>
           <div className="topbar-actions">
-            <button type="button" className="search-trigger" onClick={() => setPaletteOpen(true)} aria-label="Open command menu" aria-keyshortcuts="Control+K Meta+K">
+            <button type="button" className="search-trigger" onClick={() => setPaletteOpen(true)} aria-keyshortcuts="Control+K Meta+K">
               <Search size={16} aria-hidden/><span className="search-text">Jump to…</span><kbd aria-hidden>⌘K</kbd>
             </button>
             <details className="demo-details">
@@ -195,8 +196,8 @@ export function WorkspaceShell({ initial, children }: { initial: Workspace; chil
         </Dialog>
         <div className="toast-region" aria-live="polite">
           <AnimatePresence>{notice && <motion.div key={notice.id} className="toast" role="status" layout
-            initial={{ opacity: 0, y: 24, scale: 0.9, filter: "blur(4px)" }} animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
-            exit={{ opacity: 0, y: 12, scale: 0.96, transition: { duration: 0.16 } }} transition={{ type: "spring", stiffness: 500, damping: 32 }}>
+            initial={{ opacity: 0, y: -20, scale: 0.9, filter: "blur(4px)" }} animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
+            exit={{ opacity: 0, y: -12, scale: 0.96, transition: { duration: 0.16 } }} transition={{ type: "spring", stiffness: 500, damping: 32 }}>
             <span className="toast-check"><Check size={14} aria-hidden strokeWidth={3}/></span>{notice.text}
             <button className="icon-button small" aria-label="Dismiss notification" onClick={() => setNotice(null)}><X size={15}/></button>
           </motion.div>}</AnimatePresence>

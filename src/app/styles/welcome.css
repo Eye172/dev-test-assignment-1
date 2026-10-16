@@ -99,3 +99,4 @@
   .stage-orbit { height: 280px; }
   .stage-dial { transform: scale(0.84); }
 }
+@media (prefers-reduced-motion: reduce) { .orbit-steps::before { animation: none; } }

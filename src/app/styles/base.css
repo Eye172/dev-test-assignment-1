@@ -54,8 +54,14 @@ dl, dd { margin: 0; }
 .inline-icon { display: inline; vertical-align: -1px; margin-left: 3px; }
 
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; }
+  *, *::before, *::after { transition-duration: 0.01ms !important; transition-delay: 0ms !important; animation-duration: 0.01ms !important; animation-delay: 0ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; }
 }
 [data-motion="reduced"] *, [data-motion="reduced"] *::before, [data-motion="reduced"] *::after {
-  transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important;
+  transition-duration: 0.01ms !important; transition-delay: 0ms !important; animation-duration: 0.01ms !important; animation-delay: 0ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important;
 }
+
+/* Decorative entrances and loops do not run at all under reduced motion (not even for a frame). */
+@media (prefers-reduced-motion: reduce) {
+  .reveal, .reveal-pop, .word > span, .orbit-dial, .orbit-dial *, .stage *, .empty-track span, .qc-led, .customize-pulse { animation: none !important; }
+}
+[data-motion="reduced"] :is(.reveal, .reveal-pop, .orbit-dial, .orbit-dial *, .empty-track span, .qc-led, .customize-pulse) { animation: none !important; }
