@@ -61,7 +61,7 @@ describe("persisted agent orchestration",()=>{
     const page=await ai.state(startup.id);expect(page.runs).toHaveLength(30);expect(page.nextCursor).toBeTruthy();const older=await ai.state(startup.id,{before:page.nextCursor!});expect(older.runs).toHaveLength(1);expect(older.nextCursor).toBeNull();expect((await ai.export(startup.id)).state.runs).toHaveLength(31);
   });
   it("freezes the complete effective prompt and rejects tampered or incompatible replay before paid work",async()=>{
-    const startup=await store.createStartup(demoProfile);const created=await ai.create(startup.id,{mode:"research",brief:"Prompt replay fixture",requestId:randomUUID()});const step=(await ai.steps(created.id))[0];const original=await ai.execution(step);expect(original.instructions).toContain("Keep this artifact focused");expect(step.promptVersion).toBe("orbit-council-1.2.0");
+    const startup=await store.createStartup(demoProfile);const created=await ai.create(startup.id,{mode:"research",brief:"Prompt replay fixture",requestId:randomUUID()});const step=(await ai.steps(created.id))[0];const original=await ai.execution(step);expect(original.instructions).toContain("Keep this artifact focused");expect(original.settings).toMatchObject({store:false,retries:0,maxTurns:4,timeoutMs:110000});expect(step.promptVersion).toBe("orbit-council-1.2.0");
     await db.query("UPDATE ai_steps SET instructions=instructions || ' tampered' WHERE id=$1",[step.id]);await expect(ai.execution(step)).rejects.toMatchObject({code:"AI_VERSION_CHANGED"});const [count]=await db.query("SELECT count(*) AS count FROM ai_calls WHERE run_id=$1",[created.id]);expect(Number(count.count)).toBe(0);await ai.cancel(startup.id,created.id);
   });
   it("scopes request identifiers to workspace and rejects payload reuse",async()=>{
@@ -105,7 +105,8 @@ describe("persisted agent orchestration",()=>{
   });
   it("preserves completed artifacts and refuses publication after cancellation",async()=>{
     const startup=await store.createStartup(demoProfile);const created=await ai.create(startup.id,{mode:"research",brief:"Cancel test",requestId:randomUUID()});const run=(await ai.lease(created.id))!,step=(await ai.steps(run.id))[0];
-    await ai.startStep(run,step);await ai.completeStep(run,step,emptyResult(),[]);await ai.cancel(startup.id,run.id);
+    await ai.startStep(run,step);await ai.recordTool(run,step,"calculate_scenario",{units:3},{revenue:30});expect((await ai.export(startup.id)).messages.some(m=>m.sender==="calculate_scenario"&&(m.content as Record<string,unknown>).tool==="calculate_scenario")).toBe(true);await ai.completeStep(run,step,emptyResult(),[]);await ai.cancel(startup.id,run.id);
+    await expect(ai.recordTool(run,step,"calculate_scenario",{units:4},{revenue:40})).rejects.toMatchObject({code:"AI_CANCELLED"});
     await expect(ai.startStep(run,(await ai.steps(run.id))[1])).rejects.toMatchObject({code:"AI_CANCELLED"});const state=await ai.state(startup.id);expect(state.runs[0].steps[0].result?.title).toBeTruthy();expect(state.runs[0].status).toBe("cancelled");
   });
 });

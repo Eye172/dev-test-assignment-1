@@ -2,6 +2,7 @@ import { agentCatalog, type AiRole } from "@/lib/domain/ai";
 
 export const PROMPT_VERSION = "orbit-council-1.2.0";
 export const ARTIFACT_VERSION = "orbit-artifact-1.2.0";
+export const TOOL_VERSION = "orbit-tools-1.1.0";
 export const sharedInstructions = `You are a specialist in Orbit GTM Studio. Help a founder move from a hypothesis to an experiment, observed evidence, a decision and the next step.
 Use the immutable workspace snapshot, founder brief, accepted decisions, recorded observations and preceding specialist artifacts supplied in the task.
 The founder brief may ask the entire team for many deliverables. Execute ONLY your assigned specialist role. Leave other roles' deliverables to them, including in summaries and recommendations. Never pretend a downstream specialist has already worked.
@@ -28,5 +29,5 @@ export function effectiveInstructions(role:AiRole,round:number) {
   return instructionsFor(role)+"\nKeep this artifact focused: a summary under 120 words, at most 8 claims, 5 recommendations, and 3 high-impact questions. Prefer decision-useful specifics over exhaustive prose. Each strategy field should be under 100 words. Research: use at most two web tool calls; compare 3 relevant alternatives and state coverage limitations. Experiments: 6–8 tasks; each field concise and actionable."+(round?"\nThis is the single correction round. Address the latest critic issues targeting your role and preserve unaffected decisions. Review downstream dependencies.":"");
 }
 export function executionConfig(role:AiRole) {
-  return {artifactVersion:ARTIFACT_VERSION,toolVersion:"orbit-tools-1.0.0",reasoningEffort:role==="researcher"||role==="intake"?"low" as const:"medium" as const,maxTokens:role==="researcher"?5000:8000,webSearchCalls:role==="researcher"?2:0};
+  return {artifactVersion:ARTIFACT_VERSION,toolVersion:TOOL_VERSION,reasoningEffort:role==="researcher"||role==="intake"?"low" as const:"medium" as const,maxTokens:role==="researcher"?5000:8000,webSearchCalls:role==="researcher"?2:0,searchContextSize:"low" as const,store:false,retries:0,maxTurns:4,timeoutMs:110000};
 }

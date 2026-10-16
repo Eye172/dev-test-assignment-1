@@ -7,7 +7,7 @@ import type { Database, SqlExecutor } from "../database";
 import { AppError, notFound } from "../errors";
 import { Store, currentProfile } from "../store";
 import { aiConfig, requireConfiguration } from "./config";
-import { ARTIFACT_VERSION, effectiveInstructions, executionConfig, PROMPT_VERSION } from "./prompts";
+import { ARTIFACT_VERSION, effectiveInstructions, executionConfig, PROMPT_VERSION, TOOL_VERSION } from "./prompts";
 
 type Row = Record<string, unknown>;
 const iso = (v: unknown) => v instanceof Date ? v.toISOString() : String(v);
@@ -101,7 +101,7 @@ export class AiStore {
   async execution(step:AiStep) {
     const [r]=await this.db.query("SELECT instructions,execution_config,prompt_hash FROM ai_steps WHERE id=$1",[step.id]);
     const settings=r?.execution_config as ReturnType<typeof executionConfig>|null;
-    if(!r?.instructions||!settings||settings.artifactVersion!==ARTIFACT_VERSION||settings.toolVersion!=="orbit-tools-1.0.0"||hash({instructions:r.instructions,settings})!==r.prompt_hash)throw new AppError("AI_VERSION_CHANGED","This step's prompt, tool or artifact version cannot be replayed safely by this deployment. Start a follow-up from completed artifacts.",409);
+    if(!r?.instructions||!settings||settings.artifactVersion!==ARTIFACT_VERSION||settings.toolVersion!==TOOL_VERSION||hash({instructions:r.instructions,settings})!==r.prompt_hash)throw new AppError("AI_VERSION_CHANGED","This step's prompt, tool or artifact version cannot be replayed safely by this deployment. Start a follow-up from completed artifacts.",409);
     return {instructions:String(r.instructions),settings};
   }
   async event(tx: SqlExecutor, runId: string, kind: string, role: AiRole|null, message: string) {
@@ -136,7 +136,7 @@ export class AiStore {
       await this.fence(tx,run);
       await tx.query("UPDATE ai_steps SET status='running',error=NULL WHERE id=$1",[step.id]);
       await this.event(tx,run.id,"working",step.role,`${agentCatalog[step.role].name}${step.round?" · revision":""} is working.`);
-      await tx.query("INSERT INTO ai_messages(id,run_id,step_id,sender,recipients,kind,content) VALUES($1,$2,$3,'orchestrator',$4::jsonb,'task',$5::jsonb)",[randomUUID(),run.id,step.id,JSON.stringify([step.role]),JSON.stringify({snapshotHash:hash(run.snapshot),brief:run.brief,promptVersion:PROMPT_VERSION,round:step.round})]);
+      await tx.query("INSERT INTO ai_messages(id,run_id,step_id,sender,recipients,kind,content) VALUES($1,$2,$3,'orchestrator',$4::jsonb,'task',$5::jsonb)",[randomUUID(),run.id,step.id,JSON.stringify([step.role]),JSON.stringify({snapshotHash:hash(run.snapshot),brief:run.brief,promptVersion:step.promptVersion,round:step.round})]);
     });
   }
   async completeStep(run: LeasedRun, step: AiStep, result: AiResult, sources: AiSource[]) {
@@ -152,6 +152,9 @@ export class AiStore {
       await tx.query("INSERT INTO ai_messages(id,run_id,step_id,sender,recipients,kind,content) VALUES($1,$2,$3,$4,$5::jsonb,'artifact',$6::jsonb)",[randomUUID(),run.id,step.id,step.role,JSON.stringify(step.role==="critic"?["orchestrator"]:["critic","orchestrator"]),JSON.stringify(result)]);
       await this.event(tx,run.id,"artifact",step.role,`${agentCatalog[step.role].name} saved a proposal${result.issues.length?` with ${result.issues.length} review note(s)`:""}.`);
     });
+  }
+  async recordTool(run:LeasedRun,step:AiStep,name:string,input:unknown,result:unknown) {
+    await this.db.transaction(async tx=>{await this.fence(tx,run);await tx.query("INSERT INTO ai_messages(id,run_id,step_id,sender,recipients,kind,content) VALUES($1,$2,$3,$4,$5::jsonb,'tool_result',$6::jsonb)",[randomUUID(),run.id,step.id,name,JSON.stringify([step.role,"orchestrator"]),JSON.stringify({tool:name,input,result})]);});
   }
   async scheduleRepair(run: LeasedRun, roles: AiRole[]) {
     await this.db.transaction(async tx => { await this.fence(tx,run); for(const role of roles) await this.insertStep(tx,run.id,role,1); await this.insertStep(tx,run.id,"critic",1); await this.event(tx,run.id,"revision",null,"The critic requested one focused correction round. Original proposals stay in history."); });

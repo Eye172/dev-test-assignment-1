@@ -44,7 +44,7 @@ export function calculation(input:{currency:string;period:string;unitPrice:numbe
   const variableCosts=input.variableCostPerUnit===null?null:input.variableCostPerUnit*input.units;
   return {...input,revenue,variableCosts,contribution:variableCosts===null?null:revenue-variableCosts,operatingResult:variableCosts===null||input.fixedCosts===null?null:revenue-variableCosts-input.fixedCosts,warning:"Scenario from supplied assumptions, not a revenue forecast. Taxes, acquisition and other unknown costs are excluded."};
 }
-const calculator=()=>tool({name:"calculate_scenario",description:"Calculate a scenario using explicitly supplied assumptions. Unknown costs must be null. Never use this to invent customer willingness to pay or a forecast.",parameters:z.object({currency:z.string().min(1).max(20),period:z.string().min(1).max(100),unitPrice:z.number().min(0).max(1e9),units:z.number().min(0).max(1e9),variableCostPerUnit:z.number().min(0).max(1e9).nullable(),fixedCosts:z.number().min(0).max(1e12).nullable()}),execute:async input=>calculation(input)});
+const calculator=(store:AiStore,run:LeasedRun,step:AiStep)=>tool({name:"calculate_scenario",description:"Calculate a scenario using explicitly supplied assumptions. Unknown costs must be null. Never use this to invent customer willingness to pay or a forecast.",parameters:z.object({currency:z.string().min(1).max(20),period:z.string().min(1).max(100),unitPrice:z.number().min(0).max(1e9),units:z.number().min(0).max(1e9),variableCostPerUnit:z.number().min(0).max(1e9).nullable(),fixedCosts:z.number().min(0).max(1e12).nullable()}),execute:async input=>{const result=calculation(input);await store.recordTool(run,step,"calculate_scenario",input,result);return result;}});
 export function safeAiError(error:unknown) {
   if(error instanceof AppError)return error.message;
   const e=object(error);const code=String(e.code||"");const status=Number(e.status||0);
@@ -74,7 +74,9 @@ async function execute(store:AiStore,run:LeasedRun,step:AiStep,provider:OpenAIPr
       try {
         const response=await rawModel.getResponse(request);
         const retrieved=responseSources(response);found.push(...retrieved.sources);
-        await store.settle(call,response.usage.inputTokens,response.usage.outputTokens,estimatedCost(step.model,response.usage.inputTokens,response.usage.outputTokens,retrieved.searches),response.responseId||null,{model:step.model,responseId:response.responseId||null,inputTokens:response.usage.inputTokens,outputTokens:response.usage.outputTokens,webSearchCalls:retrieved.searches,sources:retrieved.sources});
+        const output=response.providerData?.output as unknown[]|undefined;
+        const webActions=(output||[]).map(object).filter(item=>item.type==="web_search_call").map(item=>({status:item.status,action:item.action}));
+        await store.settle(call,response.usage.inputTokens,response.usage.outputTokens,estimatedCost(step.model,response.usage.inputTokens,response.usage.outputTokens,retrieved.searches),response.responseId||null,{model:step.model,responseId:response.responseId||null,inputTokens:response.usage.inputTokens,outputTokens:response.usage.outputTokens,webSearchCalls:retrieved.searches,webActions,sources:retrieved.sources});
         return response;
       } catch(error) {
         const status=Number(object(error).status||0);
@@ -84,10 +86,10 @@ async function execute(store:AiStore,run:LeasedRun,step:AiStep,provider:OpenAIPr
     },
     async *getStreamedResponse() { throw new AppError("AI_STREAM_UNSUPPORTED","This worker uses metered non-streaming calls.",500); },
   };
-  const agent=new Agent({name:agentCatalog[step.role].name,model:metered,instructions:execution.instructions,outputType:outputSchema(step.role),tools:step.role==="researcher"?[webSearchTool({searchContextSize:"low"})]:step.role==="monetizer"?[calculator()]:[],modelSettings:{reasoning:{effort:execution.settings.reasoningEffort},maxTokens:execution.settings.maxTokens,store:false,retry:{maxRetries:0},providerData:step.role==="researcher"?{include:["web_search_call.action.sources"],max_tool_calls:execution.settings.webSearchCalls}:{}}});
+  const agent=new Agent({name:agentCatalog[step.role].name,model:metered,instructions:execution.instructions,outputType:outputSchema(step.role),tools:step.role==="researcher"?[webSearchTool({searchContextSize:execution.settings.searchContextSize})]:step.role==="monetizer"?[calculator(store,run,step)]:[],modelSettings:{reasoning:{effort:execution.settings.reasoningEffort},maxTokens:execution.settings.maxTokens,store:execution.settings.store,retry:{maxRetries:execution.settings.retries},providerData:step.role==="researcher"?{include:["web_search_call.action.sources"],max_tool_calls:execution.settings.webSearchCalls}:{}}});
   const payload=JSON.stringify({asOf:new Date().toISOString(),role:step.role,round:step.round,brief:run.brief,snapshot:run.snapshot,sourceLedger:priorSources,precedingArtifacts:completed.map(s=>({role:s.role,round:s.round,result:s.result})),instruction:"Make the next useful decision concrete. Unknowns and hypothesis labels must remain explicit. Do not treat source existence as proof of a claim."});
   const runner=new Runner({modelProvider:provider,tracingDisabled:true,traceIncludeSensitiveData:false});
-  const result=await runner.run(agent,payload,{maxTurns:4,signal:AbortSignal.timeout(110000)});
+  const result=await runner.run(agent,payload,{maxTurns:execution.settings.maxTurns,signal:AbortSignal.timeout(execution.settings.timeoutMs)});
   if(!result.finalOutput)throw new AppError("AI_EMPTY_OUTPUT","This specialist returned no usable proposal.",502);
   const parsed=outputSchema(step.role).parse(result.finalOutput);
   if(step.role==="experimenter"&&parsed.experiments.length<6)throw new AppError("AI_PLAN_INVALID","The experiment designer returned fewer than six tasks. Start a focused experiment follow-up.",422);
