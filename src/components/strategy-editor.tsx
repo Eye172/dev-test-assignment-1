@@ -10,7 +10,7 @@ import type { StrategySection, Workspace } from "@/lib/domain/types";
 import { api, ClientError } from "@/lib/client-api";
 import { Badge, Choice, ErrorNotice, Field, SaveState, Spinner, useDirtyGuard } from "./ui";
 import { spring, useWorkspace } from "./workspace";
-import { clearDraft, useDraftRecovery } from "./draft-recovery";
+import { clearSubmittedDraft, useDraftRecovery } from "./draft-recovery";
 
 const sectionHelp: Record<SectionKey, string> = {
   icp: "Who has the problem badly enough to act first?",
@@ -138,7 +138,7 @@ function SectionEditor({ section, index, onDirtyChange, onLive, onNext, nextTitl
     event.preventDefault(); if (saving) return; setSaving(true); setError(null);
     try {
       const result = await api<StrategySection>(`/api/startups/${workspace.startup.id}/strategy/${section.key}`, { method: "PUT", body: JSON.stringify({ expectedRevision: revision, data, notes }) });
-      clearDraft(draftKey);
+      clearSubmittedDraft(draftKey,{ data,notes,revision,baseline });
       setData(result.data); setNotes(result.notes); setRevision(result.revision); setSavedAt(result.updatedAt);
       setBaseline(JSON.stringify({ data: result.data, notes: result.notes }));
       setWorkspace(ws => {
@@ -157,7 +157,7 @@ function SectionEditor({ section, index, onDirtyChange, onLive, onNext, nextTitl
     try {
       const latest = await api<Workspace>(`/api/startups/${workspace.startup.id}`);
       const next = latest.sections.find(s => s.key === section.key)!;
-      clearDraft(draftKey);
+      clearSubmittedDraft(draftKey,{ data,notes,revision,baseline });
       setData(next.data); setNotes(next.notes); setRevision(next.revision); setSavedAt(next.updatedAt);
       setBaseline(JSON.stringify({ data: next.data, notes: next.notes })); setError(null); setWorkspace(latest);
     } catch (err) { setError(err as Error); }

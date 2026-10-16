@@ -9,7 +9,7 @@ import type { Task, Workspace } from "@/lib/domain/types";
 import { Badge, Dialog, ErrorNotice, Field, Spinner, useDirtyGuard } from "./ui";
 import { useTaskUpdate } from "./task-actions";
 import { spring, useWorkspace } from "./workspace";
-import { clearDraft, useHasDraft, useDraftRecovery } from "./draft-recovery";
+import { clearDraft, clearSubmittedDraft, useHasDraft, useDraftRecovery } from "./draft-recovery";
 
 const statusLabels = { todo: "To do", in_progress: "In progress", done: "Done", skipped: "Skipped" } as const;
 const weekDays = (w: number) => w === 4 ? "Days 22–30" : `Days ${(w - 1) * 7 + 1}–${w * 7}`;
@@ -167,7 +167,7 @@ function TaskEditor({ task, onDone, onReloaded }: { task: Task; onDone: () => vo
     if (!d.title.trim() || !d.deliverable.trim()) { setError(new Error("Title and deliverable are required.")); return; }
     if (!dirty) { onDone(); return; }
     setSaving(true); setError(null);
-    try { await update({ ...task,revision }, d, "Task saved"); clearDraft(draftKey); onDone(); } catch (err) { setError(err as Error); setSaving(false); }
+    try { await update({ ...task,revision }, d, "Task saved"); clearSubmittedDraft(draftKey,{ d,revision,baseline }); onDone(); } catch (err) { setError(err as Error); setSaving(false); }
   }
   async function loadLatest() {
     if (!window.confirm("Replace your task edits with the latest saved version? Copy your draft first if you want to keep it.")) return;
@@ -177,7 +177,7 @@ function TaskEditor({ task, onDone, onReloaded }: { task: Task; onDone: () => vo
       if (!saved) throw new Error("This task is unavailable. Your draft is still here.");
       const next = { title: saved.title,deliverable: saved.deliverable,week: saved.week,notes: saved.notes };
       onReloaded();
-      clearDraft(draftKey); setD(next); setBaseline(JSON.stringify(next)); setRevision(saved.revision); setError(null); setWorkspace(latest);
+      clearSubmittedDraft(draftKey,{ d,revision,baseline }); setD(next); setBaseline(JSON.stringify(next)); setRevision(saved.revision); setError(null); setWorkspace(latest);
     } catch (err) { setError(err as Error); }
   }
   const conflict = error instanceof ClientError && error.status === 409;
@@ -220,7 +220,7 @@ function AddTaskDialog({ open, onClose, onRecover }: { open: boolean; onClose: (
     setSaving(true); setError(null);
     try {
       const task = await api<Task>(`/api/startups/${workspace.startup.id}/tasks`, { method: "POST", body: JSON.stringify(d) });
-      clearDraft(draftKey);
+      clearSubmittedDraft(draftKey,d);
       setWorkspace(ws => ({ ...ws, tasks: [...ws.tasks, task] })); await refresh().catch(() => {});
       notify("Custom task added"); setD(emptyTask); onClose();
     } catch (err) { setError((err as Error).message); }

@@ -23,6 +23,11 @@ export function clearDraft(key: string) {
   try { sessionStorage.removeItem(prefix + key); } catch { /* In-memory recovery still works if browser storage is unavailable. */ }
   announce();
 }
+/** An old response may finish after this editor was unmounted and a new draft opened. */
+export function clearSubmittedDraft(key: string, submitted: unknown) {
+  const current = readDraft(key);
+  if (current === null || JSON.stringify(current) === JSON.stringify(submitted)) clearDraft(key);
+}
 export function useHasDraft(key: string) { return useSyncExternalStore(subscribe,() => readDraft(key) !== null,() => false); }
 
 export function useDraftRecovery(key: string, value: unknown, dirty: boolean, recover: (value: unknown) => void) {

@@ -7,7 +7,7 @@ import { api, ClientError } from "@/lib/client-api";
 import { startupInputSchema, type StartupInput } from "@/lib/domain/schemas";
 import type { Startup, Workspace } from "@/lib/domain/types";
 import { Choice, ErrorNotice, Field, Spinner, useDirtyGuard } from "./ui";
-import { clearDraft, useDraftRecovery } from "./draft-recovery";
+import { clearDraft, clearSubmittedDraft, useDraftRecovery } from "./draft-recovery";
 
 const editable = ["name", "description", "businessModel", "stage", "targetMarket", "customerSegment", "websiteUrl", "context"] as const;
 type Draft = Pick<StartupInput, (typeof editable)[number]>;
@@ -63,7 +63,7 @@ export function ProfileForm({ initial, onSaved, onCancel, onReloaded }: { initia
         body: JSON.stringify(initial ? { expectedRevision: revision, patch: parsed.data } : parsed.data),
       });
       setRevision(startup.revision);
-      clearDraft(draftKey);
+      clearSubmittedDraft(draftKey,{ data,custom,revision,baseline });
       setBaseline(JSON.stringify({ data: fromStartup(startup), custom: Object.entries(startup.customFields) }));
       setData(fromStartup(startup)); setCustom(Object.entries(startup.customFields));
       if (onSaved) await onSaved(); else router.push(`/startups/${startup.id}`);
@@ -82,7 +82,7 @@ export function ProfileForm({ initial, onSaved, onCancel, onReloaded }: { initia
       const ws = await api<Workspace>(`/api/startups/${initial.id}`);
       onReloaded?.(ws);
       const latest = fromStartup(ws.startup);
-      clearDraft(draftKey);
+      clearSubmittedDraft(draftKey,{ data,custom,revision,baseline });
       setData(latest); setCustom(Object.entries(ws.startup.customFields)); setRevision(ws.startup.revision);
       setBaseline(JSON.stringify({ data: latest, custom: Object.entries(ws.startup.customFields) }));
       setError(null); setFields({});

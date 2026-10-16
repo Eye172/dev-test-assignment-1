@@ -11,7 +11,7 @@ import { Badge, ErrorNotice, formatTime, Spinner, useDirtyGuard } from "./ui";
 import { nextStep, RoadmapBar, SectionSegments } from "./progress";
 import { useTaskUpdate } from "./task-actions";
 import { spring, useWorkspace } from "./workspace";
-import { clearDraft, useDraftRecovery } from "./draft-recovery";
+import { clearDraft, clearSubmittedDraft, useDraftRecovery } from "./draft-recovery";
 
 const sizeNames: Record<PlateSize, string> = { S: "One third", M: "Half", L: "Two thirds", XL: "Full width" };
 
@@ -82,7 +82,7 @@ export function Dashboard() {
     if (!changed) { setEditing(false); setLifted(null); return; }
     setSaving(true); setError(null);
     const isDefault = JSON.stringify(draft) === JSON.stringify(defaultDashboardLayout());
-    try { await savePreferences({ dashboardLayout: isDefault ? null : draft },draftRevision); clearDraft(draftKey); setEditing(false); setLifted(null); notify("Dashboard layout saved"); }
+    try { await savePreferences({ dashboardLayout: isDefault ? null : draft },draftRevision); clearSubmittedDraft(draftKey,{ draft,revision: draftRevision }); setEditing(false); setLifted(null); notify("Dashboard layout saved"); }
     catch (e) { setError(e as Error); }
     finally { setSaving(false); }
   }
