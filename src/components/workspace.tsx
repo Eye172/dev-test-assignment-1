@@ -1,9 +1,9 @@
 "use client";
-import { createContext, useCallback, useContext, useEffect, useRef, useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
+import { createContext, useCallback, useContext, useEffect, useId, useRef, useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { AnimatePresence, MotionConfig, motion } from "motion/react";
-import { ArrowDownToLine, Check, Compass, LayoutGrid, Link2, Orbit, Route, Settings2, X } from "lucide-react";
+import { ArrowDownToLine, Check, Compass, LayoutGrid, Link2, Orbit, Route, Settings2, Share2, X } from "lucide-react";
 import { api } from "@/lib/client-api";
 import type { Preferences, Startup, Workspace } from "@/lib/domain/types";
 import { Brand, Choice, Dialog, ErrorNotice, confirmLeave } from "./ui";
@@ -100,27 +100,26 @@ export function WorkspaceShell({ initial, children }: { initial: Workspace; chil
         <header className="site-header">
           <Brand/>
           <span className="header-context" title={workspace.startup.name}>{workspace.startup.name}</span>
+          {/* One navigation landmark: inline in the header on wide screens, a fixed tab bar on phones. */}
+          <nav className="workspace-nav" aria-label="Workspace">
+            {nav.map(({ name, href, Icon, key }) => {
+              const active = isActive(href);
+              return <Link href={href} key={name} aria-current={active ? "page" : undefined} className={active ? "active" : ""} aria-keyshortcuts={`g ${key.toLowerCase()}`}>
+                {active && <motion.span layoutId="nav-active" className="nav-active" transition={spring}/>}
+                <Icon size={17} aria-hidden/><span>{name}</span>
+              </Link>;
+            })}
+          </nav>
           <div className="header-actions">
             <details className="demo-details">
               <summary className="demo-tag" aria-label="Demo mode: about this data">Demo</summary>
               <p>No login. Data is synthetic and stored in the demo database. Anyone with this workspace link can view and edit it, so keep sensitive information out.</p>
             </details>
+            <ShareMenu startupId={workspace.startup.id} onCopy={copyLink}/>
             <button className="icon-button" onClick={() => setPreferencesOpen(true)} aria-label="Workspace preferences" aria-keyshortcuts="?"><Settings2 size={19}/></button>
           </div>
         </header>
         <main id="content" className="workspace-main">{children}</main>
-        <nav className="workspace-dock" aria-label="Workspace">
-          {nav.map(({ name, href, Icon, key }) => {
-            const active = isActive(href);
-            return <Link href={href} key={name} aria-current={active ? "page" : undefined} className={active ? "active" : ""} aria-keyshortcuts={`g ${key.toLowerCase()}`}>
-              {active && <motion.span layoutId="dock-active" className="dock-active" transition={spring}/>}
-              <Icon size={18} aria-hidden/><span>{name}</span>
-            </Link>;
-          })}
-          <span className="dock-divider dock-utility" aria-hidden/>
-          <button className="dock-utility" onClick={copyLink} aria-label="Copy workspace link" title="Copy workspace link"><Link2 size={18}/></button>
-          <a className="dock-utility" href={`/api/startups/${workspace.startup.id}/export`} aria-label="Export workspace as JSON" title="Export JSON" download><ArrowDownToLine size={18}/></a>
-        </nav>
         <Dialog open={preferencesOpen} onClose={() => setPreferencesOpen(false)} title="Workspace preferences">
           <p className="muted">Saved with this startup. Your device’s reduced-motion setting is always respected.</p>
           <fieldset disabled={saving} className="preference-fields">
@@ -151,4 +150,26 @@ export function WorkspaceShell({ initial, children }: { initial: Workspace; chil
       </div>
     </MotionConfig>
   </Context.Provider>;
+}
+
+/** Share and export live in one small header menu, out of the navigation's way. */
+function ShareMenu({ startupId, onCopy }: { startupId: string; onCopy: () => void }) {
+  const [open, setOpen] = useState(false);
+  const root = useRef<HTMLDivElement>(null);
+  const menuId = useId();
+  useEffect(() => {
+    if (!open) return;
+    const outside = (e: PointerEvent) => { if (!root.current?.contains(e.target as Node)) setOpen(false); };
+    const key = (e: KeyboardEvent) => { if (e.key === "Escape") { setOpen(false); root.current?.querySelector<HTMLButtonElement>("button")?.focus(); } };
+    document.addEventListener("pointerdown", outside); document.addEventListener("keydown", key);
+    root.current?.querySelector<HTMLElement>("[role=menu] a, [role=menu] button")?.focus();
+    return () => { document.removeEventListener("pointerdown", outside); document.removeEventListener("keydown", key); };
+  }, [open]);
+  return <div className="share-menu" ref={root}>
+    <button type="button" className="icon-button" aria-label="Share and export" aria-haspopup="menu" aria-expanded={open} aria-controls={menuId} onClick={() => setOpen(o => !o)}><Share2 size={18}/></button>
+    <AnimatePresence>{open && <motion.div id={menuId} role="menu" className="menu-pop" initial={{ opacity: 0, y: -4, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, transition: { duration: 0.1 } }} transition={{ duration: 0.16, ease: [0.23, 1, 0.32, 1] }}>
+      <button type="button" role="menuitem" onClick={() => { setOpen(false); onCopy(); }}><Link2 size={16} aria-hidden/>Copy workspace link</button>
+      <a role="menuitem" href={`/api/startups/${startupId}/export`} download aria-label="Export workspace as JSON" onClick={() => setOpen(false)}><ArrowDownToLine size={16} aria-hidden/>Export JSON backup</a>
+    </motion.div>}</AnimatePresence>
+  </div>;
 }

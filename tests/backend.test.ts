@@ -68,9 +68,9 @@ describe("strategy completeness and flexible validation", () => {
     const layout = defaultDashboardLayout();
     expect(dashboardLayoutSchema.parse(layout)).toEqual(layout);
     for (const mutate of [
-      (v: typeof layout) => { v.plates[0].hidden = true; },
-      (v: typeof layout) => { v.plates[1].id = "readout"; },
-      (v: typeof layout) => { v.plates[0].size = "XL"; },
+      (v: typeof layout) => { v.plates.find(p => p.id === "readout")!.hidden = true; },
+      (v: typeof layout) => { v.plates.find(p => p.id !== "readout")!.id = "readout"; },
+      (v: typeof layout) => { v.plates.find(p => p.id === "readout")!.size = "XL"; },
       (v: typeof layout) => { v.plates.pop(); },
     ]) { const invalid = structuredClone(layout); mutate(invalid); expect(dashboardLayoutSchema.safeParse(invalid).success).toBe(false); }
   });

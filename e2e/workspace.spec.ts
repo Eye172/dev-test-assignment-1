@@ -110,7 +110,8 @@ test("founder completes the six-screen flow with real persistence and an exporte
   await page.reload();
   await expect(page.locator(`#task-${completedId}`).getByRole("combobox")).toHaveValue("done");
   const download = page.waitForEvent("download");
-  await page.getByRole("link",{ name: "Export workspace as JSON",exact: true }).click();
+  await page.getByRole("button",{ name: "Share and export",exact: true }).click();
+  await page.getByRole("menuitem",{ name: "Export workspace as JSON",exact: true }).click();
   const file = await (await download).path();
   expect(file).toBeTruthy();
   const backup = JSON.parse(await readFile(file!,"utf8"));
@@ -160,25 +161,26 @@ test("layout changes and appearance preferences survive a full reload", async ({
   }
   await preferences.getByRole("button",{ name: "Close",exact: true }).click();
   await page.getByRole("button",{ name: "Customize",exact: true }).click();
-  const first = await page.locator("[data-plate-id]").first().getAttribute("data-plate-id");
+  const initialOrder = await page.locator("[data-plate-id]").evaluateAll(n => n.map(x => x.getAttribute("data-plate-id")));
   const later = page.getByRole("button",{ name: "Move Strategy readout later",exact: true });
   if (await later.isEnabled()) await later.click();
   else await page.getByRole("button",{ name: "Move Strategy readout earlier",exact: true }).click();
   if (!isMobile) await page.getByRole("button",{ name: "Strategy readout: Half",exact: true }).click();
-  await page.getByRole("button",{ name: "Hide Profile snapshot",exact: true }).click();
+  // Profile snapshot and Channel experiment start hidden in the authored default; hide a visible plate instead.
+  await page.getByRole("button",{ name: "Hide Missing inputs",exact: true }).click();
   const saved = page.waitForResponse(r => r.request().method() === "PATCH" && r.url().endsWith(`/api/startups/${id}`));
   await page.getByRole("button",{ name: "Done",exact: true }).click();
   expect((await saved).status()).toBe(200);
   const layout = (await savedWorkspace(page,id)).startup.preferences.dashboardLayout;
   expect(layout).not.toBeNull();
-  expect(layout!.plates.find(p => p.id === "profile")?.hidden).toBe(true);
+  expect(layout!.plates.find(p => p.id === "gaps")?.hidden).toBe(true);
   if (!isMobile) expect(layout!.plates.find(p => p.id === "readout")?.size).toBe("M");
   await page.reload();
   await expect(page.locator("html")).toHaveAttribute("data-theme","light");
   await expect(page.locator("html")).toHaveAttribute("data-density","compact");
   await expect(page.locator("html")).toHaveAttribute("data-motion","reduced");
-  expect(await page.locator("[data-plate-id]").first().getAttribute("data-plate-id")).not.toBe(first);
-  await expect(page.getByRole("heading",{ name: "Profile snapshot",exact: true })).not.toBeVisible();
+  expect(await page.locator("[data-plate-id]").evaluateAll(n => n.map(x => x.getAttribute("data-plate-id")))).not.toEqual(initialOrder);
+  await expect(page.getByRole("heading",{ name: "Missing inputs",exact: true })).not.toBeVisible();
   await page.screenshot({ path: test.info().outputPath("personalized-dashboard.png"),fullPage: true });
   await page.getByRole("button",{ name: "Customize",exact: true }).click();
   page.once("dialog",confirmation => confirmation.accept());
@@ -187,7 +189,8 @@ test("layout changes and appearance preferences survive a full reload", async ({
   await page.getByRole("button",{ name: "Done",exact: true }).click();
   expect((await reset).status()).toBe(200);
   expect((await savedWorkspace(page,id)).startup.preferences.dashboardLayout).toBeNull();
-  await expect(page.getByRole("heading",{ name: "Profile snapshot",exact: true })).toBeVisible();
+  await expect(page.getByRole("heading",{ name: "Missing inputs",exact: true })).toBeVisible();
+  await expect(page.getByRole("heading",{ name: "Profile snapshot",exact: true })).not.toBeVisible();
 });
 
 test("custom tasks can be edited, archived and restored without losing their content", async ({ page }) => {
@@ -262,16 +265,26 @@ test("pointer dragging and keyboard cancellation keep a predictable panel order"
   await expect.poll(order).not.toEqual(initial);
   await page.keyboard.press("Escape");
   await expect.poll(order).toEqual(initial);
-  // Actual pointer movement, rather than invoking the reorder callback.
+  // Actual pointer movement, rather than invoking the reorder callback. Center the pair so the drop target is on screen,
+  // and wait for the cancel's layout spring to settle so positions are measured where a person would see them.
+  await page.locator('[data-plate-id="readout"]').evaluate(el => el.scrollIntoView({ block: "center" }));
+  const positions = () => page.locator("[data-plate-id]").evaluateAll(nodes => nodes.map(n => { const r = n.getBoundingClientRect(); return `${Math.round(r.x)},${Math.round(r.y)}`; }).join(" "));
+  let previous = "";
+  await expect.poll(async () => { const now = await positions(); const stable = now === previous; previous = now; return stable; },{ intervals: [100] }).toBe(true);
   await handle.hover();
   const from = await handle.boundingBox();
   const to = await page.locator('[data-plate-id="next"]').boundingBox();
   expect(from).not.toBeNull(); expect(to).not.toBeNull();
   await page.mouse.move(from!.x + from!.width/2,from!.y + from!.height/2);
   await page.mouse.down();
-  await page.mouse.move(to!.x + to!.width/2,to!.y + Math.min(to!.height/2,100),{ steps: 12 });
+  // Paced at roughly one pointer event per frame, like a person's drag rather than a burst within one frame.
+  const target = { x: to!.x + to!.width/2,y: to!.y + Math.min(to!.height/2,100) };
+  const start = { x: from!.x + from!.width/2,y: from!.y + from!.height/2 };
+  for (let i = 1; i <= 16; i++) { await page.mouse.move(start.x + (target.x - start.x) * i/16,start.y + (target.y - start.y) * i/16); await page.waitForTimeout(16); }
   await page.mouse.up();
   await expect.poll(order).not.toEqual(initial);
+  previous = "";
+  await expect.poll(async () => { const now = await positions(); const stable = now === previous; previous = now; return stable; },{ intervals: [100] }).toBe(true);
   const moved = await order();
   await page.getByRole("button",{ name: "Done",exact: true }).click();
   await expect(page.getByRole("button",{ name: "Customize",exact: true })).toBeVisible();
