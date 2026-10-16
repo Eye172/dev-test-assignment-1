@@ -36,7 +36,10 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci --no-audit --no-fund
-      - run: npm run verify
+      - run: npm test
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run build
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
         env:
