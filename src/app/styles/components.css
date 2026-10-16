@@ -1,0 +1,138 @@
+/* ---------- Orbit dial ---------- */
+.orbit-dial { position: relative; flex: none; display: grid; place-items: center; border-radius: 50%; }
+.orbit-dial svg { position: absolute; inset: 0; overflow: visible; }
+.orbit-dial .dial-rim { fill: none; stroke: var(--inst-line); stroke-width: 1; }
+.orbit-dial .dial-guide { fill: none; stroke: var(--inst-line); stroke-width: 0.6; stroke-dasharray: 1 3; }
+.orbit-dial .dial-ticks line { stroke: var(--inst-line-strong); stroke-width: 1.6; stroke-linecap: round; transition: stroke var(--d-slow) var(--ease-out); }
+.orbit-dial .dial-ticks line.major { stroke: var(--inst-muted); }
+.orbit-dial .dial-ticks line.lit { stroke: var(--inst-accent); }
+.orbit-dial .dial-track { fill: none; stroke: var(--inst-line); stroke-width: 10; stroke-linecap: round; }
+.orbit-dial .dial-seg { fill: none; stroke-width: 10; stroke-linecap: round; transition: stroke-width var(--d-base) var(--ease-spring), stroke var(--d-slow) var(--ease-out); }
+.orbit-dial .dial-seg.complete, .orbit-dial .dial-seg.empty { stroke-dasharray: 1 1; animation: dial-draw 900ms var(--ease-in-out) both; }
+.orbit-dial .dial-seg.draft { stroke-dasharray: 0.015 0.045; animation: dial-fade 600ms var(--ease-out) both; }
+.orbit-dial .dial-ticks line { animation: dial-fade 300ms var(--ease-out) both; }
+@keyframes dial-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+@keyframes dial-fade { from { opacity: 0; } }
+.orbit-dial .dial-seg.complete { filter: drop-shadow(0 0 6px color-mix(in srgb, var(--inst-accent) 55%, transparent)); }
+.orbit-dial .dial-hit { fill: none; stroke: transparent; stroke-width: 26; pointer-events: stroke; }
+.orbit-dial .dial-link { cursor: pointer; outline: none; }
+.orbit-dial .dial-link:hover .dial-seg, .orbit-dial .dial-link:focus-visible .dial-seg { stroke-width: 15; }
+.orbit-dial .dial-link:focus-visible .dial-track { stroke: var(--inst-ink); stroke-width: 18; }
+.dial-center { position: relative; display: grid; justify-items: center; gap: 2px; text-align: center; color: var(--inst-ink); pointer-events: none; max-width: 52%; }
+.dial-value { font-family: var(--font-display); font-weight: 700; font-size: calc(var(--dial-size, 280px) * 0.2); line-height: 0.9; letter-spacing: -0.05em; font-variant-numeric: tabular-nums; }
+.dial-value small { font-size: 0.4em; color: var(--inst-muted); margin-left: 2px; letter-spacing: 0; }
+.dial-k { font-size: 0.625rem; letter-spacing: 0.16em; text-transform: uppercase; font-weight: 700; color: var(--inst-muted); }
+.dial-hover-title { font-family: var(--font-display); font-weight: 700; font-size: 1.25rem; line-height: 1.05; letter-spacing: -0.02em; color: var(--inst-accent); }
+.orbit-dial.idle svg { animation: idle-drift 18s linear infinite; }
+@keyframes idle-drift { to { transform: rotate(360deg); } }
+
+.dial-legend { display: grid; gap: 10px; font-size: 0.8125rem; }
+.dial-legend > div { display: grid; grid-template-columns: 112px 1fr; gap: 10px; align-items: baseline; }
+.dial-legend dt { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 0.6875rem; letter-spacing: 0.12em; text-transform: uppercase; font-weight: 700; }
+.dial-legend dd { font-weight: 500; }
+.lg-swatch { width: 14px; height: 4px; border-radius: 2px; background: var(--accent-ink); }
+.lg-swatch.outer { background: repeating-linear-gradient(90deg, var(--accent-ink) 0 2px, transparent 2px 4px); }
+.lg-swatch.sat { width: 8px; height: 8px; border-radius: 50%; }
+
+/* ---------- Plates: hairline paper, with registration marks on hover ---------- */
+.plate {
+  position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg);
+  padding: var(--s-5);
+  transition: border-color var(--d-base) var(--ease-out), box-shadow var(--d-base) var(--ease-out), background-color var(--d-base) var(--ease-out);
+}
+.plate.marks::after {
+  content: ""; position: absolute; inset: -5px; pointer-events: none; opacity: 0; transition: opacity var(--d-base) var(--ease-out), inset var(--d-base) var(--ease-out);
+  --m: var(--line-strong);
+  background:
+    linear-gradient(var(--m), var(--m)) top left / 9px 1px no-repeat, linear-gradient(var(--m), var(--m)) top left / 1px 9px no-repeat,
+    linear-gradient(var(--m), var(--m)) top right / 9px 1px no-repeat, linear-gradient(var(--m), var(--m)) top right / 1px 9px no-repeat,
+    linear-gradient(var(--m), var(--m)) bottom left / 9px 1px no-repeat, linear-gradient(var(--m), var(--m)) bottom left / 1px 9px no-repeat,
+    linear-gradient(var(--m), var(--m)) bottom right / 9px 1px no-repeat, linear-gradient(var(--m), var(--m)) bottom right / 1px 9px no-repeat;
+}
+.plate.marks:hover::after { opacity: 1; inset: -9px; }
+.plate-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: var(--s-4); }
+.plate-head h2 { font-family: var(--font-sans); font-size: 0.6875rem; letter-spacing: 0.14em; text-transform: uppercase; font-weight: 700; color: var(--muted); }
+.plate-meta { font-size: 0.75rem; color: var(--faint); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.plate-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: var(--s-5); padding-top: var(--s-4); border-top: 1px solid var(--line); flex-wrap: wrap; }
+.plate-foot > .roadmap-bar { flex: 1 1 200px; }
+.plate-link { display: inline-flex; align-items: center; gap: 6px; font-size: 0.875rem; font-weight: 600; color: var(--accent-ink); text-decoration: none; min-height: 32px; }
+.plate-link svg { transition: transform var(--d-base) var(--ease-out); }
+.plate-link:hover svg { transform: translateX(3px); }
+.plate-link:hover { text-decoration: underline; text-underline-offset: 4px; }
+.plate-empty { color: var(--muted); font-size: 0.9375rem; }
+.plate-empty.with-icon { display: flex; gap: 8px; align-items: center; color: var(--accent-ink); }
+
+/* Instrument plate: dark in both themes. */
+.instrument { background: var(--inst-body); border-color: var(--inst-line); color: var(--inst-ink); }
+.instrument .plate-head h2, .instrument .plate-meta, .instrument .label { color: var(--inst-muted); }
+.instrument .muted, .instrument .faint, .instrument .field-help { color: var(--inst-muted); }
+.instrument .plate-link { color: var(--inst-accent); }
+.instrument .plate-foot { border-color: var(--inst-line); }
+.instrument .progress { background: var(--inst-line); }
+.instrument .progress > span { background: var(--inst-accent); }
+.instrument .segments .bar { background: var(--inst-line); }
+.instrument .segments .complete .bar { background: var(--inst-accent); }
+.instrument .segments a { color: var(--inst-muted); }
+.instrument .button:not(.primary) { color: var(--inst-ink); border-color: var(--inst-line-strong); }
+.instrument .button:not(.primary):hover { background: var(--inst-surface); border-color: var(--inst-ink); }
+.instrument .badge { background: var(--inst-surface); color: var(--inst-muted); }
+.instrument .badge.untested { background: transparent; box-shadow: inset 0 0 0 1px var(--inst-line-strong); }
+.instrument .badge.high { background: rgb(255 122 107 / 0.16); color: #ff9d90; }
+.instrument .badge.medium { background: rgb(227 180 92 / 0.16); color: #f0c97a; }
+.instrument .badge.done, .instrument .badge.complete { background: rgb(32 250 128 / 0.14); color: var(--inst-accent); }
+.instrument ::selection { background: var(--inst-accent); color: #04140c; }
+.readout { font-family: var(--font-display); font-weight: 700; letter-spacing: -0.05em; line-height: 0.9; font-variant-numeric: tabular-nums; }
+.readout small { font-size: 0.4em; color: var(--inst-muted); margin-left: 3px; letter-spacing: 0; }
+.readout.xl { font-size: clamp(3.5rem, 2.4rem + 4vw, 5.5rem); }
+.readout.lg { font-size: 3rem; }
+
+/* ---------- Status ring: one click cycles to do → in progress → done ---------- */
+.status-ring {
+  position: relative; flex: none; display: grid; place-items: center; width: 30px; height: 30px; padding: 0; border: 0; border-radius: 50%;
+  background: transparent; color: var(--line-strong); cursor: pointer;
+  transition: transform var(--d-press) var(--ease-out), color var(--d-base) var(--ease-out);
+}
+@media (pointer: coarse) { .status-ring { width: 44px; height: 44px; } }
+.status-ring:hover:not(:disabled) { color: var(--ink); transform: scale(1.08); }
+.status-ring:active:not(:disabled) { transform: scale(0.9); }
+.status-ring svg { width: 24px; height: 24px; overflow: visible; }
+.status-ring .ring-base { fill: none; stroke: currentColor; stroke-width: 1.8; }
+.status-ring .ring-fill { fill: none; stroke: var(--info); stroke-width: 2.6; stroke-linecap: round; }
+.status-ring .ring-done { fill: var(--accent); }
+.status-ring .ring-check { fill: none; stroke: var(--on-accent); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.status-ring.done { color: var(--accent); }
+.status-ring.skipped { color: var(--line); }
+.status-ring .ring-skip { stroke: var(--faint); stroke-width: 1.8; stroke-linecap: round; }
+.status-ring:disabled { cursor: progress; }
+.status-ring::after { content: ""; position: absolute; inset: 2px; border-radius: 50%; box-shadow: 0 0 0 0 var(--accent-glow); }
+.status-ring.burst::after { animation: burst 520ms var(--ease-out); }
+@keyframes burst { from { box-shadow: 0 0 0 0 var(--accent-glow); } to { box-shadow: 0 0 0 14px transparent; } }
+
+/* Small status select (kept for precise choice and the Skipped state) */
+.status-select {
+  height: 30px; padding: 0 28px 0 12px; border-radius: var(--r-pill); border: 1px solid var(--line); background: var(--surface);
+  font-size: 0.75rem; font-weight: 700; letter-spacing: 0.04em; appearance: none; -webkit-appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, currentColor 50%), linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position: calc(100% - 15px) 13px, calc(100% - 11px) 13px; background-size: 4px 4px; background-repeat: no-repeat;
+  color: var(--muted); transition: border-color var(--d-fast) var(--ease-out), color var(--d-fast) var(--ease-out), background-color var(--d-fast) var(--ease-out);
+}
+@media (pointer: coarse) { .status-select { height: 44px; } }
+.status-select:hover { border-color: var(--line-strong); color: var(--ink); }
+.status-select.done { color: var(--accent-ink); background-color: var(--accent-soft); border-color: transparent; }
+.status-select.in_progress { color: var(--info); background-color: var(--info-soft); border-color: transparent; }
+.status-select.skipped { color: var(--faint); border-style: dashed; }
+
+/* Roadmap bar */
+.roadmap-bar { display: grid; gap: 8px; }
+.roadmap-bar-label { display: flex; justify-content: space-between; gap: 12px; font-size: 0.75rem; color: var(--muted); flex-wrap: wrap; }
+
+/* Sheet: a plate that slides in from the side (profile editing). */
+.sheet-scrim { position: fixed; inset: 0; z-index: 70; background: var(--scrim); backdrop-filter: blur(2px); }
+.sheet {
+  position: fixed; z-index: 71; top: 10px; right: 10px; bottom: 10px; width: min(560px, calc(100vw - 20px));
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-xl); box-shadow: var(--lift-shadow);
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 16px 8px 28px; }
+.sheet-body { flex: 1; overflow: auto; padding: 8px 28px 28px; overscroll-behavior: contain; }
+@media (max-width: 599px) { .sheet { top: auto; left: 0; right: 0; bottom: 0; width: 100%; max-height: 94dvh; border-radius: var(--r-xl) var(--r-xl) 0 0; } }

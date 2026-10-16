@@ -1,9 +1,8 @@
-/* Orbit GTM Studio — design system. Spec: docs/design/SPEC.md */
+/* Orbit GTM Studio — paper and instruments. Direction: docs/design/REMAKE.md */
 @import "./styles/tokens.css";
 @import "./styles/base.css";
 @import "./styles/shell.css";
 @import "./styles/controls.css";
-@import "./styles/plates.css";
+@import "./styles/components.css";
 @import "./styles/screens.css";
-@import "./styles/revision.css";
 @import "./styles/welcome.css";

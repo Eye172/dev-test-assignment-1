@@ -24,8 +24,10 @@ export function useTaskUpdate() {
       const tasks = ws.tasks.map(t => t.id === next.id && t.revision <= next.revision ? next : t);
       return { ...ws, tasks, roadmapProgress: calculateRoadmapProgress(tasks) };
     });
-    const optimisticStatus = Object.keys(patch).length === 1 && patch.status !== undefined;
-    if (optimisticStatus) apply({ ...task,status: patch.status! });
+    // Single-field status or week moves respond immediately (checkbox, drag between weeks); edits wait for the server.
+    const keys = Object.keys(patch) as (keyof typeof patch)[];
+    const optimisticStatus = keys.length === 1 && (patch.status !== undefined || patch.week !== undefined);
+    if (optimisticStatus) apply({ ...task,...patch });
     try {
       const saved = await api<Task>(`/api/startups/${workspace.startup.id}/tasks/${task.id}`, { method: "PATCH", body: JSON.stringify({ expectedRevision: task.revision, patch }) });
       apply(saved);
@@ -33,7 +35,7 @@ export function useTaskUpdate() {
       return saved;
     } catch (error) {
       if (optimisticStatus) setWorkspace(ws => {
-        const tasks = ws.tasks.map(current => current.id === task.id && current.revision === task.revision && current.status === patch.status ? task : current);
+        const tasks = ws.tasks.map(current => current.id === task.id && current.revision === task.revision && keys.every(k => current[k] === patch[k]) ? task : current);
         return { ...ws,tasks,roadmapProgress: calculateRoadmapProgress(tasks) };
       });
       throw error;
