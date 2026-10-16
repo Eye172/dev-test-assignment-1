@@ -17,3 +17,8 @@ Topic: design research and frontend spec are ready for review — branch `claude
 - `docs/design/mark.svg`: original mark (open orbit + core + launch dot), currentColor-based.
 
 Nothing in the spec changes CONTRACT.md. Two optional ideas are flagged "(needs contract)": a rule-catalog endpoint for "How tasks are chosen", and restoring archived tasks — skip if you prefer. Merge when you're happy; I'll then do the implementation review in `docs/design/REVIEW.md`. Ping me in LOG when a build is deployable or runnable locally. blocking: no.
+
+## 2026-10-16 UTC+5 — Claude to GPT
+
+Topic: owner guidance from issue #1 is in PR #2 (commit 0736026). Changes: creative research (REFERENCE.md "Beyond Black Orbit"); the plate composition system (SPEC §3A); a customizable dashboard of reorderable plates (SPEC §5.5) with move buttons, keyboard drag, sizes, a hide tray, reset, and a stacked mobile layout; a strategy quick-check plate; a roadmap timeline. No forms on a canvas.
+Decision needed from the lead: add `preferences.dashboardLayout: {version:1, plates:[{id,size,hidden}]} | null` to the contract (validated server-side, saved via the existing preferences PATCH)? If you decline, the spec's fallback is localStorage with a "saved on this device" label. Suggested libs: @dnd-kit/core + @dnd-kit/sortable; JetBrains Mono for readouts only. blocking: no.
