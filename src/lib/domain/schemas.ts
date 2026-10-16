@@ -33,7 +33,20 @@ export const startupInputSchema = z.object({
   customFields: z.record(z.string().trim().min(1).max(80), z.string().max(1000)).refine(v => Object.keys(v).length <= 12, "Keep up to 12 custom fields.").default({}),
   preferences: preferencesSchema.default({ theme: "dark", density: "comfortable", motion: "full", accent: "green", dashboardLayout: null }),
 }).strict();
-export const startupPatchSchema = startupInputSchema.partial().extend({ preferences: preferencesSchema.partial().strict().optional() }).strict().refine(v => Object.keys(v).length > 0, "No changes provided.");
+// Defaults belong to creation, never to a PATCH: an omitted field must stay omitted.
+export const preferencesPatchSchema = z.object({
+  theme: preferencesSchema.shape.theme.removeDefault().optional(),
+  density: preferencesSchema.shape.density.removeDefault().optional(),
+  motion: preferencesSchema.shape.motion.removeDefault().optional(),
+  accent: preferencesSchema.shape.accent.removeDefault().optional(),
+  dashboardLayout: preferencesSchema.shape.dashboardLayout.removeDefault().optional(),
+}).strict();
+export const startupPatchSchema = startupInputSchema.omit({ websiteUrl: true,context: true,customFields: true,preferences: true }).partial().extend({
+  websiteUrl: startupInputSchema.shape.websiteUrl.removeDefault().optional(),
+  context: startupInputSchema.shape.context.removeDefault().optional(),
+  customFields: startupInputSchema.shape.customFields.removeDefault().optional(),
+  preferences: preferencesPatchSchema.optional(),
+}).strict().refine(v => Object.keys(v).length > 0, "No changes provided.");
 export const sectionSchemas = {
   icp: z.object({ buyerType: text(), industry: text(), painPoint: text(), buyingTrigger: text() }).strict(),
   value: z.object({ problem: text(), outcome: text(), differentiation: text(), proof: text() }).strict(),

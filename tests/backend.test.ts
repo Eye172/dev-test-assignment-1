@@ -131,6 +131,9 @@ describe("database persistence and reconciliation", () => {
     expect(results.filter(r => r.status === "fulfilled")).toHaveLength(1);
     expect(results.filter(r => r.status === "rejected")).toHaveLength(1);
     const latest = (await store.workspace(p.id)).startup;
+    expect(latest.context).toBe(demoProfile.context);
+    expect(latest.websiteUrl).toBe(demoProfile.websiteUrl);
+    expect(latest.customFields).toEqual(demoProfile.customFields);
     await store.updateStartup(p.id,{ expectedRevision: latest.revision,patch: { preferences: { ...latest.preferences,density: "compact",motion: "reduced" } } });
     expect((await store.workspace(p.id)).startup.preferences).toMatchObject({ density: "compact",motion: "reduced" });
     const next = (await store.workspace(p.id)).startup;
