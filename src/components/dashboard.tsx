@@ -267,7 +267,7 @@ export function Dashboard() {
     </LayoutGroup>
     <AnimatePresence>{editing && <motion.section className="hidden-tray" aria-labelledby="tray-title" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 12 }}>
       <h2 id="tray-title" className="label">Hidden plates ({hidden.length})</h2>
-      {hidden.length ? <ul>{hidden.map(p => <motion.li layout key={p.id}><span>{plateCatalog[p.id].title}</span><button type="button" className="button small" onClick={() => { patch(p.id, { hidden: false }); setAnnouncement(`${plateCatalog[p.id].title} shown at the end.`); }}><Eye size={14} aria-hidden/>Show</button></motion.li>)}</ul>
+      {hidden.length ? <ul>{hidden.map(p => <motion.li layout="position" key={p.id}><span>{plateCatalog[p.id].title}</span><button type="button" className="button small" onClick={() => { patch(p.id, { hidden: false }); setAnnouncement(`${plateCatalog[p.id].title} shown at the end.`); }}><Eye size={14} aria-hidden/>Show</button></motion.li>)}</ul>
         : <p className="field-help">Nothing hidden. Hidden plates wait here; they are never deleted.</p>}
     </motion.section>}</AnimatePresence>
   </div>;
@@ -430,7 +430,7 @@ function FocusActions({ task, onSet }: { task: Task; onSet: (t: Task, s: Task["s
 function WeekCheck({ task, onSet }: { task: Task; onSet: (t: Task, s: Task["status"]) => Promise<void> }) {
   const hydrated = useHydrated();
   const busy = useTaskPending(task.id);
-  return <motion.li layout className={`check-row ${task.status}`}>
+  return <motion.li layout="position" className={`check-row ${task.status}`}>
     <StatusRing task={task} disabled={busy || !hydrated} onToggle={status => void onSet(task, status)}/>
     <span className="check-title">{task.title}{task.status === "skipped" && <span className="faint"> · skipped</span>}</span>
   </motion.li>;

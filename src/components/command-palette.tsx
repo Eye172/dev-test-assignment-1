@@ -31,6 +31,7 @@ function PaletteBody({ onClose, workspace, base, actions }: Props) {
       { id: "s", group: "Go to", title: "Strategy", hint: "G S", icon: <Compass size={16}/>, run: go(`${base}/strategy`) },
       { id: "d", group: "Go to", title: "Dashboard", hint: "G D", icon: <LayoutGrid size={16}/>, run: go(`${base}/dashboard`) },
       { id: "r", group: "Go to", title: "Roadmap", hint: "G R", icon: <Route size={16}/>, run: go(`${base}/roadmap`) },
+      { id: "a", group: "Go to", title: "AI specialists", hint: "G A", icon: <Orbit size={16}/>, run: go(`${base}/ai`) },
     ];
     const sections: Item[] = workspace.completion.sections.map(s => ({
       id: `sec-${s.key}`, group: "Strategy sections", title: s.title, hint: s.complete ? "Complete" : `${s.missing.length} missing`,
@@ -72,7 +73,7 @@ function PaletteBody({ onClose, workspace, base, actions }: Props) {
   return <motion.div className="palette-scrim" onMouseDown={e => { if (e.target === e.currentTarget) onClose(); }}
     initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, transition: { duration: 0.12 } }}>
     <motion.div className="palette" role="dialog" aria-modal="true" aria-label="Command menu"
-      initial={{ opacity: 0, y: -16, scale: 0.97, filter: "blur(6px)" }} animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
+      initial={{ opacity: 0, y: -10, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: -8, scale: 0.98, transition: { duration: 0.12 } }} transition={{ type: "spring", stiffness: 480, damping: 34 }}>
       <div className="palette-input">
         <ArrowRight size={18} aria-hidden/>
