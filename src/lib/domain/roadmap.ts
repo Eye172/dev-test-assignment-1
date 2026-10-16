@@ -22,11 +22,11 @@ export function generateRoadmap(startup: Startup, sections: StrategySection[]): 
   const namedChannels = channels.channels.filter(c => c.name);
   const distinct = namedChannels.filter((c, i) => namedChannels.findIndex(x => x.name.toLowerCase() === c.name.toLowerCase()) === i);
   const tasks: TaskSuggestion[] = [
-    { ruleKey: "icp-focus", week: 1,
+    { ruleKey: complete("icp") ? "icp-interviews" : "icp-prepare", week: 1,
       title: complete("icp") ? "Interview five people in your target segment" : "Refine your first buyer persona",
       deliverable: complete("icp") ? `Five interview notes about ${excerpt(icp.painPoint)}. Record who experiences it, when, and what they use today.` : `A specific buyer, pain point and buying trigger for ${excerpt(startup.customerSegment)} in ${excerpt(startup.targetMarket)}.`,
       rationale: complete("icp") ? "Your ICP is documented; interviews can now challenge it." : "Your ICP has missing inputs. A narrower buyer definition makes experiments useful." },
-    { ruleKey: "value-test", week: 1,
+    { ruleKey: complete("value") ? "value-customer-test" : "value-prepare", week: 1,
       title: complete("value") ? "Test your value proposition with customers" : "Write a testable value proposition",
       deliverable: complete("value") ? `Share the promise “${excerpt(value.outcome)}” with five target customers. Log understanding, objections and buying intent.` : "One customer problem, promised outcome, differentiator and explicit supporting proof or assumptions.",
       rationale: complete("value") ? "The recorded promise needs customer evidence, beyond positive opinions." : "Value Proposition is incomplete; clarify what customers should gain." },
@@ -40,10 +40,10 @@ export function generateRoadmap(startup: Startup, sections: StrategySection[]): 
       deliverable: `A small ${excerpt(c.name, 90)} test with audience, outreach/activity count, responses, objections and next action.${c.reason ? ` Channel hypothesis: ${excerpt(c.reason)}.` : " Add why this channel should reach your buyer."}`,
       rationale: `You selected ${excerpt(c.name, 90)}. Measure qualified interest and willingness to pay separately.`,
     }))),
-    { ruleKey: "assumption-test", week: 2, title: risky ? "Test your highest-risk market assumption" : "Identify and test three market assumptions",
+    { ruleKey: risky ? "assumption-experiment" : "assumption-prepare", week: 2, title: risky ? "Test your highest-risk market assumption" : "Identify and test three market assumptions",
       deliverable: risky ? `Test “${excerpt(risky.statement)}” (${risky.risk} risk). ${risky.validationMethod ? `Method: ${excerpt(risky.validationMethod)}.` : "Define a validation method first."} Record evidence and uncertainty.` : "Three testable assumptions, each with a risk rating, method and evidence to collect.",
       rationale: risky ? "Risk ratings prioritize the assumption that could most change the commercial plan." : "No testable market assumption is recorded yet." },
-    { ruleKey: "pricing-test", week: 3, title: complete("pricing") ? "Test willingness to pay for your initial offer" : "Define an initial pricing hypothesis",
+    { ruleKey: complete("pricing") ? "pricing-offer-test" : "pricing-prepare", week: 3, title: complete("pricing") ? "Test willingness to pay for your initial offer" : "Define an initial pricing hypothesis",
       deliverable: complete("pricing") ? `Present ${excerpt(pricing.initialPrice)} per ${excerpt(pricing.paymentUnit)} to target customers. Record price objections and concrete commitments; do not treat interest as payment.` : "A pricing model, initial price assumption, payment unit and rationale, followed by a small offer test.",
       rationale: complete("pricing") ? "Your price is an assumption until target buyers respond to an actual offer." : "Pricing inputs are incomplete; define a clear offer before testing it." },
     { ruleKey: "evidence-review", week: 4, title: "Review the evidence and commercial bottleneck",

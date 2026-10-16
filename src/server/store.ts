@@ -81,11 +81,12 @@ export class Store {
       const startup = await this.findStartup(id, tx, true);
       const sections = await this.sections(id, tx);
       const suggestions = generateRoadmap(startup, sections);
-      const previous = (await tx.query("SELECT * FROM roadmap_tasks WHERE startup_id=$1 AND source='generated'", [id])).map(taskFromRow);
+      const previous = (await tx.query("SELECT * FROM roadmap_tasks WHERE startup_id=$1 AND source='generated'", [id]))
+        .map(row => ({ ...taskFromRow(row),manuallyArchived: Boolean(row.manually_archived) }));
       const keys = suggestions.map(s => s.ruleKey);
       for (const old of previous) {
-        const archived = !keys.includes(old.ruleKey!);
-        if (old.archived !== archived && !(old.edited && old.archived && !archived)) await tx.query("UPDATE roadmap_tasks SET archived=$2,revision=revision+1,updated_at=now() WHERE id=$1", [old.id,archived]);
+        const archived = old.manuallyArchived || !keys.includes(old.ruleKey!);
+        if (old.archived !== archived) await tx.query("UPDATE roadmap_tasks SET archived=$2,revision=revision+1,updated_at=now() WHERE id=$1", [old.id,archived]);
       }
       for (const suggestion of suggestions) {
         const old = previous.find(t => t.ruleKey === suggestion.ruleKey);
@@ -117,9 +118,10 @@ export class Store {
       const old = taskFromRow(row);
       if (old.revision !== expectedRevision) throw conflict();
       const task = { ...old,...patch };
-      const edited = old.edited || ["title","deliverable","week","notes","archived"].some(k => k in patch);
-      const [updated] = await tx.query(`UPDATE roadmap_tasks SET title=$2,deliverable=$3,week=$4,status=$5,notes=$6,archived=$7,edited=$8,revision=revision+1,updated_at=now() WHERE id=$1 RETURNING *`,
-        [taskId,task.title,task.deliverable,task.week,task.status,task.notes,task.archived,edited]);
+      const edited = old.edited || ["title","deliverable","week","notes"].some(k => k in patch);
+      const manuallyArchived = patch.archived ?? Boolean(row.manually_archived);
+      const [updated] = await tx.query(`UPDATE roadmap_tasks SET title=$2,deliverable=$3,week=$4,status=$5,notes=$6,archived=$7,edited=$8,manually_archived=$9,revision=revision+1,updated_at=now() WHERE id=$1 RETURNING *`,
+        [taskId,task.title,task.deliverable,task.week,task.status,task.notes,task.archived,edited,manuallyArchived]);
       return taskFromRow(updated);
     });
   }

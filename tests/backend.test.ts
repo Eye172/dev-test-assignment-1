@@ -1,12 +1,13 @@
-import { beforeAll, afterAll, describe, expect, it } from "vitest";
+import { beforeAll, afterAll, describe, expect, it, vi } from "vitest";
+import { createHash } from "node:crypto";
 import { mkdtemp, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { calculateCompletion, emptySection } from "@/lib/domain/completion";
+import { calculateCompletion, calculateRoadmapProgress, emptySection } from "@/lib/domain/completion";
 import { generateRoadmap } from "@/lib/domain/roadmap";
 import { sectionKeys, sectionSchemas, startupInputSchema } from "@/lib/domain/schemas";
-import type { Startup, StrategySection } from "@/lib/domain/types";
-import { createDatabase, getDatabase, type Database } from "@/server/database";
+import type { Startup, StrategySection, Task } from "@/lib/domain/types";
+import { createDatabase, databaseLocation, getDatabase, type Database } from "@/server/database";
 import { defaultDashboardLayout } from "@/lib/domain/dashboard";
 import { dashboardLayoutSchema } from "@/lib/domain/schemas";
 import { Store } from "@/server/store";
@@ -28,6 +29,15 @@ beforeAll(async () => { process.env.DATABASE_URL = process.env.TEST_DATABASE_URL
 afterAll(async () => { await db.close(); });
 
 describe("strategy completeness and flexible validation", () => {
+  it("refuses malformed or local production database URLs", () => {
+    const production = { NODE_ENV: "production",DEMO_MODE: "true",ALLOW_LOCAL_DATABASE: "false" } as const;
+    for (const DATABASE_URL of ["memory://",".data/local","https://example.com","postgres://",""]) {
+      expect(() => databaseLocation({ ...production,DATABASE_URL })).toThrow(/PostgreSQL|DATABASE_URL/);
+    }
+    expect(databaseLocation({ ...production,DATABASE_URL: "postgresql://user:password@localhost:5432/orbit" })).toContain("postgresql:");
+    expect(databaseLocation({ ...production,ALLOW_LOCAL_DATABASE: "true",PGLITE_DATA_DIR: "memory://" })).toBe("memory://");
+    expect(() => databaseLocation({ ...production,DEMO_MODE: "false" })).toThrow(/demo mode/);
+  });
   it("counts sections exactly, excludes whitespace and allows partial drafts", () => {
     expect(calculateCompletion(sectionKeys.map(emptySection)).percentage).toBe(0);
     const sections = fullSections();
@@ -64,6 +74,13 @@ describe("strategy completeness and flexible validation", () => {
       (v: typeof layout) => { v.plates.pop(); },
     ]) { const invalid = structuredClone(layout); mutate(invalid); expect(dashboardLayoutSchema.safeParse(invalid).success).toBe(false); }
   });
+  it("excludes skipped and archived tasks from actionable progress without claiming they are done", () => {
+    const tasks = ["done","done","skipped","todo"].map(status => ({ status,archived: false } as Task));
+    expect(calculateRoadmapProgress(tasks)).toEqual({ total: 4,done: 2,skipped: 1,percentage: 67 });
+    tasks[3].archived = true;
+    expect(calculateRoadmapProgress(tasks)).toEqual({ total: 3,done: 2,skipped: 1,percentage: 100 });
+    expect(calculateRoadmapProgress([{ status: "skipped",archived: false } as Task]).percentage).toBe(0);
+  });
 });
 
 describe("transparent roadmap rules", () => {
@@ -83,7 +100,7 @@ describe("transparent roadmap rules", () => {
     expect(draft[0].title).toMatch(/Refine/);
     expect(draft[0].deliverable).toContain(startup.targetMarket);
     const complete = generateRoadmap(startup,fullSections());
-    expect(complete.find(t => t.ruleKey === "assumption-test")!.deliverable).toContain("3 of 10");
+    expect(complete.find(t => t.ruleKey === "assumption-experiment")!.deliverable).toContain("3 of 10");
     expect(complete.find(t => t.ruleKey === "founder-decision")!.rationale).toContain("cannot validate");
   });
 });
@@ -179,6 +196,37 @@ describe("database persistence and reconciliation", () => {
     await store.updateTask(workspace.startup.id,task.id,{ expectedRevision: task.revision,patch: { archived: true } });
     expect((await store.generate(workspace.startup.id)).tasks.find(t => t.id === task.id)!.archived).toBe(true);
   });
+  it("reactivates a restored channel's edited task unless the founder explicitly archived it", async () => {
+    const workspace = await cloneDemo(store); const id = workspace.startup.id;
+    const original = workspace.tasks.find(t => t.ruleKey?.startsWith("channel:"))!;
+    await store.updateTask(id,original.id,{ expectedRevision: original.revision,patch: { notes: "Keep my research context" } });
+    await store.saveSection(id,"channels",{ expectedRevision: 1,data: {} });
+    const removed = await store.generate(id);
+    expect(removed.tasks.find(t => t.id === original.id)!.archived).toBe(true);
+    await store.saveSection(id,"channels",{ expectedRevision: 2,data: demoStrategy.channels });
+    const restored = await store.generate(id);
+    const task = restored.tasks.find(t => t.id === original.id)!;
+    expect(task).toMatchObject({ archived: false,notes: "Keep my research context" });
+    await store.updateTask(id,task.id,{ expectedRevision: task.revision,patch: { archived: true } });
+    expect((await store.generate(id)).tasks.find(t => t.id === task.id)!.archived).toBe(true);
+  });
+  it("retains completed preparation as history and creates the subsequent market experiment", async () => {
+    const p = await store.createStartup(demoProfile);
+    const draft = await store.generate(p.id);
+    for (const key of ["icp-prepare","value-prepare","pricing-prepare","assumption-prepare"]) {
+      const task = draft.tasks.find(t => t.ruleKey === key)!;
+      await store.updateTask(p.id,task.id,{ expectedRevision: task.revision,patch: { status: "done" } });
+    }
+    for (const key of sectionKeys) await store.saveSection(p.id,key,{ expectedRevision: 0,data: demoStrategy[key] });
+    const ready = await store.generate(p.id);
+    for (const key of ["icp-prepare","value-prepare","pricing-prepare","assumption-prepare"]) {
+      expect(ready.tasks.find(t => t.ruleKey === key)).toMatchObject({ archived: true,status: "done" });
+    }
+    for (const key of ["icp-interviews","value-customer-test","pricing-offer-test","assumption-experiment"]) {
+      expect(ready.tasks.find(t => t.ruleKey === key)).toMatchObject({ archived: false,status: "todo" });
+    }
+    expect(ready.tasks.filter(t => !t.archived)).toHaveLength(9);
+  });
   it("scopes tasks to their startup and initializes demo without resetting edits", async () => {
     const a = await cloneDemo(store); const b = await store.createStartup(demoProfile);
     await expect(store.updateTask(b.id,a.tasks[0].id,{ expectedRevision: 1,patch: { status: "done" } })).rejects.toMatchObject({ status: 404 });
@@ -223,5 +271,18 @@ describe("HTTP contract and complete API journey", () => {
     const wrongType = new Request("http://localhost/api/startups",{ method: "POST",body: "hello" });
     expect((await createRoute(wrongType)).status).toBe(415);
     expect((await createRoute(request("POST",{ context: "x".repeat(70000) }))).status).toBe(413);
+  });
+  it("returns the actual hourly creation retry interval", async () => {
+    const hour = 3600000;
+    const now = Math.floor(Date.now()/hour) * hour + 5000;
+    const identity = createHash("sha256").update("local").digest("hex").slice(0,32);
+    const key = `create:${identity}:${Math.floor(now/hour)}`;
+    await db.query("INSERT INTO request_limits(key,count,expires_at) VALUES($1,60,$2) ON CONFLICT(key) DO UPDATE SET count=60",[key,new Date(now + hour)]);
+    const clock = vi.spyOn(Date,"now").mockReturnValue(now);
+    try {
+      const limited = await createRoute(request("POST",demoProfile));
+      expect(limited.status).toBe(429);
+      expect(limited.headers.get("retry-after")).toBe("3595");
+    } finally { clock.mockRestore(); await db.query("DELETE FROM request_limits WHERE key=$1",[key]); }
   });
 });

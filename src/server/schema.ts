@@ -36,10 +36,12 @@ CREATE TABLE IF NOT EXISTS roadmap_tasks (
   UNIQUE (startup_id,rule_key)
 );
 CREATE INDEX IF NOT EXISTS roadmap_tasks_startup_week_idx ON roadmap_tasks(startup_id,archived,week);
+ALTER TABLE roadmap_tasks ADD COLUMN IF NOT EXISTS manually_archived boolean NOT NULL DEFAULT false;
 CREATE TABLE IF NOT EXISTS request_limits (
   key text PRIMARY KEY, count integer NOT NULL, expires_at timestamptz NOT NULL
 );
 INSERT INTO schema_migrations(version) VALUES (1) ON CONFLICT DO NOTHING;
+INSERT INTO schema_migrations(version) VALUES (2) ON CONFLICT DO NOTHING;
 -- Browser clients never connect directly. On Supabase, deny anonymous direct table access.
 ALTER TABLE startups ENABLE ROW LEVEL SECURITY;
 ALTER TABLE strategy_sections ENABLE ROW LEVEL SECURITY;

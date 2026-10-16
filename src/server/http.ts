@@ -32,10 +32,12 @@ async function guard(request: Request) {
   const identity = createHash("sha256").update(rawIdentity).digest("hex").slice(0,32);
   const creation = isWrite && ["/api/startups","/api/demo"].includes(new URL(request.url).pathname);
   const period = creation ? 3600000 : 60000;
-  const key = `${creation ? "create" : "request"}:${identity}:${Math.floor(Date.now()/period)}`;
+  const now = Date.now();
+  const bucket = Math.floor(now/period);
+  const key = `${creation ? "create" : "request"}:${identity}:${bucket}`;
   const db = await getDatabase();
   const [row] = await db.query("INSERT INTO request_limits(key,count,expires_at) VALUES($1,1,$2) ON CONFLICT(key) DO UPDATE SET count=request_limits.count+1 RETURNING count", [key,new Date(Date.now()+period)]);
-  if (Number(row.count) > (creation ? 60 : 360)) throw new AppError("RATE_LIMIT", "Too many requests. Please wait a moment and retry.", 429);
+  if (Number(row.count) > (creation ? 60 : 360)) throw new AppError("RATE_LIMIT", "Too many requests. Please wait a moment and retry.", 429,undefined,Math.max(1,Math.ceil(((bucket + 1) * period - now)/1000)));
   // Bound retained limiter data without running a background worker.
   if (Number(row.count) === 1) await db.query("DELETE FROM request_limits WHERE expires_at < now()");
 }
@@ -52,6 +54,6 @@ export async function handle(request: Request, action: () => Promise<Response>) 
       result = new AppError("SERVICE_UNAVAILABLE", "The workspace could not be reached. Your unsaved changes are still here; please retry.", 503);
     }
     return Response.json({ error: { code: result.code,message: result.message,...(result.fields ? { fields: result.fields } : {}) } },
-      { status: result.status, headers: { "Cache-Control": "no-store", ...(result.status === 429 ? { "Retry-After": "60" } : {}) } });
+      { status: result.status, headers: { "Cache-Control": "no-store", ...(result.status === 429 ? { "Retry-After": String(result.retryAfter ?? 60) } : {}) } });
   }
 }

@@ -6,7 +6,7 @@ An independent synthetic-data demo helping founders record a GTM strategy and ac
 
 ## Roles
 
-GPT implements and integrates the entire application. Claude owns official visual-reference research, frontend design specification, and UX/motion evaluation. Design documents live in docs/design. The owner's preferences: simple, flexible, personal, adaptable, fluid, accessible. Required inputs cannot be removed; incomplete strategy drafts can be saved without completing a forced wizard.
+GPT is technical lead and owns backend, shared contracts, final integration, testing and delivery. Claude Code owns official visual-reference research, frontend design and implementation, and UX/motion self-review. An independent critic checks concrete evidence. The owner's latest allocation supersedes earlier design-only proposals. Design documents live in docs/design. The owner's preferences: simple, flexible, personal, adaptable, fluid, accessible. Required inputs cannot be removed; incomplete strategy drafts can be saved without completing a forced wizard.
 
 ## Data and naming
 
@@ -28,9 +28,11 @@ Every section also accepts notes. Empty strings/arrays are valid drafts. Complet
 
 Roadmap task: id, startupId, ruleKey (null for custom), title, deliverable, rationale, week (1–4), status (todo/in_progress/done/skipped), notes, source (generated/custom), archived, revision, createdAt, updatedAt. User may edit title, deliverable, week, notes and status. Regeneration preserves these edits and statuses, keeps completed content unchanged, archives superseded rules without deletion, and retains custom tasks. A current generated plan contains 8–10 suggestions; historical and custom tasks can increase the overall count.
 
+Preparation and subsequent market experiments have distinct rule identities. Completed preparation stays in history when saved inputs unlock the experiment. Automatic archival is separate from the founder's explicit archive choice: restoring a channel reactivates its task and notes unless deliberately archived. `roadmapProgress.total` counts all nonarchived tasks; `skipped` is separate and the percentage is `done / (total - skipped)`, or zero when there are no actionable tasks. Display the actionable denominator beside progress and label skipped work separately; never call skipped work completed.
+
 ## HTTP contract
 
-Same-origin JSON API. Success {data: T}; error {error: {code, message, fields?}}. Errors: 400 malformed JSON, 413 oversized request, 415 wrong content type, 422 invalid inputs, 404 missing record, 409 revision conflict, 429 limit, 503 unavailable database. API responses are no-store. Optional request Origin must match the application origin on writes.
+Same-origin JSON API. Success {data: T}; error {error: {code, message, fields?}}. Errors: 400 malformed JSON, 413 oversized request, 415 wrong content type, 422 invalid inputs, 404 missing record, 409 revision conflict, 429 limit, 503 unavailable database. API responses are no-store. Optional request Origin must match the application origin on writes. A 429 includes the remaining bucket interval in `Retry-After`; respect it rather than repeatedly retrying after a fixed short delay.
 
 | Method | Route | Input / result |
 | --- | --- | --- |

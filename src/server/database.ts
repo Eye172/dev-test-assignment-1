@@ -48,13 +48,20 @@ export async function createDatabase(location?: string): Promise<Database> {
   return db;
 }
 const globalDb = globalThis as unknown as { orbitDatabase?: Promise<Database> };
+export function databaseLocation(env: NodeJS.ProcessEnv = process.env): string {
+  if (env.DEMO_MODE === "false" || (env.NODE_ENV === "production" && env.DEMO_MODE !== "true")) throw new Error("This release requires explicitly enabled synthetic demo mode.");
+  if (env.DATABASE_URL) {
+    let valid = false;
+    try { const url = new URL(env.DATABASE_URL); valid = ["postgres:","postgresql:"].includes(url.protocol) && Boolean(url.hostname); } catch {}
+    if (!valid) throw new Error("DATABASE_URL must be a valid PostgreSQL connection URL.");
+    return env.DATABASE_URL;
+  }
+  if (env.NODE_ENV === "production" && env.ALLOW_LOCAL_DATABASE !== "true") throw new Error("DATABASE_URL is required in production.");
+  return env.PGLITE_DATA_DIR || ".data/orbit";
+}
 export function getDatabase(): Promise<Database> {
   if (!globalDb.orbitDatabase) {
-    if (process.env.DEMO_MODE === "false" || (process.env.NODE_ENV === "production" && process.env.DEMO_MODE !== "true")) throw new Error("This release requires explicitly enabled synthetic demo mode.");
-    if (process.env.NODE_ENV === "production" && !process.env.DATABASE_URL && process.env.ALLOW_LOCAL_DATABASE !== "true") {
-      throw new Error("DATABASE_URL is required in production.");
-    }
-    globalDb.orbitDatabase = createDatabase(process.env.DATABASE_URL || process.env.PGLITE_DATA_DIR || ".data/orbit")
+    globalDb.orbitDatabase = createDatabase(databaseLocation())
       .catch(error => { globalDb.orbitDatabase = undefined; throw error; });
   }
   return globalDb.orbitDatabase;

@@ -46,6 +46,8 @@ export function calculateCompletion(sections: StrategySection[]): Completion {
 export function calculateRoadmapProgress(tasks: Task[]) {
   const active = tasks.filter(t => !t.archived);
   const done = active.filter(t => t.status === "done").length;
-  return { total: active.length, done, skipped: active.filter(t => t.status === "skipped").length,
-    percentage: active.length ? Math.round(done / active.length * 100) : 0 };
+  const skipped = active.filter(t => t.status === "skipped").length;
+  const actionable = active.length - skipped;
+  return { total: active.length, done, skipped,
+    percentage: actionable ? Math.round(done / actionable * 100) : 0 };
 }
