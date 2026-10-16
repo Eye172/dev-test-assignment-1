@@ -2,6 +2,8 @@
 
 Orbit GTM Studio is a standalone synthetic-data prototype. It helps a founder record five GTM decisions and convert them into a transparent 30-day plan. Strategy completeness means required inputs are filled; commercial assumptions remain untested.
 
+The owner's additional AI scope uses six OpenAI specialists, hosted research, a deterministic scenario calculator and a bounded critic/correction loop. Runs, snapshots, typed messages, artifacts, evidence, usage and reviewed before/after applications persist in PostgreSQL. All AI data and paid actions require an owner access cookie. The original public demo remains synthetic and shared; accepted proposals become part of it. Read [AI-BACKEND.md](AI-BACKEND.md) for the complete backend/frontend contract, runtime limits and honest recovery boundaries. Claude is independently revising the design under the owner's direction.
+
 The application uses Next.js App Router, React and strict TypeScript. Shared Zod schemas, completeness logic, layout validation and roadmap rules live in `src/lib/domain`. UI pages use interactive components backed by same-origin JSON route handlers. Route handlers validate requests and delegate business operations to `Store`; they never expose database credentials to the browser.
 
 Persistence uses PostgreSQL tables for profiles, independently saved strategy sections, tasks and revisions. A PGlite adapter runs the same SQL for local development and tests. Production requires `DATABASE_URL`; there is no browser-storage replacement or silent serverless fallback. Migrations and seed data are idempotent. The prefilled Fieldnote example is synthetic.

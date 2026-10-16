@@ -26,7 +26,15 @@ For a PostgreSQL/Supabase deployment, set `DATABASE_URL`. Production refuses to 
 
 ## Stack and structure
 
-Next.js App Router, React, strict TypeScript, Zod, PostgreSQL through `pg`, PGlite for local development/tests, Motion, Lucide, and self-hosted Inter/Space Grotesk. No paid AI dependency.
+Next.js App Router, React, strict TypeScript, Zod, PostgreSQL through `pg`, PGlite for local development/tests, Motion, Lucide, and self-hosted Inter/Space Grotesk. The optional owner-gated AI backend uses the official OpenAI Agents SDK and Responses API; the original rule-based workspace runs without a paid key.
+
+## AI specialists
+
+The owner's additional AI scope is implemented through six specialists: brief interpreter, researcher/comparator, GTM strategist, monetization specialist, experiment designer and evidence critic. They use structured artifacts, real web research, a scenario calculator, persistent messages, bounded critique/revision, usage accounting and explicit reviewed application. A rule-generated roadmap is never represented as an AI response.
+
+Set `OPENAI_API_KEY` and a long random `AI_ACCESS_CODE` server-side to enable paid work. Optional `OPENAI_MODEL`, `OPENAI_CRITIC_MODEL`, `AI_RUN_BUDGET_USD` and `AI_DAILY_BUDGET_USD` are documented in `.env.example`. No key or access code belongs in a browser bundle or shared URL. Public demo profiles and accepted strategy remain shared; AI briefs/observations/history are owner-gated. This is a single-owner gate, not commercial tenant authentication.
+
+See [AI-BACKEND.md](docs/AI-BACKEND.md) for the graph, role prompts, typed messages, endpoint payloads, memory, evidence semantics, model/cost settings, checkpoint recovery and frontend integration requirements. Claude's next design remains independently owned; the backend contract does not prescribe a layout. `npm run test:ai:live` performs an explicitly paid synthetic evaluation and is excluded from CI.
 
 Font copyright and license notices are retained in [Inter OFL](docs/licenses/Inter-OFL.txt) and [Space Grotesk OFL](docs/licenses/Space-Grotesk-OFL.txt). Black Orbit supplies visual inspiration; the orbit mark and application composition are original.
 
@@ -116,4 +124,4 @@ See [DEPLOYMENT.md](docs/DEPLOYMENT.md), [HANDOVER.md](docs/HANDOVER.md), and [S
 
 Authentication is deliberately omitted. Every workspace is a clearly labelled public demo: anyone with a link can view and edit its synthetic data. UUID links are identifiers, not access control. Concurrent writes use revision checks and return a recoverable conflict instead of silently overwriting work.
 
-No delete control is offered; skip/archive retains task history. No live AI strategy generation, billing, investor dashboard or private Black Orbit integration is included. Integration into a commercial product would require agreed API, authorization and code-usage terms.
+No delete control is offered; skip/archive retains task history. Live AI generation is opt-in and separately owner-gated. Payment processing, investor dashboard and private Black Orbit integration are not included. Integration into a commercial product would require tenant authentication, agreed API/data boundaries and code-usage terms.

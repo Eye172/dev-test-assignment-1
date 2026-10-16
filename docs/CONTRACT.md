@@ -2,11 +2,13 @@
 
 ## Purpose and scope
 
-An independent synthetic-data demo helping founders record a GTM strategy and act on it for 30 days. Required pages: /, /startups/new, /startups/:id, /startups/:id/strategy, /startups/:id/dashboard, /startups/:id/roadmap. No paid AI, payments, investor dashboard or private Black Orbit integration. Authentication is omitted deliberately; every screen labels Demo mode and explains that shared demo URLs contain non-sensitive data and allow editing.
+An independent synthetic-data demo helping founders record a GTM strategy and act on it for 30 days. Required pages: /, /startups/new, /startups/:id, /startups/:id/strategy, /startups/:id/dashboard, /startups/:id/roadmap. The owner's 17 October expansion adds real OpenAI specialists through a separate owner-gated API, documented in [AI-BACKEND.md](AI-BACKEND.md). The original rule-based path remains available. Payment processing, investor dashboard and private Black Orbit integration remain outside scope. Public demo URLs contain non-sensitive data and allow editing; AI briefs, observations and history require server-side owner access.
 
 ## Roles
 
 GPT is technical lead and owns backend, shared contracts, final integration, testing and delivery. Claude Code owns official visual-reference research, frontend design and implementation, and UX/motion self-review. An independent critic checks concrete evidence. The owner's latest allocation supersedes earlier design-only proposals. Design documents live in docs/design. The owner's preferences: simple, flexible, personal, adaptable, fluid, accessible. Required inputs cannot be removed; incomplete strategy drafts can be saved without completing a forced wizard.
+
+Latest owner allocation: Claude is revising design independently under the owner's direction. GPT continues AI/backend implementation and supplies stable interfaces; GPT does not direct Claude's design work.
 
 ## Data and naming
 
@@ -28,7 +30,7 @@ Strategy keys and draft data:
 
 Every section also accepts notes. Empty strings/arrays are valid drafts. Completeness is calculated centrally and returns missing fields and actionable suggestions. Blank whitespace never counts. A complete channels section needs at least one fully described channel plus an experiment. Completed sections / 5 * 100 is the sole strategy percentage.
 
-Roadmap task: id, startupId, ruleKey (null for custom), title, deliverable, rationale, week (1–4), status (todo/in_progress/done/skipped), notes, source (generated/custom), archived, revision, createdAt, updatedAt. User may edit title, deliverable, week, notes and status. Regeneration preserves these edits and statuses, keeps completed content unchanged, archives superseded rules without deletion, and retains custom tasks. A current generated plan contains 8–10 suggestions; historical and custom tasks can increase the overall count.
+Roadmap task: id, startupId, ruleKey (null for custom), title, deliverable, rationale, week (1–4), status (todo/in_progress/done/skipped), notes, source (generated/custom/ai), archived, revision, createdAt, updatedAt. User may edit title, deliverable, week, notes and status. Regeneration preserves these edits and statuses, keeps completed content unchanged, archives superseded rules without deletion, and retains custom and AI tasks. A current rule-generated plan contains 8–10 suggestions; historical, custom and explicitly accepted AI tasks can increase the overall count.
 
 Preparation and subsequent market experiments have distinct rule identities. Completed preparation stays in history when saved inputs unlock the experiment. Automatic archival is separate from the founder's explicit archive choice: restoring a channel reactivates its task and notes unless deliberately archived. `roadmapProgress.total` counts all nonarchived tasks; `skipped` is separate and the percentage is `done / (total - skipped)`, or zero when there are no actionable tasks. Display the actionable denominator beside progress and label skipped work separately; never call skipped work completed.
 

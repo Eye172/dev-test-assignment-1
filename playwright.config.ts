@@ -17,6 +17,6 @@ export default defineConfig({
   ],
   webServer: remoteBaseURL ? undefined : {
     command: "npm run start",url: "http://127.0.0.1:3000/api/health",reuseExistingServer: false,timeout: 120000,
-    env: { ALLOW_LOCAL_DATABASE: "true",DEMO_MODE: "true",PGLITE_DATA_DIR: ".data/e2e",NEXT_TELEMETRY_DISABLED: "1",HOSTNAME: "127.0.0.1",TRUST_PROXY: isolateClients ? "true" : "false" },
+    env: { ALLOW_LOCAL_DATABASE: "true",DEMO_MODE: "true",PGLITE_DATA_DIR: ".data/e2e",NEXT_TELEMETRY_DISABLED: "1",HOSTNAME: "127.0.0.1",TRUST_PROXY: isolateClients ? "true" : "false",AI_ACCESS_CODE:"ci-studio-code-no-production-access",OPENAI_API_KEY:"offline-ui-fixture-not-a-real-api-key" },
   },
 });

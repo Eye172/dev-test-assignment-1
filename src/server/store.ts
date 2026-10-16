@@ -38,12 +38,13 @@ export class Store {
   }
   async workspace(id: string): Promise<Workspace> {
     // A single snapshot keeps dashboard data coherent with concurrent saves.
-    return this.db.transaction(async tx => {
+    return this.db.transaction(tx => this.workspaceIn(id, tx));
+  }
+  async workspaceIn(id: string, tx: SqlExecutor): Promise<Workspace> {
       const startup = await this.findStartup(id, tx, true);
       const sections = await this.sections(id, tx);
       const tasks = (await tx.query("SELECT * FROM roadmap_tasks WHERE startup_id=$1 ORDER BY archived,week,created_at,id", [id])).map(taskFromRow);
       return { startup, sections, tasks, completion: calculateCompletion(sections), roadmapProgress: calculateRoadmapProgress(tasks), mode: "demo" };
-    });
   }
   async createStartup(input: unknown, id: string = randomUUID(), tx: SqlExecutor = this.db): Promise<Startup> {
     const p = startupInputSchema.parse(input);
