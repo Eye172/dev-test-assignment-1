@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { ArrowLeft, ArrowRight, Check, ListChecks, MessagesSquare, SkipForward } from "lucide-react";
 import type { Startup } from "@/lib/domain/types";
@@ -35,8 +35,10 @@ export function OnboardingFlow() {
   const [dir, setDir] = useState(1);
   // Survive a refresh: everything except the created startup lives in this tab's storage.
   useEffect(() => {
-    try { const raw = sessionStorage.getItem(storeKey); if (raw) setS({ ...initial, ...JSON.parse(raw) }); } catch { /* fresh start */ }
-    setRestored(true);
+    let raw: string | null = null;
+    try { raw = sessionStorage.getItem(storeKey); } catch { /* fresh start */ }
+    // Applied after mount so server and first client render match.
+    void Promise.resolve().then(() => { if (raw) setS({ ...initial, ...JSON.parse(raw) }); setRestored(true); });
   }, []);
   useEffect(() => { if (restored && s.step !== "launch") try { sessionStorage.setItem(storeKey, JSON.stringify(s)); } catch { /* memory only */ } }, [s, restored]);
   const go = (step: Step, back = false) => { setDir(back ? -1 : 1); setS(c => ({ ...c, step })); requestAnimationFrame(() => document.querySelector<HTMLElement>("main h1, main h2")?.focus({ preventScroll: true })); window.scrollTo({ top: 0 }); };
@@ -109,8 +111,14 @@ export function OnboardingFlow() {
 
         {s.step === "clarify" && <Clarify draft={freeDraft} asked={s.asked} answers={s.answers} question={question}
           onBack={() => go("free", true)} onDone={toConfirm}
-          onAnswer={(q, value) => setS(c => ({ ...c, asked: [...c.asked, q.field], answers: value === null ? c.answers : [...c.answers, { q: q.text, a: Array.isArray(value) ? value.join(", ") : value }],
-            draft: value === null ? c.draft : answer(c.draft, q.field, value) }))}/>}
+          onAnswer={(q, value) => {
+            const asked = [...s.asked, q.field];
+            const nextDraft = value === null ? s.draft : answer(s.draft, q.field, value);
+            const merged = value === null ? freeDraft : answer(freeDraft, q.field, value);
+            setS(c => ({ ...c, asked, answers: value === null ? c.answers : [...c.answers, { q: q.text, a: Array.isArray(value) ? value.join(", ") : value }], draft: nextDraft }));
+            // Nothing left to ask: go straight to the confirmation, no extra screen.
+            if (!nextQuestion(merged, asked)) { setS(c => ({ ...c, draft: merged })); go("confirm"); }
+          }}/>}
 
         {s.step === "guided" && <GuidedBrief value={s.guided} onChange={guided => patch({ guided })} onBack={() => go("choose", true)} onDone={toConfirm} files={s.files} onFiles={files => patch({ files })}/>}
 
@@ -169,13 +177,6 @@ function Clarify({ draft, asked, answers, question, onAnswer, onBack, onDone }: 
   draft: IntakeDraft; asked: string[]; answers: { q: string; a: string }[]; question: Question | null;
   onAnswer: (q: Question, value: string | string[] | null) => void; onBack: () => void; onDone: () => void;
 }) {
-  const [value, setValue] = useState<string>("");
-  const [multi, setMulti] = useState<string[]>([]);
-  const input = useRef<HTMLInputElement>(null);
-  useEffect(() => { setValue(""); setMulti([]); input.current?.focus(); }, [question?.id]);
-  useEffect(() => { if (!question) onDone(); }, [question]); // eslint-disable-line react-hooks/exhaustive-deps
-  if (!question) return null;
-  const submit = (v: string | string[]) => { if (Array.isArray(v) ? v.length : String(v).trim()) onAnswer(question, v); };
   const left = missing(draft).length;
   return <section className="flow-panel narrow" aria-labelledby="clarify-title">
     <Back onClick={onBack}/>
@@ -183,8 +184,16 @@ function Clarify({ draft, asked, answers, question, onAnswer, onBack, onDone }: 
     <h1 id="clarify-title" tabIndex={-1} className="sr-only">Clarifying questions</h1>
     <ol className="clarify-dots" aria-label={`Question ${asked.length + 1} of at most 7`}>{Array.from({ length: 7 }, (_, i) => <li key={i} className={i < asked.length ? "done" : i === asked.length ? "now" : ""}/>)}</ol>
     {answers.length > 0 && <ul className="clarify-log" aria-label="Your answers">{answers.map((x, i) => <li key={i}><span className="faint">{x.q}</span><span>{x.a}</span></li>)}</ul>}
-    <AnimatePresence mode="wait">
-      <motion.div key={question.id} className="clarify-card" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.24, ease }}>
+    {question ? <AnimatePresence mode="wait"><QuestionCard key={question.id} question={question} left={left} onAnswer={onAnswer} onDone={onDone}/></AnimatePresence>
+      : <div className="clarify-card"><h2 className="clarify-q">That’s everything we needed.</h2><button type="button" className="button primary" onClick={onDone}>Review profile<ArrowRight size={17} aria-hidden/></button></div>}
+  </section>;
+}
+
+function QuestionCard({ question, left, onAnswer, onDone }: { question: Question; left: number; onAnswer: (q: Question, value: string | string[] | null) => void; onDone: () => void }) {
+  const [value, setValue] = useState("");
+  const [multi, setMulti] = useState<string[]>([]);
+  const submit = (v: string | string[]) => { if (Array.isArray(v) ? v.length : String(v).trim()) onAnswer(question, v); };
+  return <motion.div className="clarify-card" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.24, ease }}>
         <h2 className="clarify-q">{question.text}</h2>
         <p className="field-help">{question.why}</p>
         {question.kind === "choice"
@@ -195,7 +204,7 @@ function Clarify({ draft, asked, answers, question, onAnswer, onBack, onDone }: 
           })}</div>
           : <form className="clarify-form" onSubmit={e => { e.preventDefault(); submit(value); }}>
             <label className="sr-only" htmlFor="clarify-input">{question.text}</label>
-            <input id="clarify-input" ref={input} className="input" value={value} onChange={e => setValue(e.target.value)} placeholder={question.placeholder}/>
+            <input id="clarify-input" autoFocus className="input" value={value} onChange={e => setValue(e.target.value)} placeholder={question.placeholder}/>
             <button className="button primary" disabled={!value.trim()}>Answer</button>
           </form>}
         {question.kind === "choice" && !question.multi && <form className="clarify-form other" onSubmit={e => { e.preventDefault(); submit(value); }}>
@@ -208,7 +217,5 @@ function Clarify({ draft, asked, answers, question, onAnswer, onBack, onDone }: 
           <button type="button" className="button ghost small" onClick={() => onAnswer(question, null)}><SkipForward size={14} aria-hidden/>Skip</button>
           <button type="button" className="text-link finish" onClick={onDone}>{left ? `Finish now · ${left} required left for the profile` : "Finish now"}</button>
         </div>
-      </motion.div>
-    </AnimatePresence>
-  </section>;
+  </motion.div>;
 }

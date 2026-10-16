@@ -48,9 +48,10 @@ export function GuidedBrief({ value: g, onChange, onBack, onDone, files, onFiles
   const done = [!!(g.name.trim() && g.oneLiner.trim()), !!g.model, !!g.stage, !!(g.markets.length || g.otherMarket.trim()), !!composedSegment(g), !!(g.pain || g.price || g.channels.length), files.length > 0];
   const move = (n: number) => { setDir(n > i ? 1 : -1); setI(n); };
   const next = () => i < topics.length - 1 ? move(i + 1) : onDone();
-  const Chips = ({ k, options, max }: { k: "types" | "signals" | "markets" | "roles" | "sizes" | "channels"; options: string[]; max?: number }) =>
+  // Plain render helpers (not components), so inputs keep focus and state across renders.
+  const chips = (k: "types" | "signals" | "markets" | "roles" | "sizes" | "channels", options: string[], max?: number) =>
     <div className="chip-row" role="group">{options.map(o => <button type="button" key={o} className={`chip ${g[k].includes(o) ? "on" : ""}`} aria-pressed={g[k].includes(o)} onClick={() => toggle(k, o, max)}>{o}</button>)}</div>;
-  const Cards = <T extends string>({ options, value, onPick }: { options: { value: T; title: string; detail: string }[]; value: string; onPick: (v: T) => void }) =>
+  const cards = <T extends string>(options: { value: T; title: string; detail: string }[], value: string, onPick: (v: T) => void) =>
     <div className="pick-cards" role="radiogroup">{options.map(o => <button type="button" role="radio" aria-checked={value === o.value} key={o.value} className={`pick-card ${value === o.value ? "on" : ""}`} onClick={() => onPick(o.value)}>
       <span className="pick-tag">{o.value}</span><span className="pick-title">{o.title}</span><span className="pick-detail">{o.detail}</span>{value === o.value && <Check size={16} className="pick-check" aria-hidden/>}
     </button>)}</div>;
@@ -74,28 +75,28 @@ export function GuidedBrief({ value: g, onChange, onBack, onDone, files, onFiles
             </>}
             {i === 1 && <>
               <h2>Who pays you?</h2>
-              <Cards options={modelOptions} value={g.model} onPick={v => set({ model: v, roles: [], sizes: [] })}/>
+              {cards(modelOptions, g.model, v => set({ model: v, roles: [], sizes: [] }))}
               <p className="g-sub">What kind of business is it? <span className="faint">Pick any that fit.</span></p>
-              <Chips k="types" options={businessTypes}/>
+              {chips("types", businessTypes)}
               {g.types.includes("Other") && <input className="input" value={g.otherType} onChange={e => set({ otherType: e.target.value })} placeholder="Describe the type" aria-label="Other business type"/>}
             </>}
             {i === 2 && <>
               <h2>Where are you today?</h2>
-              <Cards options={stageOptions} value={g.stage} onPick={v => set({ stage: v })}/>
+              {cards(stageOptions, g.stage, v => set({ stage: v }))}
               <p className="g-sub">What do you already have? <span className="faint">This shapes week 1.</span></p>
-              <Chips k="signals" options={stageSignals}/>
+              {chips("signals", stageSignals)}
             </>}
             {i === 3 && <>
               <h2>Which market do you want to win first?</h2>
               <p className="field-help">Pick one or two. Starting narrow makes channels and prices testable.</p>
-              {marketGroups.map(gr => <div key={gr.label} className="g-group"><p className="g-sub small">{gr.label}</p><Chips k="markets" options={gr.options} max={2}/></div>)}
+              {marketGroups.map(gr => <div key={gr.label} className="g-group"><p className="g-sub small">{gr.label}</p>{chips("markets", gr.options, 2)}</div>)}
               <label className="g-field"><span>Or type it</span><input className="input" value={g.otherMarket} onChange={e => set({ otherMarket: e.target.value })} placeholder="Almaty fintech startups, Nordics, Gulf region…"/></label>
             </>}
             {i === 4 && <>
               <h2>Who feels the problem most — and pays first?</h2>
               {!g.model ? <p className="info-notice">Choose who pays first (topic 2) to see matching roles.</p> : <>
-                <p className="g-sub">Role</p><Chips k="roles" options={buyerRoles[g.model]} max={2}/>
-                <p className="g-sub">{g.model === "B2C" ? "Age group" : g.model === "B2B" ? "Company size" : "Level"}</p><Chips k="sizes" options={sizeOptions[g.model]} max={2}/>
+                <p className="g-sub">Role</p>{chips("roles", buyerRoles[g.model], 2)}
+                <p className="g-sub">{g.model === "B2C" ? "Age group" : g.model === "B2B" ? "Company size" : "Level"}</p>{chips("sizes", sizeOptions[g.model], 2)}
                 <label className="g-field"><span>Industry or situation <span className="faint">optional</span></span><input className="input" value={g.industry} onChange={e => set({ industry: e.target.value })} placeholder="logistics, dental clinics, first-year university"/></label>
               </>}
               <label className="g-field"><span>In your words <span className="faint">overrides the choices above</span></span><input className="input" value={g.segment} onChange={e => set({ segment: e.target.value })} placeholder={composedSegment(g) || "Operations managers at logistics companies with 20–200 employees"}/></label>
@@ -109,7 +110,7 @@ export function GuidedBrief({ value: g, onChange, onBack, onDone, files, onFiles
               <div className="chip-row" role="radiogroup">{pricingModels.map(p => <button type="button" role="radio" aria-checked={g.pricing === p} key={p} className={`chip ${g.pricing === p ? "on" : ""}`} onClick={() => set({ pricing: g.pricing === p ? "" : p })}>{p}</button>)}</div>
               <label className="g-field"><span>First price guess</span><input className="input" value={g.price} onChange={e => set({ price: e.target.value })} placeholder="$29 per workspace per month"/></label>
               <p className="g-sub">Where are your first customers? <span className="faint">Up to three.</span></p>
-              <Chips k="channels" options={channelOptions} max={3}/>
+              {chips("channels", channelOptions, 3)}
             </>}
             {i === 6 && <>
               <h2>Anything you already have?</h2>

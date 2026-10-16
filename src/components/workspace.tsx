@@ -3,7 +3,7 @@ import { createContext, useCallback, useContext, useEffect, useId, useRef, useSt
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { AnimatePresence, MotionConfig, motion, useReducedMotion } from "motion/react";
-import { ArrowDownToLine, Check, Compass, LayoutGrid, Link2, Moon, Orbit, Route, Search, Settings2, Share2, Sun, X } from "lucide-react";
+import { ArrowDownToLine, Check, Compass, LayoutGrid, Link2, Moon, Orbit, Route, Search, Settings2, Share2, Sparkles, Sun, X } from "lucide-react";
 import { api } from "@/lib/client-api";
 import { mergeWorkspace } from "@/lib/client-workspace";
 import type { Preferences, Startup, Workspace } from "@/lib/domain/types";
@@ -88,7 +88,7 @@ export function WorkspaceShell({ initial, children }: { initial: Workspace; chil
       if ((e.target as Element)?.closest("input,textarea,select,[contenteditable],dialog") || e.metaKey || e.ctrlKey || e.altKey) return;
       if (prefix) {
         prefix = false;
-        const route = ({ o: base, s: `${base}/strategy`, d: `${base}/dashboard`, r: `${base}/roadmap` } as Record<string, string>)[e.key.toLowerCase()];
+        const route = ({ o: base, s: `${base}/strategy`, d: `${base}/dashboard`, r: `${base}/roadmap`, a: `${base}/ai` } as Record<string, string>)[e.key.toLowerCase()];
         if (route) { e.preventDefault(); if (confirmLeave()) router.push(route); }
       } else if (e.key === "g") { prefix = true; clearTimeout(timer); timer = setTimeout(() => { prefix = false; }, 1200); }
       else if (e.key === "?") setPreferencesOpen(true);
@@ -113,6 +113,7 @@ export function WorkspaceShell({ initial, children }: { initial: Workspace; chil
     { name: "Strategy", href: `${base}/strategy`, Icon: Compass, key: "S" },
     { name: "Dashboard", href: `${base}/dashboard`, Icon: LayoutGrid, key: "D" },
     { name: "Roadmap", href: `${base}/roadmap`, Icon: Route, key: "R" },
+    { name: "AI", href: `${base}/ai`, Icon: Sparkles, key: "A" },
   ];
   const isActive = (href: string) => href === base ? pathname === base : pathname.startsWith(href);
   const copyLink = useCallback(async () => {
