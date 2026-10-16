@@ -8,8 +8,8 @@
   },
   "scripts": {
     "dev": "node --v8-pool-size=1 node_modules/next/dist/bin/next dev --hostname 127.0.0.1 --port 3000",
-    "build": "next build",
-    "start": "node --v8-pool-size=1 node_modules/next/dist/bin/next start --hostname 0.0.0.0 --port 3000",
+    "build": "next build && node scripts/prepare-standalone.mjs",
+    "start": "node --v8-pool-size=1 .next/standalone/server.js",
     "lint": "eslint .",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",

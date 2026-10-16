@@ -27,7 +27,7 @@ export function ProfileForm({ initial, onSaved, onCancel }: { initial?: Startup;
   const form = useRef<HTMLFormElement>(null);
   const summary = useRef<HTMLDivElement>(null);
   const dirty = JSON.stringify({ data, custom }) !== baseline;
-  useDirtyGuard(dirty && !saving);
+  useDirtyGuard(dirty);
 
   // Focus the error summary after it has rendered.
   useEffect(() => { if (focusToken) summary.current?.focus(); }, [focusToken]);

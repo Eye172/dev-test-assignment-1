@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import { ArrowRight, Check, Circle, Plus, Save, X } from "lucide-react";
-import { fieldLabels, sectionCompletion, sectionTitles } from "@/lib/domain/completion";
+import { calculateCompletion, fieldLabels, sectionCompletion, sectionTitles } from "@/lib/domain/completion";
 import { sectionKeys, sectionSchemas, type SectionKey, type StrategyData } from "@/lib/domain/schemas";
 import type { StrategySection, Workspace } from "@/lib/domain/types";
 import { api, ClientError } from "@/lib/client-api";
@@ -49,8 +49,9 @@ function sectionState(ws: Workspace, key: SectionKey) {
 export function StrategyEditor() {
   const { workspace } = useWorkspace(); const search = useSearchParams(); const router = useRouter();
   const first = workspace.completion.sections.find(s => !s.complete)?.key ?? "icp";
+  const [initialSection] = useState(first);
   const requested = search.get("section");
-  const selected = sectionKeys.includes(requested as SectionKey) ? requested as SectionKey : first;
+  const selected = sectionKeys.includes(requested as SectionKey) ? requested as SectionKey : initialSection;
   const [dirty, setDirty] = useState(false);
   const [live, setLive] = useState(() => sectionCompletion(selected, workspace.sections.find(s => s.key === selected)!.data));
   const select = useCallback((key: SectionKey) => {
@@ -115,7 +116,7 @@ function SectionEditor({ section, index, onDirtyChange, onLive, onNext, nextTitl
   const [baseline, setBaseline] = useState(JSON.stringify({ data: section.data, notes: section.notes }));
   const form = useRef<HTMLFormElement>(null);
   const dirty = JSON.stringify({ data, notes }) !== baseline;
-  useDirtyGuard(dirty && !saving);
+  useDirtyGuard(dirty);
   useEffect(() => { onDirtyChange(dirty); }, [dirty, onDirtyChange]);
   const completion = sectionCompletion(section.key, data);
   const completionKey = JSON.stringify(completion.missing);
@@ -131,9 +132,14 @@ function SectionEditor({ section, index, onDirtyChange, onLive, onNext, nextTitl
       const result = await api<StrategySection>(`/api/startups/${workspace.startup.id}/strategy/${section.key}`, { method: "PUT", body: JSON.stringify({ expectedRevision: revision, data, notes }) });
       setData(result.data); setNotes(result.notes); setRevision(result.revision); setSavedAt(result.updatedAt);
       setBaseline(JSON.stringify({ data: result.data, notes: result.notes }));
-      setWorkspace(ws => ({ ...ws, sections: ws.sections.map(s => s.key === result.key ? result : s) }));
+      setWorkspace(ws => {
+        const sections = ws.sections.map(s => s.key === result.key ? result : s);
+        return { ...ws,sections,completion: calculateCompletion(sections) };
+      });
       notify(`${sectionTitles[section.key]} saved${sectionCompletion(section.key, result.data).complete ? "" : " as draft"}`);
-      await refresh().catch(() => {});
+      // The write is already acknowledged. A slow follow-up read must not keep
+      // the editor disabled; completeness uses the shared authoritative rule.
+      void refresh().catch(() => {});
     } catch (err) { setError(err as Error); }
     finally { setSaving(false); }
   }

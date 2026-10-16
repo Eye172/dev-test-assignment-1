@@ -146,7 +146,7 @@ test("failed saves retain drafts and conflicts can load the current version", as
   await saveSection(page,"icp");
 });
 
-test("layout changes and appearance preferences survive a full reload", async ({ page }) => {
+test("layout changes and appearance preferences survive a full reload", async ({ page, isMobile }) => {
   const ws = await copyDemo(page); const id = ws.startup.id;
   await page.goto(`/startups/${id}/dashboard`);
   await page.getByRole("button",{ name: "Workspace preferences",exact: true }).click();
@@ -164,15 +164,117 @@ test("layout changes and appearance preferences survive a full reload", async ({
   const later = page.getByRole("button",{ name: "Move Strategy readout later",exact: true });
   if (await later.isEnabled()) await later.click();
   else await page.getByRole("button",{ name: "Move Strategy readout earlier",exact: true }).click();
+  if (!isMobile) await page.getByRole("button",{ name: "Strategy readout: Half",exact: true }).click();
+  await page.getByRole("button",{ name: "Hide Profile snapshot",exact: true }).click();
   const saved = page.waitForResponse(r => r.request().method() === "PATCH" && r.url().endsWith(`/api/startups/${id}`));
   await page.getByRole("button",{ name: "Done",exact: true }).click();
   expect((await saved).status()).toBe(200);
   const layout = (await savedWorkspace(page,id)).startup.preferences.dashboardLayout;
   expect(layout).not.toBeNull();
+  expect(layout!.plates.find(p => p.id === "profile")?.hidden).toBe(true);
+  if (!isMobile) expect(layout!.plates.find(p => p.id === "readout")?.size).toBe("M");
   await page.reload();
   await expect(page.locator("html")).toHaveAttribute("data-theme","light");
   await expect(page.locator("html")).toHaveAttribute("data-density","compact");
   await expect(page.locator("html")).toHaveAttribute("data-motion","reduced");
   expect(await page.locator("[data-plate-id]").first().getAttribute("data-plate-id")).not.toBe(first);
+  await expect(page.getByRole("heading",{ name: "Profile snapshot",exact: true })).not.toBeVisible();
   await page.screenshot({ path: test.info().outputPath("personalized-dashboard.png"),fullPage: true });
+  await page.getByRole("button",{ name: "Customize",exact: true }).click();
+  page.once("dialog",confirmation => confirmation.accept());
+  await page.getByRole("button",{ name: "Reset",exact: true }).click();
+  const reset = page.waitForResponse(r => r.request().method() === "PATCH" && r.url().endsWith(`/api/startups/${id}`));
+  await page.getByRole("button",{ name: "Done",exact: true }).click();
+  expect((await reset).status()).toBe(200);
+  expect((await savedWorkspace(page,id)).startup.preferences.dashboardLayout).toBeNull();
+  await expect(page.getByRole("heading",{ name: "Profile snapshot",exact: true })).toBeVisible();
+});
+
+test("custom tasks can be edited, archived and restored without losing their content", async ({ page }) => {
+  const ws = await copyDemo(page); const id = ws.startup.id;
+  await page.goto(`/startups/${id}/roadmap`);
+  await page.getByRole("button",{ name: "Add task",exact: true }).click();
+  const dialog = page.getByRole("dialog",{ name: "Add a custom task",exact: true });
+  await dialog.getByLabel(/^Title/).fill("Discuss the pilot with a mentor");
+  await dialog.getByLabel(/^Deliverable/).fill("One written recommendation");
+  await dialog.getByLabel(/^Week/).selectOption("3");
+  await dialog.getByRole("button",{ name: "Add task",exact: true }).click();
+  await expect(dialog).not.toBeVisible();
+  const created = (await savedWorkspace(page,id)).tasks.find(t => t.title === "Discuss the pilot with a mentor")!;
+  expect(created.source).toBe("custom");
+  const card = page.locator(`#task-${created.id}`);
+  await card.getByRole("button",{ name: /^Edit / }).click();
+  await card.getByLabel(/^Title/).fill("Discuss the revised pilot with a mentor");
+  await card.getByLabel(/^Notes \(optional\)/).fill("Keep this founder context");
+  await card.getByRole("button",{ name: "Save task",exact: true }).click();
+  await expect(card.getByRole("heading")).toHaveText("Discuss the revised pilot with a mentor");
+  await card.getByRole("button",{ name: /^Archive / }).click();
+  await page.getByText(/^Archived \(1\)$/).click();
+  const archived = page.getByRole("listitem").filter({ hasText: "Discuss the revised pilot with a mentor" });
+  await archived.getByRole("button",{ name: "Restore",exact: true }).click();
+  await expect(card.getByRole("heading")).toBeVisible();
+  await page.reload();
+  const saved = (await savedWorkspace(page,id)).tasks.find(t => t.id === created.id)!;
+  expect(saved).toMatchObject({ archived: false,week: 3,notes: "Keep this founder context",title: "Discuss the revised pilot with a mentor" });
+});
+
+test("declining Escape discard keeps a custom task dialog and its draft open", async ({ page }) => {
+  const ws = await copyDemo(page);
+  await page.goto(`/startups/${ws.startup.id}/roadmap`);
+  await page.getByRole("button",{ name: "Add task",exact: true }).click();
+  const dialog = page.getByRole("dialog",{ name: "Add a custom task",exact: true });
+  await dialog.getByLabel(/^Title/).fill("Keep my unfinished task");
+  page.on("dialog",confirmation => confirmation.dismiss());
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByLabel(/^Title/)).toHaveValue("Keep my unfinished task");
+});
+
+test("keyboard navigation protects drafts and reduced motion keeps the interface usable", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  const ws = await copyDemo(page); const id = ws.startup.id;
+  await page.goto(`/startups/${id}/strategy?section=icp`);
+  await page.getByLabel(/^Buyer type/).fill("A draft that should stay here");
+  await page.getByRole("heading",{ name: "Strategy",exact: true }).focus();
+  page.once("dialog",confirmation => confirmation.dismiss());
+  await page.keyboard.press("g"); await page.keyboard.press("r");
+  await expect(page).toHaveURL(/\/strategy\?section=icp$/);
+  await expect(page.getByLabel(/^Buyer type/)).toHaveValue("A draft that should stay here");
+  page.once("dialog",confirmation => confirmation.dismiss());
+  await navigate(page,"Dashboard");
+  await expect(page).toHaveURL(/\/strategy\?section=icp$/);
+  await saveSection(page,"icp");
+  await navigate(page,"Dashboard");
+  await expect(page.getByRole("heading",{ name: "Dashboard",exact: true })).toBeVisible();
+  const widths = await page.evaluate(() => ({ viewport: window.innerWidth,document: document.documentElement.scrollWidth }));
+  expect(widths.document).toBeLessThanOrEqual(widths.viewport);
+});
+
+test("pointer dragging and keyboard cancellation keep a predictable panel order", async ({ page, isMobile }) => {
+  test.skip(isMobile,"Phones use the already-tested explicit move buttons.");
+  const ws = await copyDemo(page); const id = ws.startup.id;
+  await page.goto(`/startups/${id}/dashboard`);
+  await page.getByRole("button",{ name: "Customize",exact: true }).click();
+  const order = () => page.locator("[data-plate-id]").evaluateAll(nodes => nodes.map(n => n.getAttribute("data-plate-id")));
+  const initial = await order();
+  const handle = page.getByRole("button",{ name: /^Move Strategy readout, position/ });
+  await handle.focus(); await page.keyboard.press("Space"); await page.keyboard.press("ArrowDown");
+  await expect.poll(order).not.toEqual(initial);
+  await page.keyboard.press("Escape");
+  await expect.poll(order).toEqual(initial);
+  // Actual pointer movement, rather than invoking the reorder callback.
+  await handle.hover();
+  const from = await handle.boundingBox();
+  const to = await page.locator('[data-plate-id="next"]').boundingBox();
+  expect(from).not.toBeNull(); expect(to).not.toBeNull();
+  await page.mouse.move(from!.x + from!.width/2,from!.y + from!.height/2);
+  await page.mouse.down();
+  await page.mouse.move(to!.x + to!.width/2,to!.y + Math.min(to!.height/2,100),{ steps: 12 });
+  await page.mouse.up();
+  await expect.poll(order).not.toEqual(initial);
+  const moved = await order();
+  await page.getByRole("button",{ name: "Done",exact: true }).click();
+  await expect(page.getByRole("button",{ name: "Customize",exact: true })).toBeVisible();
+  await page.reload();
+  await expect.poll(order).toEqual(moved);
 });

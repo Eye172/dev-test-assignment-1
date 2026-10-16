@@ -59,7 +59,7 @@ export function Dialog({ open, onClose, title, children }: { open: boolean; onCl
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
   useEffect(() => { const dialog = ref.current; if (open && !dialog?.open) dialog?.showModal(); else if (!open && dialog?.open) dialog.close(); }, [open]);
-  return <dialog ref={ref} className="dialog" onCancel={onClose} onClose={onClose} aria-labelledby={titleId}
+  return <dialog ref={ref} className="dialog" onCancel={event => { event.preventDefault(); onClose(); }} aria-labelledby={titleId}
     onClick={e => { if (e.target === ref.current) onClose(); }}>
     <div className="dialog-head"><h2 id={titleId}>{title}</h2><button type="button" className="icon-button" onClick={onClose} aria-label="Close"><X size={20}/></button></div>
     {children}

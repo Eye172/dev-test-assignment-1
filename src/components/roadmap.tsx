@@ -147,7 +147,7 @@ function TaskEditor({ task, onDone }: { task: Task; onDone: () => void }) {
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const dirty = d.title !== task.title || d.deliverable !== task.deliverable || d.week !== task.week || d.notes !== task.notes;
-  useDirtyGuard(dirty && !saving);
+  useDirtyGuard(dirty);
   async function save(e: React.FormEvent) {
     e.preventDefault();
     if (!d.title.trim() || !d.deliverable.trim()) { setError("Title and deliverable are required."); return; }

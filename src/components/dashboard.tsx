@@ -87,7 +87,8 @@ export function Dashboard() {
     } else if (lifted === id && ["ArrowUp", "ArrowLeft", "ArrowDown", "ArrowRight"].includes(e.key)) {
       e.preventDefault(); move(id, e.key === "ArrowUp" || e.key === "ArrowLeft" ? -1 : 1);
     } else if (lifted === id && e.key === "Escape") {
-      e.preventDefault(); if (liftOrigin.current) setDraft(d => ({ ...d, plates: liftOrigin.current! }));
+      e.preventDefault(); e.stopPropagation();
+      if (liftOrigin.current) setDraft(d => ({ ...d, plates: liftOrigin.current! }));
       setLifted(null); setAnnouncement(`Move cancelled. ${title(id)} returned to its position.`);
     }
   }
