@@ -81,6 +81,8 @@ async function record(browser, label, device, script) {
   await ctx.close();
   const file = await video.path();
   await rename(file, out(`${label}.webm`));
+  const resolvedDir = path.resolve(dir);
+  if (!resolvedDir.startsWith(path.resolve(here) + path.sep) || !path.basename(resolvedDir).startsWith(".video-")) throw new Error("Refusing cleanup outside the capture directory");
   await rm(dir, { recursive: true, force: true });
 }
 const pause = (page, ms = 700) => page.waitForTimeout(ms);
@@ -97,9 +99,9 @@ async function videos(browser) {
     await page.getByRole("button", { name: "Save section", exact: true }).click(); await pause(page, 1400);
     await nav(page, "Dashboard");
     await page.getByRole("button", { name: "Customize", exact: true }).click(); await pause(page);
-    await page.getByRole("button", { name: "Move Strategy readout earlier", exact: true }).click(); await pause(page);
-    await page.getByRole("button", { name: "Strategy readout: Two thirds", exact: true }).click(); await pause(page);
-    await page.getByRole("button", { name: "Move Strategy readout later", exact: true }).click(); await pause(page);
+    await page.getByRole("button", { name: "Move Progress readout earlier", exact: true }).click(); await pause(page);
+    await page.getByRole("button", { name: "Progress readout: L, Two thirds", exact: true }).click(); await pause(page);
+    await page.getByRole("button", { name: "Move Progress readout later", exact: true }).click(); await pause(page);
     await page.getByRole("button", { name: "Hide Riskiest belief", exact: true }).or(page.getByRole("button", { name: "Hide Risk watch", exact: true })).click(); await pause(page);
     await page.getByRole("button", { name: "Reset", exact: true }).click().catch(() => {});
     await page.getByRole("button", { name: "Cancel", exact: true }).click(); await pause(page);

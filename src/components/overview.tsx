@@ -45,7 +45,7 @@ export function Overview() {
         {editing || recovered ? <motion.section key="edit" className="plate profile-edit" aria-labelledby="edit-title"
           initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6, transition: { duration: 0.12 } }} transition={{ duration: 0.24, ease }}>
           <div className="plate-head"><h2 id="edit-title">Edit profile</h2></div>
-          <ProfileForm initial={startup} onReloaded={latest => { setEditing(true); setWorkspace(latest); }} onCancel={() => setEditing(false)} onSaved={async () => { await refresh(); setEditing(false); notify("Profile saved"); }}/>
+          <ProfileForm initial={startup} onReloaded={latest => { setEditing(true); setWorkspace(latest); }} onCancel={() => setEditing(false)} onSaved={saved => { setWorkspace(ws => ({ ...ws,startup: saved })); setEditing(false); notify("Profile saved"); void refresh().catch(() => {}); }}/>
         </motion.section> : <motion.div key="work" className="work-stack" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, transition: { duration: 0.1 } }}>
           <motion.section className="next-move" aria-labelledby="next-title" {...enter(1)}>
             <h2 id="next-title" className="label">Next move</h2>

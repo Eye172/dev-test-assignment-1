@@ -149,6 +149,20 @@ test("rapid week-panel intents never restore a stale revision over an acknowledg
   expect((await savedWorkspace(page, id)).tasks.find(t => t.id === task.id)).toMatchObject({ status: finalTask.status, revision: finalTask.revision });
 });
 
+test("an acknowledged profile closes immediately while its follow-up read is delayed", async ({ page }) => {
+  const ws = await copyDemo(page); const id = ws.startup.id;
+  await page.goto(`/startups/${id}`);
+  await page.getByRole("button", { name: "Edit profile", exact: true }).click();
+  await page.getByLabel(/^Startup name/).fill("A profile saved before its background read");
+  const pending = await holdRequests(page, `**/api/startups/${id}`, "GET");
+  await page.getByRole("button", { name: "Save profile", exact: true }).click();
+  await expect.poll(() => pending.length).toBe(1);
+  await expect(page.getByLabel(/^Startup name/)).not.toBeVisible();
+  await expect(page.getByRole("heading", { name: "A profile saved before its background read", exact: true })).toBeVisible();
+  expect((await savedWorkspace(page, id)).startup.name).toBe("A profile saved before its background read");
+  await pending[0].continue();
+});
+
 test("an acknowledged custom task closes immediately while its follow-up read is delayed", async ({ page }) => {
   const ws = await copyDemo(page); const id = ws.startup.id;
   await page.goto(`/startups/${id}/roadmap`);

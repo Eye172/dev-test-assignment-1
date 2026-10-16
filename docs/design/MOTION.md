@@ -1,5 +1,7 @@
 # Motion and composition addendum (as implemented)
 
+**Current integration:** the later composition revision supersedes the original dock description below. Desktop navigation is inline in the header; phones use a four-item bottom tab bar (`nav-active`). Overview/dashboard use the active-work hierarchy described in [INTEGRATION-REVIEW.md](INTEGRATION-REVIEW.md). Per-tab recovery now preserves unsaved history navigation with original revisions; Back/Forward is no longer an unhandled gap. Device or saved reduced-motion preferences snap workspace transitions to their final values, including opacity. The older details below document the first milestone and its design rationale.
+
 Supersedes the motion cap in SPEC.md §6 ("CSS-only, one authored moment"), as the independent critique asked. Motion now has a job per surface. Anything without a job does not move.
 
 ## What moves, and why

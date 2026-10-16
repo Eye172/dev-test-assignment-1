@@ -1,8 +1,9 @@
 import { defineConfig, devices } from "@playwright/test";
 const remoteBaseURL = process.env.E2E_BASE_URL;
-// CI models three clients behind a trusted proxy. Each keeps the real 60/hour
+// The isolated local/CI server models three clients behind a trusted proxy. Each keeps the real 60/hour
 // creation limit; a growing suite must not consume one shared client's quota.
-const clientHeaders = (client: number) => process.env.E2E_ISOLATE_CLIENTS === "true" && !remoteBaseURL
+const isolateClients = !remoteBaseURL && process.env.E2E_ISOLATE_CLIENTS !== "false";
+const clientHeaders = (client: number) => isolateClients
   ? { "x-forwarded-for": `198.18.0.${client}` } : undefined;
 export default defineConfig({
   testDir: "./e2e",fullyParallel: false,workers: 1,timeout: 60000,
@@ -15,7 +16,7 @@ export default defineConfig({
     { name: "mobile",testIgnore: "api.spec.ts",use: { ...devices["iPhone 13"],defaultBrowserType: "chromium",extraHTTPHeaders: clientHeaders(3) } },
   ],
   webServer: remoteBaseURL ? undefined : {
-    command: "npm run start",url: "http://127.0.0.1:3000/api/health",reuseExistingServer: !process.env.CI,timeout: 120000,
-    env: { ALLOW_LOCAL_DATABASE: "true",DEMO_MODE: "true",PGLITE_DATA_DIR: ".data/e2e",NEXT_TELEMETRY_DISABLED: "1",TRUST_PROXY: process.env.E2E_ISOLATE_CLIENTS === "true" ? "true" : "false" },
+    command: "npm run start",url: "http://127.0.0.1:3000/api/health",reuseExistingServer: false,timeout: 120000,
+    env: { ALLOW_LOCAL_DATABASE: "true",DEMO_MODE: "true",PGLITE_DATA_DIR: ".data/e2e",NEXT_TELEMETRY_DISABLED: "1",HOSTNAME: "127.0.0.1",TRUST_PROXY: isolateClients ? "true" : "false" },
   },
 });
