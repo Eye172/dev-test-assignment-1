@@ -28,3 +28,11 @@ The current shell uses shared active-navigation and section markers, short route
 Automated axe checks cover all six routes, profile/channel/assumption editing, skipped tasks, task/preferences dialogs, customization and the open share menu, plus dark/light/system with three accents at desktop and phone sizes. No elements or rules are excluded. Separate browser regressions verify keyboard menu behavior, phone field placement, unobscured save feedback, touch targets, history recovery, delayed writes and conflicts. Automated checks complement the manual review; they are not a WCAG certification.
 
 Final acceptance requires the integrated PostgreSQL browser run and the same core flow on the public deployment. See docs/ACCEPTANCE.md for the latest completed gates and remaining work.
+
+## Welcome refinement after the delivered baseline
+
+The lead's isolated `gpt/welcome-experiment` prototype replaces the abstract welcome plates with a synthetic Fieldnote problem, its generated interview task, the rule's explanation and evidence to collect. The task is selected by the actual roadmap generator. This preserves Claude's palette, type and mark while making the product output concrete. It does not imply market validation or add an interactive control to the sample.
+
+The independent critic reviewed 320, 375, 768, 1024 and 1440px renders against public baseline `2655374`. No blocking visual issue or overflow was found. On narrow phones both 44px actions and the synthetic disclosure appear before the longer example; the tablet headline uses the available width. The example is accessible and readable without JavaScript. Its brief card/connector entrance never hides the copy, and system reduced motion presents the final state immediately. A focused regression checks responsive geometry, first-fold actions and no-JavaScript/reduced-motion content.
+
+The critic requested that the introduction spell out “go-to-market”; this is applied. An unnecessary arrow was also removed from the static task. The aesthetic judgment remains approximately 7.5/10: this is a useful clarity improvement, not evidence of exceptional motion or device-wide performance. Claude's external checkout and unfinished merge were left untouched; issue #3 records the handoff for the author's evaluation.
