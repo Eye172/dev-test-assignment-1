@@ -20,7 +20,7 @@ const recoverySchema = z.object({
   custom: z.array(z.tuple([z.string(),z.string()])),revision: z.number().int().nonnegative(),baseline: z.string(),
 });
 
-export function ProfileForm({ initial, onSaved, onCancel, onReloaded }: { initial?: Startup; onSaved?: () => Promise<void>; onCancel?: () => void; onReloaded?: (workspace: Workspace) => void }) {
+export function ProfileForm({ initial, onSaved, onCancel, onReloaded }: { initial?: Startup; onSaved?: (startup: Startup) => void | Promise<void>; onCancel?: () => void; onReloaded?: (workspace: Workspace) => void }) {
   const router = useRouter();
   const [data, setData] = useState<Draft>(() => initial ? fromStartup(initial) : blank);
   const [custom, setCustom] = useState<[string, string][]>(() => Object.entries(initial?.customFields ?? {}));
@@ -66,7 +66,7 @@ export function ProfileForm({ initial, onSaved, onCancel, onReloaded }: { initia
       clearSubmittedDraft(draftKey,{ data,custom,revision,baseline });
       setBaseline(JSON.stringify({ data: fromStartup(startup), custom: Object.entries(startup.customFields) }));
       setData(fromStartup(startup)); setCustom(Object.entries(startup.customFields));
-      if (onSaved) await onSaved(); else router.push(`/startups/${startup.id}`);
+      if (onSaved) await onSaved(startup); else router.push(`/startups/${startup.id}`);
     } catch (err) {
       setError(err as Error); if (err instanceof ClientError) setFields(err.fields ?? {});
       setFocusToken(t => t + 1); setSaving(false);

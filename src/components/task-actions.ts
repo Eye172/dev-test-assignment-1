@@ -1,18 +1,25 @@
 "use client";
-import { useCallback, useRef, useState } from "react";
-import { api } from "@/lib/client-api";
+import { useCallback, useSyncExternalStore } from "react";
+import { api, ClientError } from "@/lib/client-api";
 import { calculateRoadmapProgress } from "@/lib/domain/completion";
 import type { Task } from "@/lib/domain/types";
 import { useWorkspace } from "./workspace";
 
+const pending = new Set<string>();
+const empty: ReadonlySet<string> = new Set();
+let snapshot: ReadonlySet<string> = empty;
+const listeners = new Set<() => void>();
+const subscribe = (listener: () => void) => { listeners.add(listener); return () => { listeners.delete(listener); }; };
+function emit() { snapshot = new Set(pending); listeners.forEach(listener => listener()); }
+export function useTaskPending(id: string) { return useSyncExternalStore(subscribe,() => snapshot.has(id),() => false); }
+
 /** Edit mutations wait for acknowledgment. Locked status toggles can respond immediately. */
 export function useTaskUpdate() {
   const { workspace, setWorkspace, notify } = useWorkspace();
-  const pending = useRef(new Set<string>());
-  const [busy, setBusy] = useState<ReadonlySet<string>>(new Set());
+  const busy = useSyncExternalStore(subscribe,() => snapshot,() => empty);
   const update = useCallback(async (task: Task, patch: Partial<Pick<Task, "status" | "title" | "deliverable" | "week" | "notes" | "archived">>, message?: string) => {
-    if (pending.current.has(task.id)) return;
-    pending.current.add(task.id); setBusy(new Set(pending.current));
+    if (pending.has(task.id)) throw new ClientError("This task is still saving. Please wait a moment.",0,"PENDING");
+    pending.add(task.id); emit();
     const apply = (next: Task) => setWorkspace(ws => {
       const tasks = ws.tasks.map(t => t.id === next.id && t.revision <= next.revision ? next : t);
       return { ...ws, tasks, roadmapProgress: calculateRoadmapProgress(tasks) };
@@ -30,7 +37,7 @@ export function useTaskUpdate() {
         return { ...ws,tasks,roadmapProgress: calculateRoadmapProgress(tasks) };
       });
       throw error;
-    } finally { pending.current.delete(task.id); setBusy(new Set(pending.current)); }
+    } finally { pending.delete(task.id); emit(); }
   }, [workspace.startup.id, setWorkspace, notify]);
   return { update,isPending: (id: string) => busy.has(id) };
 }

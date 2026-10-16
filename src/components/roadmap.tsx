@@ -5,26 +5,52 @@ import { AnimatePresence, motion } from "motion/react";
 import { Archive, ArchiveRestore, Info, Pencil, Plus, RefreshCw } from "lucide-react";
 import { z } from "zod";
 import { api, ClientError } from "@/lib/client-api";
-import type { Task, Workspace } from "@/lib/domain/types";
+import type { RoadmapProgress, Task, Workspace } from "@/lib/domain/types";
 import { Badge, Dialog, ErrorNotice, Field, Spinner, useDirtyGuard } from "./ui";
-import { useTaskUpdate } from "./task-actions";
+import { clearDraft, clearSubmittedDraft, useDraftRecovery, useHasDraft } from "./draft-recovery";
+import { useTaskPending, useTaskUpdate } from "./task-actions";
 import { spring, useWorkspace } from "./workspace";
-import { clearDraft, clearSubmittedDraft, useHasDraft, useDraftRecovery } from "./draft-recovery";
 
 const statusLabels = { todo: "To do", in_progress: "In progress", done: "Done", skipped: "Skipped" } as const;
 const weekDays = (w: number) => w === 4 ? "Days 22–30" : `Days ${(w - 1) * 7 + 1}–${w * 7}`;
+
 const taskDraftSchema = z.object({ title: z.string(),deliverable: z.string(),week: z.number().int().min(1).max(4),notes: z.string() });
-const emptyTask = { title: "",deliverable: "",week: 1,notes: "" };
-const rules: [string, string][] = [
-  ["Week 1 · icp-focus", "Complete ICP → interview five target buyers. Incomplete → refine the buyer persona first."],
-  ["Week 1 · value-test", "Complete value proposition → test the promise with customers. Incomplete → write a testable one."],
-  ["Week 1 · experiment-design", "Always: set measurable success criteria before the first experiment."],
-  ["Week 2 · channel:<name>", "One experiment per named channel (up to three). None saved → choose one channel."],
-  ["Week 2 · assumption-test", "Test the highest-risk saved assumption, or define three if none exist."],
-  ["Week 3 · pricing-test", "Complete pricing → test willingness to pay with a real offer. Incomplete → define the pricing hypothesis."],
-  ["Week 4 · evidence-review", "Always: separate opinions, interest and commitments, and name the bottleneck."],
-  ["Week 4 · founder-decision", "Always: continue, change or stop, decided by the founder from evidence."],
+
+/** Human names for generation rules. Internal identifiers never reach the interface. */
+export function ruleName(key: string | null): string | null {
+  if (!key) return null;
+  if (key.startsWith("channel:")) return "Channel experiment";
+  return ({
+    "icp-prepare": "Define the first buyer", "icp-interviews": "Customer interviews",
+    "value-prepare": "Write a testable promise", "value-customer-test": "Test the promise with customers",
+    "experiment-design": "Success criteria first", "channel-selection": "Choose one channel",
+    "assumption-prepare": "Name the assumptions", "assumption-experiment": "Test the riskiest assumption",
+    "pricing-prepare": "Pricing hypothesis", "pricing-offer-test": "Willingness-to-pay test",
+    "evidence-review": "Evidence review", "founder-decision": "Founder decision",
+  } as Record<string, string>)[key] ?? "Plan rule";
+}
+const rules: [string, string, string][] = [
+  ["Week 1", "Buyer", "If your ideal customer profile is complete: interview five target buyers. If not: define the buyer, pain and trigger first."],
+  ["Week 1", "Value", "If your value proposition is complete: test the promise with customers. If not: write one that can be tested."],
+  ["Week 1", "Success criteria", "Always: set audience, sample, deadline and a pass/fail threshold before the first experiment."],
+  ["Week 2", "Channels", "One small experiment per named channel, up to three. No channel yet: choose one."],
+  ["Week 2", "Assumptions", "Test the highest-risk saved assumption. None saved: write three testable ones."],
+  ["Week 3", "Pricing", "If pricing is complete: test willingness to pay with a real offer. If not: define the pricing hypothesis."],
+  ["Week 4", "Evidence", "Always: separate opinions, interest and commitments, and name the bottleneck."],
+  ["Week 4", "Decision", "Always: the founder decides to continue, change or stop, based on evidence."],
 ];
+
+/** Canonical roadmap progress: done ÷ actionable (skipped excluded), with skipped shown separately. */
+export function RoadmapBar({ progress }: { progress: RoadmapProgress }) {
+  const actionable = progress.total - progress.skipped;
+  return <div className="roadmap-bar">
+    <div className="progress" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress.percentage}
+      aria-label={`Roadmap ${progress.percentage}%: ${progress.done} of ${actionable} actionable tasks done${progress.skipped ? `, ${progress.skipped} skipped` : ""}`}>
+      <span style={{ width: `${progress.percentage}%` }}/>
+    </div>
+    <p className="roadmap-bar-label num"><span>{progress.done} of {actionable} done · {progress.percentage}%</span>{progress.skipped > 0 && <span className="faint">{progress.skipped} skipped, not counted</span>}</p>
+  </div>;
+}
 
 export function Roadmap() {
   const { workspace, setWorkspace, notify } = useWorkspace();
@@ -68,16 +94,13 @@ export function Roadmap() {
       <button className="button primary" onClick={generate} disabled={generating}>{generating ? <><Spinner/>Generating…</> : "Generate 30-day plan"}</button>
     </section> : <>
       <section className="plate instrument roadmap-readout" aria-label="Roadmap progress">
-        <span className="screw tl"/><span className="screw br"/>
-        <div className="screen">
-          <p className="readout lg">{p.percentage}<small>%</small></p>
-          <div className="readout-stats">
-            <p className="inst-row"><span>Done</span><strong>{p.done}/{p.total}</strong></p>
-            <p className="inst-row"><span>Skipped</span><strong>{p.skipped}</strong></p>
-          </div>
-          <div className="day-ruler" aria-hidden>{Array.from({ length: 30 }, (_, i) => <span key={i} className={(i + 1) % 7 === 1 && i < 28 ? "major" : ""}>{((i + 1) % 7 === 1 && i < 28) || i === 29 ? i + 1 : ""}</span>)}</div>
-        </div>
-        <p className="muted readout-note">Progress = done ÷ actionable tasks; skipped and archived tasks are excluded. Completing tasks is activity, not market validation.</p>
+        <div className="readout-main"><p className="readout lg">{p.percentage}<small>%</small></p><p className="inst-caption">of actionable tasks done</p></div>
+        <dl className="readout-stats">
+          <div><dt>Done</dt><dd className="mono">{p.done}/{p.total - p.skipped}</dd></div>
+          <div><dt>Skipped</dt><dd className="mono">{p.skipped}</dd></div>
+        </dl>
+        <div className="day-ruler" aria-hidden>{Array.from({ length: 30 }, (_, i) => <span key={i} className={(i + 1) % 7 === 1 && i < 28 ? "major" : ""}>{((i + 1) % 7 === 1 && i < 28) || i === 29 ? i + 1 : ""}</span>)}</div>
+        <p className="readout-note">Skipped tasks are not counted. Completing tasks is activity, not market validation.</p>
       </section>
       <div className="weeks">{[1, 2, 3, 4].map(w => {
         const tasks = active.filter(t => t.week === w);
@@ -102,9 +125,9 @@ export function Roadmap() {
     </>}
 
     <Dialog open={rulesOpen} onClose={() => setRulesOpen(false)} title="How tasks are chosen">
-      <p className="muted">Deterministic rules read your saved strategy. The same inputs always give the same plan. No AI is involved.</p>
-      <ul className="rule-list">{rules.map(([k, v]) => <li key={k}><span className="mono rule-key">{k}</span><span>{v}</span></li>)}</ul>
-      <p className="field-help">Refreshing keeps completed tasks, your edits and custom tasks. Superseded tasks are archived, not deleted.</p>
+      <p className="muted">Fixed rules read your saved strategy, so the same inputs always produce the same plan. No AI is involved.</p>
+      <ul className="rule-list">{rules.map(([week, name, text]) => <li key={name}><span className="rule-name"><span className="faint mono">{week}</span> {name}</span><span>{text}</span></li>)}</ul>
+      <p className="field-help">Refreshing keeps completed tasks, your edits and custom tasks. Tasks that no longer apply are archived, not deleted.</p>
     </Dialog>
     <AddTaskDialog open={adding} onClose={() => setAdding(false)} onRecover={() => setAdding(true)}/>
   </div>;
@@ -112,40 +135,50 @@ export function Roadmap() {
 
 function TaskCard({ task }: { task: Task }) {
   const { update } = useTaskUpdate();
-  const [editing, setEditing] = useState(false);
+  const busy = useTaskPending(task.id);
+  const { workspace } = useWorkspace();
+  const draftKey = `task:${workspace.startup.id}:${task.id}`;
+  const [editingOpen, setEditing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-  const recovered = useHasDraft(`task:${task.startupId}:${task.id}`);
+  // A task draft left behind by Back/Forward or a reload reopens its editor.
+  const draftWaiting = useHasDraft(draftKey);
+  const editing = editingOpen || draftWaiting;
   async function run(patch: Parameters<typeof update>[1], message?: string) {
-    setError(null); setBusy(true);
-    try { await update(task, patch, message); return true; }
-    catch (e) { setError((e as Error).message); return false; }
-    finally { setBusy(false); }
+    setError(null);
+    try { await update(task, patch, message); } catch (e) { setError((e as Error).message); }
   }
-  if (editing || recovered) return <TaskEditor task={task} onDone={() => setEditing(false)} onReloaded={() => setEditing(true)}/>;
-  return <article className={`task-card status-${task.status}`} aria-labelledby={`t-${task.id}`}>
-    <div className="task-top">
-      <label className="sr-only" htmlFor={`s-${task.id}`}>Status for {task.title}</label>
-      <select id={`s-${task.id}`} className={`status-select ${task.status}`} value={task.status} disabled={busy}
-        onChange={e => void run({ status: e.target.value as Task["status"] })}>
-        {Object.entries(statusLabels).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-      </select>
-      <div className="task-tags">{task.source === "custom" && <Badge status="custom"/>}{task.edited && task.source !== "custom" && <span className="badge">Edited</span>}</div>
-    </div>
-    <h3 id={`t-${task.id}`} className="task-title">{task.title}</h3>
-    <p className="task-deliverable"><span className="faint">Deliverable · </span>{task.deliverable}</p>
-    {task.notes && <p className="task-notes">{task.notes}</p>}
-    {error && <p className="field-error" role="alert">{error} The change was undone.</p>}
-    <div className="task-actions">
-      {task.source === "generated" && task.rationale && <details className="why"><summary>Why this task</summary><p>{task.rationale}</p>{task.ruleKey && <p className="mono faint rule-key">rule: {task.ruleKey}</p>}</details>}
-      <span className="task-buttons">
-        <button type="button" className="icon-button" aria-label={`Edit ${task.title}`} disabled={busy} onClick={() => setEditing(true)}><Pencil size={16}/></button>
-        <button type="button" className="icon-button" aria-label={`Archive ${task.title}`} disabled={busy} onClick={() => void run({ archived: true }, "Task archived")}><Archive size={16}/></button>
-      </span>
-    </div>
-  </article>;
+  const rule = task.source === "generated" ? ruleName(task.ruleKey) : null;
+  return <motion.article layout="size" transition={spring} className={`task-card status-${task.status} ${editing ? "is-editing" : ""}`} aria-label={editing ? "Edit task" : undefined} aria-labelledby={editing ? undefined : `t-${task.id}`} aria-busy={busy || undefined}>
+    <AnimatePresence mode="popLayout" initial={false}>
+      {editing ? <motion.div key="edit" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.14 }}>
+        <TaskEditor task={task} onDone={() => setEditing(false)} onReloaded={() => setEditing(true)}/>
+      </motion.div> : <motion.div key="view" className="task-view" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.14 }}>
+        <div className="task-top">
+          <label className="sr-only" htmlFor={`s-${task.id}`}>Status for {task.title}</label>
+          <select id={`s-${task.id}`} className={`status-select ${task.status}`} value={task.status} disabled={busy}
+            onChange={e => void run({ status: e.target.value as Task["status"] })}>
+            {Object.entries(statusLabels).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+          </select>
+          {busy && <Spinner/>}
+          <div className="task-tags">{task.source === "custom" && <Badge status="custom"/>}{task.edited && task.source !== "custom" && <span className="badge">Edited</span>}</div>
+        </div>
+        <h3 id={`t-${task.id}`} className="task-title">{task.title}</h3>
+        <p className="task-deliverable"><span className="faint">Deliverable · </span>{task.deliverable}</p>
+        {task.notes && <p className="task-notes">{task.notes}</p>}
+        {error && <p className="field-error" role="alert">{error} The change was undone.</p>}
+        <div className="task-actions">
+          {rule && task.rationale && <details className="why"><summary>Why this task</summary><p>{task.rationale}</p><p className="faint rule-label">Rule: {rule}</p></details>}
+          <span className="task-buttons">
+            <button type="button" className="icon-button" aria-label={`Edit ${task.title}`} disabled={busy} onClick={() => setEditing(true)}><Pencil size={16}/></button>
+            <button type="button" className="icon-button" aria-label={`Archive ${task.title}`} disabled={busy} onClick={() => void run({ archived: true }, "Task archived")}><Archive size={16}/></button>
+          </span>
+        </div>
+      </motion.div>}
+    </AnimatePresence>
+  </motion.article>;
 }
 
+type TaskDraft = { title: string; deliverable: string; week: number; notes: string };
 function TaskEditor({ task, onDone, onReloaded }: { task: Task; onDone: () => void; onReloaded: () => void }) {
   const { update } = useTaskUpdate();
   const { workspace,setWorkspace } = useWorkspace();
@@ -181,7 +214,7 @@ function TaskEditor({ task, onDone, onReloaded }: { task: Task; onDone: () => vo
     } catch (err) { setError(err as Error); }
   }
   const conflict = error instanceof ClientError && error.status === 409;
-  return <form className="task-card editing" onSubmit={save} onKeyDown={e => { if (e.key === "Escape") { e.preventDefault(); cancel(); } }}>
+  return <form className="task-editor" onSubmit={save} onKeyDown={e => { if (e.key === "Escape") { e.preventDefault(); cancel(); } }}>
     <ErrorNotice error={conflict ? "This task changed elsewhere. Load the latest version, or copy your draft first." : error}
       onReload={conflict ? () => void loadLatest() : undefined}
       onCopy={conflict ? () => void navigator.clipboard.writeText(JSON.stringify(d,null,2)).catch(() => {}) : undefined}/>
@@ -201,12 +234,13 @@ function WeekSelect({ id, value, onChange }: { id: string; value: number; onChan
 }
 
 function ArchivedRow({ task }: { task: Task }) {
-  const { update } = useTaskUpdate(); const [error, setError] = useState<string | null>(null);
+  const { update } = useTaskUpdate(); const busy = useTaskPending(task.id); const [error, setError] = useState<string | null>(null);
   return <li><span>{task.title}</span><span className="faint mono">W{task.week}</span>
-    <button type="button" className="button small" onClick={() => void update(task, { archived: false }, "Task restored").catch(e => setError((e as Error).message))}><ArchiveRestore size={14} aria-hidden/>Restore</button>
+    <button type="button" className="button small" disabled={busy} onClick={() => void update(task, { archived: false }, "Task restored").catch(e => setError((e as Error).message))}><ArchiveRestore size={14} aria-hidden/>Restore</button>
     {error && <span className="field-error" role="alert">{error}</span>}</li>;
 }
 
+const emptyTask: TaskDraft = { title: "", deliverable: "", week: 1, notes: "" };
 function AddTaskDialog({ open, onClose, onRecover }: { open: boolean; onClose: () => void; onRecover: () => void }) {
   const { workspace, setWorkspace, refresh, notify } = useWorkspace();
   const [d, setD] = useState(emptyTask); const [error, setError] = useState<string | null>(null); const [saving, setSaving] = useState(false);
@@ -221,12 +255,12 @@ function AddTaskDialog({ open, onClose, onRecover }: { open: boolean; onClose: (
     try {
       const task = await api<Task>(`/api/startups/${workspace.startup.id}/tasks`, { method: "POST", body: JSON.stringify(d) });
       clearSubmittedDraft(draftKey,d);
-      setWorkspace(ws => ({ ...ws, tasks: [...ws.tasks, task] })); await refresh().catch(() => {});
+      setWorkspace(ws => ({ ...ws, tasks: [...ws.tasks, task] })); void refresh().catch(() => {});
       notify("Custom task added"); setD(emptyTask); onClose();
     } catch (err) { setError((err as Error).message); }
     finally { setSaving(false); }
   }
-  return <Dialog open={open} onClose={() => { if (!saving && (!dirty || window.confirm("Discard this task?"))) { clearDraft(draftKey); setD(emptyTask); setError(null); onClose(); } }} title="Add a custom task">
+  return <Dialog open={open} onClose={() => { if (!saving && (!dirty || window.confirm("Discard this task?"))) { clearDraft(draftKey); setD(emptyTask); setError(null); onClose(); } }} title="Add a custom task" locked={saving}>
     <form onSubmit={save}>
       {error && <p className="field-error" role="alert">{error}</p>}
       <fieldset disabled={saving}>

@@ -47,6 +47,10 @@ test("six routes and interactive editing states pass automated accessibility che
   await expect(page.getByRole("button",{ name: "Done",exact: true })).toBeVisible();
   await audit("customization");
   await page.getByRole("button",{ name: "Cancel",exact: true }).click();
+  await page.getByRole("button",{ name: "Share and export",exact: true }).click();
+  await expect(page.getByRole("menuitem",{ name: "Export workspace as JSON",exact: true })).toBeVisible();
+  await audit("share-menu");
+  await page.keyboard.press("Escape");
   await page.getByRole("button",{ name: "Workspace preferences",exact: true }).click();
   await expect(page.getByRole("dialog",{ name: "Workspace preferences",exact: true })).toBeVisible();
   await audit("preferences-dialog");

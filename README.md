@@ -91,6 +91,8 @@ npm run test:e2e
 
 `verify` runs ESLint, strict type checking, domain/SQL/API tests and a production build. The browser suite runs the production build at desktop and mobile sizes. GitHub Actions additionally runs the SQL/API suite against PostgreSQL 17. Tests require an isolated database and use in-memory PGlite locally; an on-disk test also closes and reopens the engine to verify durability.
 
+The full browser suite starts its own loopback server on port 3000; stop a development server using that port first. Its API, desktop and phone projects model separate clients behind a trusted proxy, retaining the real 60-creations/hour limit for each. This test-only configuration is not applied to an existing deployment. Repeated runs share the local `.data/e2e` database and its hourly quotas; use a fresh isolated test database or wait for the next hour if running the complete suite repeatedly.
+
 `build` also packages public/static assets with Next's standalone server. `npm start` runs that exact entry point, as does the container. Set runtime environment variables when starting it; local embedded storage in a production build is allowed only for isolated tests. Set `E2E_BASE_URL` to test an already-running synthetic demo instead of starting the local test server. The acceptance suite creates synthetic workspaces and changes their data, so use it only on a demo/test deployment.
 
 With the server running, `npx tsx --conditions=react-server scripts/smoke.ts` exercises the real HTTP API and creates one synthetic acceptance workspace. Set `SMOKE_BASE_URL` explicitly to run this check against a deployed demo. It saves all five sections, checks 100% completion, generates a plan, preserves a done task through regeneration, and verifies JSON export.

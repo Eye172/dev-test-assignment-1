@@ -2,17 +2,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { AnimatePresence, LayoutGroup, motion } from "motion/react";
-import { ArrowDown, ArrowRight, ArrowUp, Eye, EyeOff, GripVertical, LayoutTemplate, RotateCcw } from "lucide-react";
-import { dashboardLayoutSchema, sectionSchemas } from "@/lib/domain/schemas";
+import { ArrowDown, ArrowRight, ArrowUp, Check, Eye, EyeOff, GripVertical, LayoutTemplate, RotateCcw } from "lucide-react";
 import { z } from "zod";
+import { dashboardLayoutSchema, sectionSchemas } from "@/lib/domain/schemas";
 import { defaultDashboardLayout, plateCatalog, type DashboardLayout, type DashboardPlate, type DashboardPlateId, type PlateSize } from "@/lib/domain/dashboard";
 import type { Task, Workspace } from "@/lib/domain/types";
-import { Badge, ErrorNotice, formatTime, Spinner, useDirtyGuard } from "./ui";
-import { nextStep, RoadmapBar, SectionSegments } from "./progress";
-import { useTaskUpdate } from "./task-actions";
+import { Badge, ErrorNotice, Spinner, useDirtyGuard, useHydrated } from "./ui";
+import { nextStep, SectionSegments } from "./progress";
+import { RoadmapBar } from "./roadmap";
+import { useTaskPending, useTaskUpdate } from "./task-actions";
 import { spring, useWorkspace } from "./workspace";
 import { clearDraft, clearSubmittedDraft, useDraftRecovery } from "./draft-recovery";
 
+const weekDays = (w: number) => w === 4 ? "Days 22–30" : `Days ${(w - 1) * 7 + 1}–${w * 7}`;
 const sizeNames: Record<PlateSize, string> = { S: "One third", M: "Half", L: "Two thirds", XL: "Full width" };
 
 function normalize(layout: DashboardLayout | null | undefined): DashboardLayout {
@@ -27,6 +29,7 @@ export function Dashboard() {
   const { workspace, savePreferences, notify } = useWorkspace();
   const saved = useMemo(() => normalize(workspace.startup.preferences.dashboardLayout), [workspace.startup.preferences.dashboardLayout]);
   const [editing, setEditing] = useState(false);
+  const hydrated = useHydrated();
   const [draft, setDraft] = useState<DashboardLayout>(saved);
   const [draftRevision, setDraftRevision] = useState(workspace.startup.revision);
   const [saving, setSaving] = useState(false);
@@ -108,19 +111,44 @@ export function Dashboard() {
     if (saving) return;
     if (e.button !== 0 || e.pointerType === "touch" && window.matchMedia("(max-width: 767px)").matches) return;
     e.preventDefault();
-    const handle = e.currentTarget as HTMLElement; handle.setPointerCapture(e.pointerId);
-    const origin = { x: e.clientX, y: e.clientY }; let active = false;
+    // Listen on window, not the handle: reordering moves the handle's DOM node, which drops pointer capture.
+    const pointerId = e.pointerId;
+    const origin = { x: e.clientX, y: e.clientY }; let active = false; let last = origin;
+    // Hysteresis: after a swap the neighbour animates through the pointer; ignore it until the layout spring settles,
+    // otherwise the two plates swap back and forth.
+    let lastTarget: string | undefined; let settledAt = 0;
+    const retarget = (x: number, y: number) => {
+      const over = document.elementsFromPoint(x, y).map(el => el.closest<HTMLElement>("[data-plate-id]")).find(el => el && el.dataset.plateId !== id);
+      const target = over?.dataset.plateId;
+      const now = performance.now();
+      if (!target || now < settledAt || target === lastTarget && now < settledAt + 250) return;
+      lastTarget = target; settledAt = now + 280;
+      moveTo(id, target as DashboardPlateId);
+    };
+    // Edge auto-scroll, so a plate can be dragged to a slot below or above the visible area.
+    const edge = 72;
+    const scroller = window.setInterval(() => {
+      if (!active) return;
+      const speed = last.y > window.innerHeight - edge ? 14 : last.y < edge + 64 ? -14 : 0;
+      if (speed) { window.scrollBy(0, speed); retarget(last.x, last.y); }
+    }, 16);
     const onMove = (ev: PointerEvent) => {
+      if (ev.pointerId !== pointerId) return;
+      last = { x: ev.clientX, y: ev.clientY };
       if (!active && Math.hypot(ev.clientX - origin.x, ev.clientY - origin.y) < 4) return;
       if (!active) { active = true; setLifted(id); setAnnouncement(`Picked up ${title(id)}.`); }
-      const over = document.elementsFromPoint(ev.clientX, ev.clientY).map(el => el.closest<HTMLElement>("[data-plate-id]")).find(el => el && el.dataset.plateId !== id);
-      if (over) moveTo(id, over.dataset.plateId as DashboardPlateId);
+      retarget(ev.clientX, ev.clientY);
     };
-    const onUp = () => {
-      handle.removeEventListener("pointermove", onMove); handle.removeEventListener("pointerup", onUp); handle.removeEventListener("pointercancel", onUp);
-      if (active) { setLifted(null); setDraft(d => { setAnnouncement(`${title(id)} dropped at position ${position(d.plates, id)}.`); return d; }); }
+    const onUp = (ev: PointerEvent) => {
+      if (ev.pointerId !== pointerId) return;
+      window.clearInterval(scroller);
+      window.removeEventListener("pointermove", onMove); window.removeEventListener("pointerup", onUp); window.removeEventListener("pointercancel", onUp);
+      if (!active) return;
+      setLifted(null);
+      const ids = [...document.querySelectorAll<HTMLElement>("[data-plate-id]")].map(el => el.dataset.plateId);
+      setAnnouncement(`${title(id)} dropped at position ${ids.indexOf(id) + 1} of ${ids.length}.`);
     };
-    handle.addEventListener("pointermove", onMove); handle.addEventListener("pointerup", onUp); handle.addEventListener("pointercancel", onUp);
+    window.addEventListener("pointermove", onMove); window.addEventListener("pointerup", onUp); window.addEventListener("pointercancel", onUp);
   }
 
   useEffect(() => {
@@ -131,13 +159,13 @@ export function Dashboard() {
 
   return <div className={`dashboard ${editing ? "is-editing" : ""}`}>
     <div className="page-heading">
-      <div><h1 tabIndex={-1}>Dashboard</h1><p className="lead">How far you are, what you decided, and what is missing.</p></div>
+      <div><h1 tabIndex={-1}>Dashboard</h1><p className="lead">This week’s work first, then your riskiest belief, decisions and gaps.</p></div>
       {!editing && <div className="page-heading-actions"><button className="button small" onClick={start}><LayoutTemplate size={15} aria-hidden/>Customize</button></div>}
     </div>
     <Summary workspace={workspace}/>
     <AnimatePresence>{editing && <motion.div className="customize-bar" initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8, transition: { duration: 0.12 } }}>
-      <p>Customizing. Move plates with the arrows, or drag the handle. Sizes and hiding are saved with this startup.</p>
-      <button className="button small ghost" onClick={reset} disabled={saving}><RotateCcw size={14} aria-hidden/>Reset</button>
+      <p><span className="customize-help-wide">Move plates with arrows or drag a handle. Resize or hide what you need.</span><span className="customize-help-phone">Move with arrows. Hide what you don’t need.</span></p>
+      <button className="button small ghost customize-reset" onClick={reset} disabled={saving} aria-label="Reset" title="Reset dashboard layout"><RotateCcw size={14} aria-hidden/><span>Reset</span></button>
       <button className="button small" onClick={cancel} disabled={saving}>Cancel</button>
       <button className="button small primary" onClick={done} disabled={saving} aria-busy={saving}>{saving ? <><Spinner/>Saving…</> : "Done"}</button>
     </motion.div>}</AnimatePresence>
@@ -146,7 +174,9 @@ export function Dashboard() {
     <p className="sr-only" id="drag-help">Press Space to pick up the plate, arrow keys to move it, Space to drop it, Escape to cancel.</p>
     <LayoutGroup>
       <div className="plate-grid dashboard-grid">
-        {visible.map((p, i) => <motion.div layout="position" transition={spring} key={p.id} data-plate-id={p.id} data-size={p.size}
+        {visible.map((p, i) => <motion.div layout="position" key={p.id} data-plate-id={p.id} data-size={p.size}
+          initial={hydrated ? { opacity: 0, y: 10 } : false} animate={{ opacity: 1, y: 0 }}
+          transition={{ ...spring, opacity: { duration: 0.24, delay: Math.min(i, 5) * 0.04 }, y: { duration: 0.32, ease: [0.23, 1, 0.32, 1], delay: Math.min(i, 5) * 0.04 } }}
           className={`plate-frame ${editing ? "editing" : ""} ${lifted === p.id ? "lifted" : ""}`}>
           <PlateBody id={p.id} workspace={workspace} toolbar={editing ? <div className="plate-toolbar" role="group" inert={saving} aria-label={`${plateCatalog[p.id].title} layout controls`}>
             <button type="button" className="icon-button drag-handle" aria-roledescription="sortable plate" aria-describedby="drag-help" aria-pressed={lifted === p.id}
@@ -167,15 +197,16 @@ export function Dashboard() {
   </div>;
 }
 
-/** Mandatory summary. Lives outside the customizable plates so required information can never be hidden. */
+/** Mandatory summary: one quiet line outside the hideable plates, so required information never disappears. */
 function Summary({ workspace }: { workspace: Workspace }) {
   const missing = workspace.completion.sections.reduce((n, s) => n + s.missing.length, 0);
   const next = nextStep(workspace);
-  return <section className="summary-strip" aria-label="Summary">
-    <div><span className="label">Strategy</span><strong className="mono">{workspace.completion.percentage}%</strong><span className="faint">{workspace.completion.completed}/5 complete</span></div>
-    <div><span className="label">Missing inputs</span><strong className="mono">{missing}</strong><span className="faint">{missing ? "across sections" : "none"}</span></div>
-    <div><span className="label">Roadmap</span><strong className="mono">{workspace.roadmapProgress.done}/{workspace.roadmapProgress.total}</strong><span className="faint">tasks done</span></div>
-    <div className="summary-next"><span className="label">Next</span><Link href={next.href} className="summary-next-link">{next.title}<ArrowRight size={15} aria-hidden/></Link></div>
+  const p = workspace.roadmapProgress;
+  return <section className="summary-line" aria-label="Summary">
+    <span className="summary-item"><span className="faint">Inputs</span> <strong className="num">{workspace.completion.percentage}%</strong></span>
+    <span className="summary-item"><span className="faint">Missing</span> <strong className="num">{missing}</strong></span>
+    <span className="summary-item"><span className="faint">Plan</span> <strong className="num">{p.done}/{p.total - p.skipped}</strong></span>
+    <Link href={next.href} className="summary-next"><span className="faint">Next</span> <span className="summary-next-title">{next.title}</span><ArrowRight size={14} aria-hidden/></Link>
   </section>;
 }
 
@@ -194,40 +225,56 @@ function PlateBody({ id, workspace, toolbar }: { id: DashboardPlateId; workspace
   }
 }
 type PlateProps = { workspace: Workspace; base: string; toolbar: ReactNode };
-function PaperPlate({ title, meta, toolbar, children, foot, id }: { title: string; meta?: ReactNode; toolbar: ReactNode; children: ReactNode; foot?: ReactNode; id: string }) {
-  return <section className="plate" aria-labelledby={`plate-${id}`}>{toolbar}
-    <div className="plate-head"><h2 id={`plate-${id}`}>{title}</h2>{meta && <span className="plate-meta">{meta}</span>}</div>
-    {children}{foot && <div className="plate-foot">{foot}</div>}
+function PaperPlate({ title, meta, toolbar, children, foot, id, className = "" }: { title: string; meta?: ReactNode; toolbar: ReactNode; children: ReactNode; foot?: ReactNode; id: string; className?: string }) {
+  // While customizing (toolbar present) the content is a preview: inert keeps Tab on the layout controls.
+  return <section className={`plate ${className}`} aria-labelledby={`plate-${id}`}>{toolbar}
+    <div className="plate-body" inert={toolbar ? true : undefined}>
+      <div className="plate-head"><h2 id={`plate-${id}`}>{title}</h2>{meta && <span className="plate-meta">{meta}</span>}</div>
+      {children}{foot && <div className="plate-foot">{foot}</div>}
+    </div>
   </section>;
 }
 
-function ReadoutPlate({ workspace, base, toolbar }: PlateProps) {
-  const last = workspace.sections.map(s => s.updatedAt).filter(Boolean).sort().at(-1) ?? null;
-  const missing = workspace.completion.sections.reduce((n, s) => n + s.missing.length, 0);
-  return <section className="plate instrument" aria-labelledby="plate-readout">{toolbar}
-    <span className="screw tl"/><span className="screw tr"/><span className="screw bl"/><span className="screw br"/>
-    <div className="plate-head"><h2 id="plate-readout">Strategy readout</h2><span className="plate-meta">{last ? `Updated ${formatTime(last)}` : "Nothing saved yet"}</span></div>
-    <div className="screen readout-screen">
-      <div><p className="readout xl">{workspace.completion.percentage}<small>%</small></p><p className="muted">{workspace.completion.completed} of 5 sections complete</p></div>
-      <div className="readout-segments"><SectionSegments workspace={workspace}/></div>
+/** The current week's open work. Its first open task is the focus; the rest are a quick checklist. */
+function currentWeek(workspace: Workspace) {
+  const active = workspace.tasks.filter(t => !t.archived);
+  const week = [1, 2, 3, 4].find(w => active.some(t => t.week === w && (t.status === "todo" || t.status === "in_progress")));
+  return { week, tasks: week ? active.filter(t => t.week === week) : [] };
+}
+
+function ReadoutPlate({ workspace, toolbar }: PlateProps) {
+  const c = workspace.completion; const p = workspace.roadmapProgress;
+  const assumptions = sectionSchemas.assumptions.parse(workspace.sections.find(s => s.key === "assumptions")?.data ?? {}).assumptions.filter(a => a.statement);
+  const high = assumptions.filter(a => a.risk === "high").length;
+  const filled = c.completed === 5;
+  // Filled inputs are a starting line, not the achievement: once complete, execution takes the large figure.
+  return <section className={`plate instrument readout-plate ${filled ? "is-filled" : ""}`} aria-labelledby="plate-readout">{toolbar}
+    <div className="plate-body" inert={toolbar ? true : undefined}>
+    <div className="plate-head"><h2 id="plate-readout">{filled ? "Plan progress" : "Strategy inputs"}</h2><span className="plate-meta">{filled ? "Inputs complete" : `${c.completed} of 5 inputs complete`}</span></div>
+    {filled ? <>
+      <p className="readout xl">{p.percentage}<small>%</small></p>
+      <p className="inst-caption">of plan tasks done · {p.done} of {p.total - p.skipped}{p.skipped ? ` · ${p.skipped} skipped` : ""}</p>
+      <div className="readout-inputs"><span className="inst-caption">Inputs 5/5</span><SectionSegments workspace={workspace} labels={false}/></div>
+    </> : <>
+      <p className="readout xl">{c.percentage}<small>%</small></p>
+      <p className="inst-caption">inputs complete. Filled inputs make a plan possible; they do not prove it.</p>
+      <div className="readout-inputs wide"><SectionSegments workspace={workspace}/></div>
+    </>}
+    <p className="inst-row"><span>Untested assumptions</span><strong>{assumptions.length}{high ? ` · ${high} high risk` : ""}</strong></p>
     </div>
-    <div className="readout-rows">
-      <p className="inst-row"><span><span className={`led ${missing ? "warn" : ""}`}/> Missing required inputs</span><strong>{missing}</strong></p>
-      <p className="inst-row"><span><span className={`led ${workspace.roadmapProgress.total ? "" : "off"}`}/> Roadmap tasks done</span><strong>{workspace.roadmapProgress.done}/{workspace.roadmapProgress.total}</strong></p>
-      <p className="inst-row"><span><span className="led off"/> Skipped</span><strong>{workspace.roadmapProgress.skipped}</strong></p>
-    </div>
-    {workspace.completion.completed === 0 && <div className="plate-foot"><Link className="plate-link" href={`${base}/strategy?section=icp`}>Start with Ideal Customer Profile<ArrowRight size={15} aria-hidden/></Link></div>}
   </section>;
 }
 
 function NextPlate({ workspace, base, toolbar }: PlateProps) {
+  const { week } = currentWeek(workspace);
   const fromGaps = workspace.completion.sections.filter(s => !s.complete).map(s => ({ key: s.key, title: s.suggestion, href: `${base}/strategy?section=${s.key}`, tag: s.title }));
-  const fromTasks = workspace.tasks.filter(t => !t.archived && (t.status === "todo" || t.status === "in_progress")).sort((a, b) => a.week - b.week)
+  // This week's tasks already live in the active-work plate; this list looks further ahead.
+  const later = workspace.tasks.filter(t => !t.archived && t.week !== week && (t.status === "todo" || t.status === "in_progress")).sort((a, b) => a.week - b.week)
     .map(t => ({ key: t.id, title: t.title, href: `${base}/roadmap#task-${t.id}`, tag: `Week ${t.week}` }));
-  const items = [...fromGaps, ...fromTasks].slice(0, 5);
-  return <PaperPlate id="next" title="Next actions" meta={items.length ? `${items.length}` : undefined} toolbar={toolbar}>
+  const items = [...fromGaps, ...later].slice(0, 5);
+  return <PaperPlate id="next" title="Coming up" meta={items.length ? `${items.length}` : undefined} toolbar={toolbar}>
     {items.length ? <ol className="action-list">{items.map(i => <li key={i.key}><Link href={i.href}><span className="action-title">{i.title}</span><span className="faint action-tag">{i.tag}</span></Link></li>)}</ol>
-      : <p className="plate-empty">Everything required is in place. Review your roadmap progress.</p>}
+      : <p className="plate-empty">Nothing queued beyond this week.</p>}
   </PaperPlate>;
 }
 
@@ -244,14 +291,18 @@ function decision(workspace: Workspace, key: string): string {
   return "";
 }
 function DecisionsPlate({ workspace, base, toolbar }: PlateProps) {
-  return <PaperPlate id="decisions" title="Decisions" meta={`${workspace.completion.completed}/5 complete`} toolbar={toolbar}>
+  return <PaperPlate id="decisions" title="Decisions" meta={`${workspace.completion.completed}/5 inputs complete`} toolbar={toolbar}>
     <ul className="decision-list">{workspace.completion.sections.map(s => {
       const saved = workspace.sections.find(x => x.key === s.key)?.revision ?? 0;
       const text = decision(workspace, s.key);
-      return <li key={s.key}>
-        <div className="decision-name"><span className="decision-title">{s.title}</span><Badge status={s.complete ? "complete" : saved ? "draft" : "empty"}/></div>
-        <p className={text ? "decision-text" : "decision-text faint"}>{text || "No decision saved yet"}</p>
-        <div className="decision-missing">{s.missing.length ? <><span className="faint">Missing: </span>{s.missing.slice(0, 3).join(", ")}{s.missing.length > 3 ? ` +${s.missing.length - 3}` : ""}</> : null}</div>
+      const state = s.complete ? "complete" : saved ? "draft" : "empty";
+      return <li key={s.key} className={state}>
+        <span className="decision-dot" aria-hidden/>
+        <div className="decision-body">
+          <span className="decision-title">{s.title}<span className="sr-only">: {state === "complete" ? "complete" : state === "draft" ? "draft" : "not started"}</span></span>
+          <p className={text ? "decision-text" : "decision-text faint"}>{text || "No decision saved yet"}</p>
+          {s.missing.length > 0 && <p className="decision-missing">Missing: {s.missing.slice(0, 2).join(", ")}{s.missing.length > 2 ? ` +${s.missing.length - 2}` : ""}</p>}
+        </div>
         <Link className="plate-link" href={`${base}/strategy?section=${s.key}`} aria-label={`Edit ${s.title}`}>Edit</Link>
       </li>;
     })}</ul>
@@ -260,38 +311,65 @@ function DecisionsPlate({ workspace, base, toolbar }: PlateProps) {
 function GapsPlate({ workspace, base, toolbar }: PlateProps) {
   const groups = workspace.completion.sections.filter(s => s.missing.length);
   const total = groups.reduce((n, s) => n + s.missing.length, 0);
-  return <PaperPlate id="gaps" title="Missing inputs" meta={total ? `${total}` : undefined} toolbar={toolbar}>
+  return <PaperPlate id="gaps" title="Missing inputs" meta={total ? `${total}` : undefined} toolbar={toolbar} className={total ? "" : "is-quiet"}>
     {groups.length ? <div className="gap-groups">{groups.map(s => <div key={s.key}><Link className="gap-section" href={`${base}/strategy?section=${s.key}`}>{s.title}<ArrowRight size={14} aria-hidden/></Link>
       <ul>{s.missing.map(m => <li key={m}>{m}</li>)}</ul></div>)}</div>
-      : <p className="plate-empty">All required inputs are filled.</p>}
+      : <p className="plate-empty with-icon"><Check size={15} aria-hidden/>All required inputs are filled.</p>}
   </PaperPlate>;
 }
 function WeekPlate({ workspace, base, toolbar }: PlateProps) {
-  const { update,isPending } = useTaskUpdate(); const [error, setError] = useState<string | null>(null);
+  const { update } = useTaskUpdate(); const [error, setError] = useState<string | null>(null);
+  const { week, tasks } = currentWeek(workspace);
   const active = workspace.tasks.filter(t => !t.archived);
-  const week = [1, 2, 3, 4].find(w => active.some(t => t.week === w && (t.status === "todo" || t.status === "in_progress")));
-  const tasks = week ? active.filter(t => t.week === week) : [];
-  const toggle = async (t: Task, done: boolean) => {
+  const focus = tasks.find(t => t.status === "in_progress") ?? tasks.find(t => t.status === "todo");
+  const rest = tasks.filter(t => t !== focus);
+  const set = async (t: Task, status: Task["status"]) => {
     setError(null);
-    try { await update(t, { status: done ? "done" : "todo" }); } catch (e) { setError(`Couldn't update “${t.title}”. ${(e as Error).message}`); }
+    try { await update(t, { status }); } catch (e) { setError(`Couldn't update “${t.title}”. ${(e as Error).message}`); }
   };
-  return <PaperPlate id="week" title={week ? `This week · Week ${week}` : "This week"} meta={`${workspace.roadmapProgress.done}/${workspace.roadmapProgress.total} done`} toolbar={toolbar}
-    foot={<Link className="plate-link" href={`${base}/roadmap`}>Open roadmap<ArrowRight size={15} aria-hidden/></Link>}>
-    <RoadmapBar progress={workspace.roadmapProgress}/>
+  return <PaperPlate id="week" className="active-work" title={week ? `This week · Week ${week}` : "This week"} meta={week ? weekDays(week) : undefined} toolbar={toolbar}
+    foot={<><RoadmapBar progress={workspace.roadmapProgress}/><Link className="plate-link" href={`${base}/roadmap`}>Open roadmap<ArrowRight size={15} aria-hidden/></Link></>}>
     {error && <p className="field-error" role="alert">{error}</p>}
-    {!active.length ? <p className="plate-empty">No roadmap yet.</p> : !week ? <p className="plate-empty">No open tasks left.</p> :
-      <ul className="check-list">{tasks.map(t => <li key={t.id}><label className={t.status === "done" ? "is-done" : ""}><input type="checkbox" checked={t.status === "done"} disabled={t.status === "skipped" || isPending(t.id)} aria-busy={isPending(t.id)} onChange={e => void toggle(t, e.target.checked)}/><span>{t.title}</span></label></li>)}</ul>}
+    {!active.length ? <div className="focus-empty"><p className="focus-title">No plan yet.</p><p className="muted">Generate a 30-day plan from whatever strategy you have saved.</p><Link className="button small primary" href={`${base}/roadmap`}>Open roadmap</Link></div>
+      : !focus ? <p className="plate-empty">Every open task is done or skipped. Review your evidence and refresh the plan.</p>
+      : <>
+        <div className="focus-task">
+          <span className="label">{focus.status === "in_progress" ? "In progress" : "Focus"}</span>
+          <p className="focus-title">{focus.title}</p>
+          <p className="focus-deliverable">{focus.deliverable}</p>
+          <FocusActions task={focus} onSet={set}/>
+        </div>
+        {rest.length > 0 && <ul className="check-list">{rest.map(t => <WeekCheck key={t.id} task={t} onSet={set}/>)}</ul>}
+      </>}
   </PaperPlate>;
+}
+function FocusActions({ task, onSet }: { task: Task; onSet: (t: Task, s: Task["status"]) => Promise<void> }) {
+  const busy = useTaskPending(task.id);
+  return <div className="focus-actions">
+    {task.status === "todo" && <button type="button" className="button small" disabled={busy} onClick={() => void onSet(task, "in_progress")}>Start</button>}
+    <button type="button" className="button small primary" disabled={busy} aria-busy={busy} onClick={() => void onSet(task, "done")}>{busy ? <><Spinner/>Saving…</> : <><Check size={15} aria-hidden/>Mark done</>}</button>
+  </div>;
+}
+function WeekCheck({ task, onSet }: { task: Task; onSet: (t: Task, s: Task["status"]) => Promise<void> }) {
+  const busy = useTaskPending(task.id);
+  return <li><label className={task.status === "done" ? "is-done" : ""}>
+    <input type="checkbox" checked={task.status === "done"} disabled={busy || task.status === "skipped"} onChange={e => void onSet(task, e.target.checked ? "done" : "todo")}/>
+    <span>{task.title}{task.status === "skipped" && <span className="faint"> · skipped</span>}</span>
+  </label></li>;
 }
 function RisksPlate({ workspace, base, toolbar }: PlateProps) {
   const list = sectionSchemas.assumptions.parse(workspace.sections.find(s => s.key === "assumptions")?.data ?? {}).assumptions.filter(a => a.statement);
-  const high = list.filter(a => a.risk === "high");
-  const shown = high.length ? high : list.filter(a => a.risk === "medium").slice(0, 2);
-  return <PaperPlate id="risks" title="Risk watch" meta={high.length ? `${high.length} high` : undefined} toolbar={toolbar}
+  const order = { high: 0, medium: 1, low: 2 } as const;
+  const sorted = [...list].sort((a, b) => order[a.risk] - order[b.risk]);
+  const top = sorted[0];
+  return <PaperPlate id="risks" className="risk-inset" title="Riskiest belief" meta={list.length ? `${list.length} untested` : undefined} toolbar={toolbar}
     foot={<Link className="plate-link" href={`${base}/strategy?section=assumptions`}>Edit assumptions<ArrowRight size={15} aria-hidden/></Link>}>
-    {shown.length ? <ul className="risk-list">{shown.map((a, i) => <li key={i}><div className="risk-tags"><Badge status={a.risk}/><Badge status="untested"/></div><p>{a.statement}</p>{a.validationMethod && <p className="faint">Test: {a.validationMethod}</p>}</li>)}</ul>
-      : <p className="plate-empty">No assumptions recorded yet.</p>}
-    {!high.length && shown.length > 0 && <p className="field-help">No high-risk assumptions; showing medium.</p>}
+    {top ? <div className="risk-top">
+      <div className="risk-tags"><Badge status={top.risk}/><Badge status="untested"/></div>
+      <p className="risk-statement">{top.statement}</p>
+      {top.validationMethod && <p className="faint risk-method">Test: {top.validationMethod}</p>}
+      {sorted.length > 1 && <p className="field-help">{sorted.length - 1} more untested.</p>}
+    </div> : <p className="plate-empty">No assumptions recorded yet.</p>}
   </PaperPlate>;
 }
 function ChannelsPlate({ workspace, base, toolbar }: PlateProps) {

@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useId, useRef, type ReactNode } from "react";
+import { useEffect, useId, useRef, useSyncExternalStore, type ReactNode } from "react";
 import { AlertCircle, ArrowUpRight, Check, Circle, CircleDashed, FlaskConical, X } from "lucide-react";
 import Link from "next/link";
 
@@ -55,13 +55,15 @@ export function Choice<T extends string>({ label, name, value, options, onChange
       <span>{labels?.[option] ?? option.replaceAll("_", " ")}</span>
     </label>)}</div></fieldset>;
 }
-export function Dialog({ open, onClose, title, children }: { open: boolean; onClose: () => void; title: string; children: ReactNode }) {
+/** Single controlled close path. While `locked` (a request is pending) Escape, backdrop and Close do nothing. */
+export function Dialog({ open, onClose, title, children, locked = false }: { open: boolean; onClose: () => void; title: string; children: ReactNode; locked?: boolean }) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
   useEffect(() => { const dialog = ref.current; if (open && !dialog?.open) dialog?.showModal(); else if (!open && dialog?.open) dialog.close(); }, [open]);
-  return <dialog ref={ref} className="dialog" onCancel={event => { event.preventDefault(); onClose(); }} aria-labelledby={titleId}
-    onClick={e => { if (e.target === ref.current) onClose(); }}>
-    <div className="dialog-head"><h2 id={titleId}>{title}</h2><button type="button" className="icon-button" onClick={onClose} aria-label="Close"><X size={20}/></button></div>
+  const request = () => { if (!locked) onClose(); };
+  return <dialog ref={ref} className="dialog" onCancel={event => { event.preventDefault(); request(); }} aria-labelledby={titleId} aria-busy={locked || undefined}
+    onClick={e => { if (e.target === ref.current) request(); }}>
+    <div className="dialog-head"><h2 id={titleId}>{title}</h2><button type="button" className="icon-button" onClick={request} disabled={locked} aria-label="Close"><X size={20}/></button></div>
     {children}
   </dialog>;
 }
@@ -95,5 +97,9 @@ export function formatTime(iso: string | null) {
 export function SaveState({ saving, dirty, savedAt, failed }: { saving: boolean; dirty: boolean; savedAt: string | null; failed?: boolean }) {
   const text = saving ? "Saving…" : failed ? "Couldn't save" : dirty ? "Unsaved changes" : savedAt ? `Saved · ${formatTime(savedAt)}` : "Not saved yet";
   const tone = saving ? "" : failed ? "danger" : dirty ? "warn" : savedAt ? "ok" : "";
-  return <span className={`save-state ${tone}`} aria-live="polite">{tone === "ok" && <Check size={14} aria-hidden/>}{text}</span>;
+  return <span className={`save-state ${tone}`} aria-live="polite" title={text}>{tone === "ok" && <Check size={14} aria-hidden/>}{tone === "ok" && savedAt ? <span>Saved<span className="save-time"> · {formatTime(savedAt)}</span></span> : text}</span>;
 }
+
+
+const noop = () => () => {};
+export function useHydrated() { return useSyncExternalStore(noop, () => true, () => false); }

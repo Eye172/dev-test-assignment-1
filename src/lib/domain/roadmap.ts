@@ -24,7 +24,7 @@ export function generateRoadmap(startup: Startup, sections: StrategySection[]): 
   const tasks: TaskSuggestion[] = [
     { ruleKey: complete("icp") ? "icp-interviews" : "icp-prepare", week: 1,
       title: complete("icp") ? "Interview five people in your target segment" : "Refine your first buyer persona",
-      deliverable: complete("icp") ? `Five interview notes about ${excerpt(icp.painPoint)}. Record who experiences it, when, and what they use today.` : `A specific buyer, pain point and buying trigger for ${excerpt(startup.customerSegment)} in ${excerpt(startup.targetMarket)}.`,
+      deliverable: complete("icp") ? `Five interview notes testing this recorded pain point: “${excerpt(icp.painPoint)}”. Record who experiences it, when, and what they use today.` : `A specific buyer, pain point and buying trigger for ${excerpt(startup.customerSegment)} in ${excerpt(startup.targetMarket)}.`,
       rationale: complete("icp") ? "Your ICP is documented; interviews can now challenge it." : "Your ICP has missing inputs. A narrower buyer definition makes experiments useful." },
     { ruleKey: complete("value") ? "value-customer-test" : "value-prepare", week: 1,
       title: complete("value") ? "Test your value proposition with customers" : "Write a testable value proposition",

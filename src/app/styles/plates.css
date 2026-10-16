@@ -72,8 +72,14 @@
 .customize-bar .button { border-color: color-mix(in srgb, var(--bg) 35%, transparent); color: var(--bg); }
 .customize-bar .button:hover { background: color-mix(in srgb, var(--bg) 12%, transparent); }
 .customize-bar .button.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.customize-help-phone { display: none; }
 @media (max-width: 767px) {
-  .customize-bar { position: fixed; top: auto; left: 8px; right: 8px; bottom: calc(84px + env(safe-area-inset-bottom)); border-radius: var(--r-lg); margin: 0; }
+  .customize-bar { position: fixed; top: auto; left: 8px; right: 8px; bottom: calc(var(--dock-space) + 8px); border-radius: var(--r-lg); margin: 0; padding: 10px 12px; gap: 6px 8px; }
+  .customize-bar p { flex-basis: 100%; font-size: 0.8125rem; }
+  .customize-help-wide, .customize-reset span { display: none; }
+  .customize-help-phone { display: inline; }
+  .customize-reset { margin-right: auto; width: 44px; padding: 0; }
+  .dashboard.is-editing { padding-bottom: 104px; }
 }
 .plate-frame { position: relative; min-width: 0; }
 .plate-frame.editing > .plate { outline: 1px dashed var(--line-strong); outline-offset: 4px; }
@@ -91,7 +97,10 @@
 .plate-toolbar .sizes button { min-width: 34px; height: 32px; border: 0; border-radius: var(--r-pill); background: transparent; color: var(--muted); font-size: 0.75rem; font-weight: 600; font-family: var(--font-mono); }
 .plate-toolbar .sizes button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
 .instrument .plate-toolbar .sizes button[aria-pressed="true"] { background: var(--inst-ink); color: var(--inst-body); }
-@media (max-width: 767px) { .plate-toolbar .sizes, .plate-toolbar .drag-handle { display: none; } }
+@media (max-width: 767px) {
+  .plate-toolbar .sizes, .plate-toolbar .drag-handle { display: none; }
+  .plate-toolbar .icon-button { width: 44px; height: 44px; min-width: 44px; }
+}
 .hidden-tray { margin-top: var(--s-6); padding: var(--s-4); border: 1px dashed var(--line-strong); border-radius: var(--r-md); }
 .hidden-tray ul { list-style: none; margin: var(--s-3) 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--s-2); }
 .hidden-tray li { display: inline-flex; align-items: center; gap: 8px; padding: 4px 4px 4px 14px; border-radius: var(--r-pill); background: var(--surface-2); font-size: 0.875rem; }
