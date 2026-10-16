@@ -164,9 +164,12 @@ function SectionEditor({ section, index, onDirtyChange, onLive, onNext, onPrev, 
   const dirty = current !== baseline;
   useDirtyGuard(dirty);
   const draftKey = `strategy:${workspace.startup.id}:${section.key}`;
+  // A restored or seeded draft is shown as unsaved; autosave waits until the founder actually edits it.
+  const [restoredAs, setRestoredAs] = useState<string | null>(null);
   useDraftRecovery(draftKey, { data, notes, revision, baseline }, dirty, value => {
     const recovered = z.object({ data: sectionSchemas[section.key], notes: z.string(), revision: z.number().int().nonnegative(), baseline: z.string() }).parse(value);
     setData(recovered.data); setNotes(recovered.notes); setRevision(recovered.revision); setBaseline(recovered.baseline);
+    setRestoredAs(JSON.stringify({ data: recovered.data, notes: recovered.notes }));
     notify("Unsaved section draft restored. Save to keep it in the workspace.");
   });
   useEffect(() => { onDirtyChange(dirty); }, [dirty, onDirtyChange]);
@@ -204,7 +207,7 @@ function SectionEditor({ section, index, onDirtyChange, onLive, onNext, onPrev, 
   }
   // Autosave after a pause in typing. Never retries a failed or conflicting save on its own.
   useEffect(() => {
-    if (!autosave || !dirty || error || !hydrated) return;
+    if (!autosave || !dirty || error || !hydrated || current === restoredAs) return;
     const timer = setTimeout(() => void save(true), autosaveDelay);
     return () => clearTimeout(timer);
   }, [current, autosave, dirty, error, hydrated, saving]); // eslint-disable-line react-hooks/exhaustive-deps
