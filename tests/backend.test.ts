@@ -89,6 +89,14 @@ describe("transparent roadmap rules", () => {
 });
 
 describe("database persistence and reconciliation", () => {
+  it("rolls back failed multi-step writes instead of leaving partial data", async () => {
+    let id = "";
+    await expect(db.transaction(async tx => {
+      id = (await store.createStartup(demoProfile,undefined,tx)).id;
+      await tx.query("INSERT INTO strategy_sections(startup_id,key,data) VALUES($1,'invalid-section','{}')",[id]);
+    })).rejects.toThrow();
+    await expect(store.workspace(id)).rejects.toMatchObject({ status: 404 });
+  });
   it("reopens an on-disk PostgreSQL workspace after the engine is closed", async () => {
     const dir = await mkdtemp(path.join(os.tmpdir(),"orbit-persistence-"));
     let disk: Database | undefined;

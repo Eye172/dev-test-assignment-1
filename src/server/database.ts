@@ -19,6 +19,7 @@ export async function createDatabase(location?: string): Promise<Database> {
   let db: Database;
   if (location?.startsWith("postgres")) {
     const pool = new Pool({ connectionString: location, max: 5, idleTimeoutMillis: 15000, connectionTimeoutMillis: 10000 });
+    pool.on("error", () => console.error("PostgreSQL idle connection interrupted."));
     db = { mode: "postgres", ...pgExecutor(pool), close: () => pool.end(),
       async transaction<T>(fn: (tx: SqlExecutor) => Promise<T>) {
         const client = await pool.connect();
@@ -37,11 +38,13 @@ export async function createDatabase(location?: string): Promise<Database> {
     };
   }
   // Serialize DDL across production instances. PGlite serializes its own transactions.
-  await db.transaction(async tx => {
-    if (db.mode === "postgres") await tx.query("SELECT pg_advisory_xact_lock(4815162342)");
-    // pg's extended protocol cannot prepare multiple statements; run DDL statements separately.
-    for (const statement of schemaSql.split(";").map(s => s.trim()).filter(Boolean)) await tx.query(statement);
-  });
+  try {
+    await db.transaction(async tx => {
+      if (db.mode === "postgres") await tx.query("SELECT pg_advisory_xact_lock(4815162342)");
+      // pg's extended protocol cannot prepare multiple statements; run DDL statements separately.
+      for (const statement of schemaSql.split(";").map(s => s.trim()).filter(Boolean)) await tx.query(statement);
+    });
+  } catch (error) { await db.close().catch(() => {}); throw error; }
   return db;
 }
 const globalDb = globalThis as unknown as { orbitDatabase?: Promise<Database> };
