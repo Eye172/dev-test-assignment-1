@@ -3,6 +3,7 @@ import path from "node:path";
 import { PGlite } from "@electric-sql/pglite";
 import { Pool, type PoolClient, type QueryResultRow } from "pg";
 import { schemaSql } from "./schema";
+import { aiSchemaSql } from "./ai/schema";
 
 export interface SqlExecutor {
   query<T extends QueryResultRow = QueryResultRow>(sql: string, params?: unknown[]): Promise<T[]>;
@@ -42,7 +43,7 @@ export async function createDatabase(location?: string): Promise<Database> {
     await db.transaction(async tx => {
       if (db.mode === "postgres") await tx.query("SELECT pg_advisory_xact_lock(4815162342)");
       // pg's extended protocol cannot prepare multiple statements; run DDL statements separately.
-      for (const statement of schemaSql.split(";").map(s => s.trim()).filter(Boolean)) await tx.query(statement);
+      for (const statement of `${schemaSql}\n${aiSchemaSql}`.split(";").map(s => s.trim()).filter(Boolean)) await tx.query(statement);
     });
   } catch (error) { await db.close().catch(() => {}); throw error; }
   return db;

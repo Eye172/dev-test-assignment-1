@@ -2,6 +2,24 @@ import { test, expect, type APIResponse } from "@playwright/test";
 import type { Startup, StrategySection, Task, Workspace } from "../src/lib/domain/types";
 import { defaultDashboardLayout } from "../src/lib/domain/dashboard";
 
+test("AI HTTP boundary gates private data and saves observations idempotently without leaking through shared exports",async({request})=>{
+  test.skip(!!process.env.E2E_BASE_URL,"The test access code is configured only on the isolated local/CI server.");
+  const startup=await data<Startup>(await request.post("/api/startups",{data:profile}),201);const route=`/api/startups/${startup.id}`;const endpoint=`${route}/ai`;
+  expect((await data<{authorized:boolean;runs:unknown[];evidence:unknown[]}>(await request.get(endpoint)))).toMatchObject({authorized:false,runs:[],evidence:[]});
+  expect((await request.get(`${endpoint}?export=1`)).status()).toBe(401);
+  for(const action of ["create","resume","cancel","apply","evidence"])expect((await request.post(endpoint,{data:{action}})).status()).toBe(401);
+  const unlocked=await request.post(endpoint,{data:{action:"unlock",payload:{code:"ci-studio-code-no-production-access"}}});expect(unlocked.status()).toBe(200);expect(unlocked.headers()["set-cookie"]).toContain("HttpOnly");expect(unlocked.headers()["set-cookie"]).toContain("SameSite=Strict");
+  const payload={requestId:crypto.randomUUID(),taskId:null,kind:"interview",observation:"PRIVATE SYNTHETIC OBSERVATION: three screened managers described a recent incident",interpretation:"inconclusive",sampleSize:5,sourceUrl:"",method:"Screened phone interviews",observedOn:"2026-10-17",limitations:"Convenience sample"};
+  const first=await data<{id:string}>(await request.post(endpoint,{data:{action:"evidence",payload}}),201);const repeated=await data<{id:string}>(await request.post(endpoint,{data:{action:"evidence",payload}}),201);expect(repeated.id).toBe(first.id);
+  expect((await request.post(endpoint,{data:{action:"evidence",payload:{...payload,observation:"Different result with a reused identifier"}}})).status()).toBe(409);
+  const owner=await data<{authorized:boolean;evidence:{id:string}[]}>(await request.get(endpoint));expect(owner.authorized).toBe(true);expect(owner.evidence).toHaveLength(1);
+  const other=await data<Startup>(await request.post("/api/startups",{data:{...profile,name:"Other workspace"}}),201);const otherTask=await data<Task>(await request.post(`/api/startups/${other.id}/tasks`,{data:{title:"Foreign task",deliverable:"No cross-scope access",week:1}}),201);
+  expect((await request.post(endpoint,{data:{action:"evidence",payload:{...payload,requestId:crypto.randomUUID(),taskId:otherTask.id}}})).status()).toBe(404);
+  expect(await(await request.get(`${route}/export`)).text()).not.toContain("PRIVATE SYNTHETIC OBSERVATION");expect(await(await request.get(route)).text()).not.toContain("PRIVATE SYNTHETIC OBSERVATION");
+  const exported=await request.get(`${endpoint}?export=1`);expect(exported.headers()["content-disposition"]).toContain("attachment");expect(await exported.text()).toContain("PRIVATE SYNTHETIC OBSERVATION");
+  await request.post(endpoint,{data:{action:"lock"}});expect((await data<{evidence:unknown[]}>(await request.get(endpoint))).evidence).toEqual([]);expect((await request.get(`${endpoint}?export=1`)).status()).toBe(401);
+});
+
 // Different synthetic data from the public demo exercises the real HTTP boundary.
 const profile = {
   name: "Routecraft acceptance example",description: "Delivery planning for independent neighborhood shops.",

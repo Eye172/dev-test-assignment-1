@@ -2,6 +2,8 @@
 
 Repository: https://github.com/Eye172/dev-test-assignment-1
 
+Current owner expansion (17 October): the real OpenAI specialist backend is in [PR #10](https://github.com/Eye172/dev-test-assignment-1/pull/10), with its frontend/API contract in [AI-BACKEND.md](AI-BACKEND.md). Claude is independently revising the design again. The earlier handover PDF/ZIP below describes the previous release and must be regenerated after the final interface integration; it is not the completed expanded submission.
+
 Delivery source: [main](https://github.com/Eye172/dev-test-assignment-1/tree/main), integrated through [delivery PR #4](https://github.com/Eye172/dev-test-assignment-1/pull/4). The active-work frontend revision and safety reconciliation are recorded in [PR #6](https://github.com/Eye172/dev-test-assignment-1/pull/6); the concrete welcome experiment example is in [PR #7](https://github.com/Eye172/dev-test-assignment-1/pull/7).
 
 Live application: https://orbit-gtm-studio.vercel.app
@@ -24,6 +26,6 @@ Earlier design evaluation is recorded honestly in [INTEGRATION-REVIEW.md](design
 
 Source review: the repository is private. Supply the included source ZIP, or grant the evaluator repository access before relying on the GitHub link. A public demo does not grant source access. This package is prepared for the owner to submit; it has not been sent to an external evaluator.
 
-Known boundaries: explicitly labelled synthetic demo with no authentication; shared links permit viewing/editing. No private Black Orbit access, paid AI dependency, billing or investor dashboard. See README for details.
+Known boundaries: explicitly labelled shared synthetic demo; public links permit viewing/editing. The added paid AI flow has a separate single-owner access gate, not multi-tenant authentication. No private Black Orbit access, payment processing or investor dashboard. See README and AI-BACKEND.md for details.
 
 Deadline stated in the assignment: Saturday, 17 October 2026, 23:59 UTC+5. All links must be independently accessible to the reviewer; clearly disclose any incomplete elements in the final message.

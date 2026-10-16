@@ -7,7 +7,7 @@ export type Completion = { percentage: number; completed: number; total: 5; sect
 export type Task = {
   id: string; startupId: string; ruleKey: string | null; title: string; deliverable: string; rationale: string;
   week: number; status: "todo" | "in_progress" | "done" | "skipped"; notes: string;
-  source: "generated" | "custom"; archived: boolean; edited: boolean; revision: number; createdAt: string; updatedAt: string;
+  source: "generated" | "custom" | "ai"; archived: boolean; edited: boolean; revision: number; createdAt: string; updatedAt: string;
 };
 export type RoadmapProgress = { total: number; done: number; skipped: number; percentage: number };
 export type Workspace = { startup: Startup; sections: StrategySection[]; completion: Completion; tasks: Task[]; roadmapProgress: RoadmapProgress; mode: "demo" };
