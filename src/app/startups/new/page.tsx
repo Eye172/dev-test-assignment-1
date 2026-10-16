@@ -14,7 +14,6 @@ export default function NewStartup() {
         <h1 tabIndex={-1}>Create your startup</h1>
         <p className="lead">Six essentials give your workspace a starting point. You can refine everything later, and your strategy can take shape in any order.</p>
         <div className="plate instrument onboarding-note">
-          <span className="screw tl"/><span className="screw tr"/>
           <div className="screen">
             <p className="inst-row"><span>Required fields</span><strong>6</strong></p>
             <p className="inst-row"><span>Optional</span><strong>website, context</strong></p>

@@ -7,7 +7,7 @@ import { calculateCompletion, fieldLabels, sectionCompletion, sectionTitles } fr
 import { sectionKeys, sectionSchemas, type SectionKey, type StrategyData } from "@/lib/domain/schemas";
 import type { StrategySection, Workspace } from "@/lib/domain/types";
 import { api, ClientError } from "@/lib/client-api";
-import { Badge, Choice, ErrorNotice, Field, SaveState, Spinner, useDirtyGuard } from "./ui";
+import { Badge, Choice, DraftOffer, ErrorNotice, Field, SaveState, Spinner, useDirtyGuard, useDraftRecovery } from "./ui";
 import { spring, useWorkspace } from "./workspace";
 
 const sectionHelp: Record<SectionKey, string> = {
@@ -89,7 +89,6 @@ export function StrategyEditor() {
         </motion.div>
       </AnimatePresence>
       <aside className="plate instrument quick-check" aria-labelledby="qc-title">
-        <span className="screw tl"/><span className="screw tr"/>
         <div className="plate-head"><h2 id="qc-title">Quick check</h2><span className="plate-meta mono">{workspace.completion.completed}/5</span></div>
         <div className="screen">
           <p className="inst-row"><span>{sectionTitles[selected]}</span><strong>{live.complete ? "READY" : `${live.missing.length} MISSING`}</strong></p>
@@ -117,6 +116,8 @@ function SectionEditor({ section, index, onDirtyChange, onLive, onNext, nextTitl
   const form = useRef<HTMLFormElement>(null);
   const dirty = JSON.stringify({ data, notes }) !== baseline;
   useDirtyGuard(dirty);
+  const recovery = useDraftRecovery(`orbit:draft:${workspace.startup.id}:section:${section.key}`, { data, notes }, dirty, revision, { data: section.data, notes: section.notes });
+  function restoreDraft() { const o = recovery.accept(); if (o) { setData(o.value.data); setNotes(o.value.notes); setRevision(o.revision); } }
   useEffect(() => { onDirtyChange(dirty); }, [dirty, onDirtyChange]);
   const completion = sectionCompletion(section.key, data);
   const completionKey = JSON.stringify(completion.missing);
@@ -161,6 +162,7 @@ function SectionEditor({ section, index, onDirtyChange, onLive, onNext, nextTitl
       <Badge status={status}/>
     </div>
     <p className="muted editor-lead">{sectionHelp[section.key]}</p>
+    <DraftOffer offer={recovery.offer} currentRevision={revision} onRestore={restoreDraft} onDiscard={recovery.discard}/>
     <ErrorNotice error={conflict ? "This section changed elsewhere since you opened it. Load the latest version, or copy your draft first." : error}
       onReload={conflict ? () => void reload() : undefined} onRetry={!conflict && error ? () => form.current?.requestSubmit() : undefined}
       onCopy={conflict ? () => void navigator.clipboard.writeText(JSON.stringify({ data, notes }, null, 2)) : undefined}/>
