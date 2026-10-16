@@ -46,3 +46,16 @@ These timings are starting values for browser evaluation, not restrictions from 
 6. Reject generic repeated-card composition if it obscures hierarchy. Reject unusual placement if it makes the next useful action harder to find.
 
 Research is substantial and focused, but this is not a claim of a comprehensive market survey, empirical user study, or completed visual validation. The next meaningful evidence is a working prototype and independent review.
+
+## Independent critic: additional precedents
+
+The critic read these primary documents, without claiming interactive tours or measured animation timing. The main critique is that eight equally prominent plates could create a showroom instead of a personal workspace. The catalog is a capability, not a mandate for equal visual weight.
+
+| Documented precedent | Proposed application | Boundary |
+| --- | --- | --- |
+| [Milanote columns](https://help.milanote.com/en/articles/10478526-columns): grouping, collapse and insertion feedback | Keep each movable panel a meaningful unit; show its destination clearly. A collapsed panel retains its identity and useful count. | Avoid nested dragging and movable individual form fields. |
+| [Apple Freeform scenes](https://support.apple.com/en-ca/guide/freeform/frfm7cc55b64/mac): named views and framing across devices | Optionally compare working presets such as Plan, Execute and Review using existing layout preferences. | Only after required flows pass; no infinite canvas or desktop coordinates carried onto phones. |
+| [Arc Peek](https://resources.arc.net/hc/en-us/articles/19335302900887-Peek-Preview-Sites-From-Pinned-Tabs): contextual preview with expansion | A task's rationale and source decision can open without losing week, filter or scroll context, with a link to the full editor. | No modal chains or parallel editing system; restore focus and protect drafts. |
+| [Teenage Engineering OP-1 guide](https://teenage.engineering/guides/op-1/original/quick-guide): controls paired with visible state | Make the signature readout display five real section states, missing-input counts and actual task progress. Animate action-driven changes. | No decorative knobs, invented telemetry or market-readiness scores. |
+
+Proposed review weights: practical hierarchy 25%, composition/craft 20%, personalization/adaptation 20%, motion 15%, mobile/accessibility 20%. These are internal critique weights, not the assignment's grading rubric. Missing assignment behavior, draft loss, false validation, inaccessible controls and broken direct links are hard failures regardless of visual score.
