@@ -4,7 +4,7 @@
 
 The current dedicated infrastructure is the free `orbit-gtm-studio-db` Neon database in Frankfurt, connected through the existing Vercel integration. `vercel.json` pins functions to Frankfurt (`fra1`) beside that database; static assets remain CDN-served. If relocating the database, update the function region too. See [Vercel's region configuration](https://vercel.com/docs/functions/configuring-functions/region).
 
-The dedicated Vercel project is `orbit-gtm-studio`, with public production alias https://orbit-gtm-studio.vercel.app. The connected deployment branch is currently `gpt/implementation`; this lets the integrated review candidate run while the final PR into `main` remains open. After final integration, change the production branch to `main`. Neon supplies sensitive `DATABASE_URL` automatically for Production/Preview; `DEMO_MODE=true` and `TRUST_PROXY=true` are configured for both. Signed-out health/seed and full hosted flows have been exercised. Recheck after the final frontend revision.
+The dedicated Vercel project is `orbit-gtm-studio`, with public production alias https://orbit-gtm-studio.vercel.app. The release production branch is `main` (Vercel Settings → Environments → Production → Branch Tracking). The temporary implementation-branch deployment is replaced during final release. Neon supplies sensitive `DATABASE_URL` automatically for Production/Preview; `DEMO_MODE=true` and `TRUST_PROXY=true` are configured for both. The integrated revision passes signed-out health/seed checks and 22 hosted HTTP/desktop/phone scenarios.
 
 1. Import `Eye172/dev-test-assignment-1` as a Next.js project. Use Node.js 24, the repository root, `npm ci`, and `npm run build`.
 2. Provision a separate database for synthetic demo data. For Supabase, use the Connect panel's session pooler URI when IPv4 compatibility is required; use the provider's documented TLS settings. Vercel server instances use a small `pg` pool.
@@ -25,6 +25,8 @@ docker compose up --build
 This starts the web app at http://localhost:3000 and PostgreSQL 17 with a persistent named volume. The default `orbit-local-only` database password is a local development fixture; set `POSTGRES_PASSWORD` for a deployed environment. Do not expose the database port to the internet.
 
 The Dockerfile builds Next.js standalone output and runs as a non-root user. Supply `DATABASE_URL`, `DEMO_MODE=true`, and any origin/proxy settings at runtime. Use HTTPS through the hosting platform or reverse proxy. The health check is `/api/health`.
+
+Docker was not available on the development machine, so the image itself was not executed there. The packaged standalone Node server, PostgreSQL 17 CI and actual Vercel/Neon deployment were executed and verified.
 
 ## Operational notes
 

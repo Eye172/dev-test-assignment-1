@@ -2,9 +2,9 @@
 
 Repository: https://github.com/Eye172/dev-test-assignment-1
 
-Integrated source is currently on [gpt/implementation](https://github.com/Eye172/dev-test-assignment-1/tree/gpt/implementation), with [delivery PR #4](https://github.com/Eye172/dev-test-assignment-1/pull/4) open into `main` while the frontend revision is reviewed.
+Delivery source: [main](https://github.com/Eye172/dev-test-assignment-1/tree/main), integrated through [delivery PR #4](https://github.com/Eye172/dev-test-assignment-1/pull/4). The active-work frontend revision and safety reconciliation are recorded in [PR #6](https://github.com/Eye172/dev-test-assignment-1/pull/6).
 
-Live review candidate: https://orbit-gtm-studio.vercel.app
+Live application: https://orbit-gtm-studio.vercel.app
 
 Direct demo startup: https://orbit-gtm-studio.vercel.app/startups/11111111-1111-4111-8111-111111111111
 
@@ -14,9 +14,13 @@ Architecture and integration handover: [HANDOVER.md](HANDOVER.md).
 
 One-page reviewer handover: [PDF](../output/pdf/orbit-gtm-studio-handover.pdf). Regenerate with `python scripts/build-handover.py` (requires ReportLab).
 
-Verified 16 October 2026: 23 domain/SQL/API tests, lint, types and standalone production build pass. [PostgreSQL 17 CI](https://github.com/Eye172/dev-test-assignment-1/actions/runs/38897700897) passes 47 HTTP/desktop/phone scenarios, with one deliberate phone-drag skip. Hosted candidate `a5845e7` reports `ready/postgres/demo` and passes the same 47 scenarios across the original run and seven successful reruns following a machine interruption. No Vercel login is needed on the production alias. The subsequent late-save cleanup fix (`0dd6ccb`) passes sixteen focused desktop/phone checks locally; its deployment verification and the frontend composition/motion revision are pending. This is a review candidate, not final design acceptance.
+Verified 16 October 2026: 23 domain/SQL/API tests, lint, types and standalone production build pass. [PostgreSQL 17 CI](https://github.com/Eye172/dev-test-assignment-1/actions/runs/38943482751) passes 65 HTTP/desktop/phone scenarios without retries, with one deliberate phone pointer-drag skip. The public Vercel/Neon deployment reports ready/postgres/demo and passes 22 selected hosted checks, including the complete six-screen flow at both sizes, data persistence, export, editing, archive/restore, delayed saves/JavaScript, keyboard controls and all accessibility audit states. No Vercel login is needed on the production alias.
 
-Source review: the repository is private. Confirm the evaluator has access before submitting the source link. Do not assume a working public demo grants source access.
+The source ZIP accompanies the submission alongside this one-page PDF and checksums. It is generated from the committed tree and excludes local environment files, databases, dependencies and build output. The packaging step verifies archive integrity, PDF page/link count and credential-shaped content.
+
+Design evaluation is recorded honestly in [INTEGRATION-REVIEW.md](design/INTEGRATION-REVIEW.md): the independent final targeted review found no concrete release blocker and rated the aesthetic result approximately 7.5/10. A more specific welcome experiment preview remains optional refinement. Testing used Chromium desktop/phone emulation, not physical-device performance certification. The provided Docker configuration was not executed on the local machine because Docker was unavailable; the exact standalone Node server and real hosted PostgreSQL flow were executed.
+
+Source review: the repository is private. Supply the included source ZIP, or grant the evaluator repository access before relying on the GitHub link. A public demo does not grant source access. This package is prepared for the owner to submit; it has not been sent to an external evaluator.
 
 Known boundaries: explicitly labelled synthetic demo with no authentication; shared links permit viewing/editing. No private Black Orbit access, paid AI dependency, billing or investor dashboard. See README for details.
 

@@ -2,7 +2,7 @@
 
 This checklist follows the supplied Orbit GTM Studio assignment. A row marked pending has not yet passed the corresponding acceptance gate. Backend evidence is separate from browser or deployed evidence.
 
-Verified on 16 October 2026: `npm run verify` passes (lint, types, 23 domain/SQL/API regressions, production build). [CI run 38940958178](https://github.com/Eye172/dev-test-assignment-1/actions/runs/38940958178) is green for integrated visual candidate `807ae0f` against PostgreSQL 17: 63 HTTP/desktop/phone scenarios pass. One phone pointer-drag case is deliberately skipped because phones use explicit move controls; those are tested. Subsequent profile acknowledgement handling passes its held-read regression on both viewports and local verify; the expanded 66-entry CI run is the next gate. Earlier hosted `a5845e7` passed all 47 then-current scenarios, and later hosted recovery checks passed. The integrated visual revision's public-deployment verification is pending.
+Verified on 16 October 2026: `npm run verify` passes (lint, types, 23 domain/SQL/API regressions, production build). [CI run 38943482751](https://github.com/Eye172/dev-test-assignment-1/actions/runs/38943482751) is green for release code `a354f6a` against PostgreSQL 17: 65 HTTP/desktop/phone scenarios pass without retries. One phone pointer-drag case is deliberately skipped because phones use explicit move controls; those are tested. All 22 selected hosted checks pass on the public Vercel/Neon deployment: HTTP boundaries, both complete six-screen flows, direct URLs/profile edits, custom-task archive/restore, acknowledgement latency, delayed JavaScript, keyboard menus, mobile geometry and the full automated accessibility audit. The public health response is ready/postgres/demo.
 
 | Required behavior | Implementation boundary | Evidence |
 | --- | --- | --- |
@@ -23,14 +23,14 @@ Verified on 16 October 2026: `npm run verify` passes (lint, types, 23 domain/SQL
 | Regeneration does not destroy completed work | Stable rule reconciliation + retained history | Done/custom/edit/archival/idempotence tests pass |
 | Profiles, strategy and roadmap survive refresh | Server PostgreSQL/PGlite persistence | Engine close/reopen and desktop/phone reload tests pass |
 | Loading, empty, validation, error and recovery states | Claude frontend + typed error contract | HTTP errors, empty plan, validation, failed saves, conflicts and shaped loading state reviewed |
-| Responsive desktop/mobile and readable typography | Claude frontend/design | Independent rendered review at 1440 and 390; phone fold, sticky feedback and touch controls pass; final author review open |
-| Environment credentials, synthetic data, no production keys | Server-only DB, env example, demo fixtures | Manual source review; final secret scan pending |
-| Modular schema/routes/integration documentation | src/lib/domain, src/server, docs | Prepared; final code review pending |
+| Responsive desktop/mobile and readable typography | Claude frontend/design | Independent rendered review at 1440 and 390; phone fold, sticky feedback and touch controls pass |
+| Environment credentials, synthetic data, no production keys | Server-only DB, env example, demo fixtures | Server credentials remain masked; committed-source archive excludes local env files and is scanned during packaging |
+| Modular schema/routes/integration documentation | src/lib/domain, src/server, docs | Schema, HTTP contract, revision/mutation paths and delivery setup reviewed; integration tests pass |
 | Optional auth omitted with clear demo labeling | Public synthetic demo | All six routes reviewed; demo label and shared-link disclosure present |
 | No private systems or paid AI required | Independent rule engine and DB | Local tests/migrations/seed work without providers |
 | GitHub source, meaningful commits, sample env | Repository and history | Published implementation branch |
 | Public working demo and seeded direct profile | Vercel + dedicated Neon PostgreSQL | Public alias and fixed seed live; signed-out health confirms ready/postgres/demo; hosted full journeys pass |
-| README and one-page handover | README, docs/HANDOVER.md | Prepared; final URLs/results pending |
+| README and one-page handover | README, docs/HANDOVER.md, output/pdf | Live links, setup and evidence recorded; PDF rendered and visually checked as one page |
 
 ## Additional user-directed quality gates
 
@@ -43,3 +43,5 @@ Browser-proven integration fixes: stable cross-locale timestamp rendering preven
 The subsequent integration adds per-tab recovery across history navigation, original-revision retention for recovered drafts, pending task dismissal protection, acknowledged week-edit updates, guarded status mutations and canonical skipped-task progress bars. Background aggregate reads merge entity revisions so stale responses cannot replace newer acknowledgments. Independent regression cases exercise network latency, failure, conflicts and browser history. Commit `0dd6ccb` limits asynchronous cleanup to the submitted snapshot so an older save cannot clear a newer recovered draft. These checks now pass in the integrated PostgreSQL browser suite. Successful task creation and profile updates also stop waiting for follow-up reads.
 
 Automated accessibility checks cover all six routes, editing/dialog/customization/skipped/share-menu states and nine appearance combinations, with no excluded elements or suppressed rules. Keyboard menu behavior and phone geometry are separately tested. The independent critic's latest assessment is approximately 7.5/10, with no additional concrete motion blocker in the sampled recordings. This judgment does not establish frame-rate performance or WCAG certification. See [the integration review](design/INTEGRATION-REVIEW.md) for evidence and limits.
+
+An earlier CI run (`e394d06`) passed with one retry. Its trace exposed pre-hydration input being combined with a saved value. Release code disables initial form/task controls until their handlers are attached; a held-JavaScript regression covers onboarding, roadmap status and strategy typing. It passes locally, on the public host and in the final clean CI run. This was fixed rather than dismissed as test flakiness.
