@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Plus, X } from "lucide-react";
+import { ArrowRight, Plus, Sparkles, X } from "lucide-react";
 import { z } from "zod";
 import { api, ClientError } from "@/lib/client-api";
 import { startupInputSchema, type StartupInput } from "@/lib/domain/schemas";
@@ -13,6 +13,9 @@ const editable = ["name", "description", "businessModel", "stage", "targetMarket
 type Draft = Pick<StartupInput, (typeof editable)[number]>;
 const blank: Draft = { name: "", description: "", businessModel: "B2B", stage: "Idea", targetMarket: "", customerSegment: "", websiteUrl: "", context: "" };
 const fromStartup = (s: Startup): Draft => Object.fromEntries(editable.map(k => [k, s[k]])) as Draft;
+// A clearly synthetic sample, for reviewers who want to see the flow without inventing a company.
+const sample: Draft = { name: "Harbor pilot — synthetic example", description: "A scheduling assistant that helps small logistics teams plan dock slots and avoid truck waiting fees.",
+  businessModel: "B2B", stage: "MVP", targetMarket: "Kazakhstan", customerSegment: "Operations managers at logistics companies with 20–200 employees", websiteUrl: "", context: "Synthetic demonstration data. Goal: three paid pilots in 30 days." };
 const fieldOrder = ["name", "description", "targetMarket", "customerSegment", "websiteUrl"];
 const fieldNames: Record<string, string> = { name: "Startup name", description: "Description", targetMarket: "Target market", customerSegment: "Customer segment", websiteUrl: "Website" };
 const recoverySchema = z.object({
@@ -61,7 +64,8 @@ export function ProfileForm({ initial, onSaved, onCancel, onReloaded }: { initia
     try {
       const startup = await api<Startup>(initial ? `/api/startups/${initial.id}` : "/api/startups", {
         method: initial ? "PATCH" : "POST",
-        body: JSON.stringify(initial ? { expectedRevision: revision, patch: parsed.data } : parsed.data),
+        // New workspaces follow the device's light or dark setting until the founder picks one.
+        body: JSON.stringify(initial ? { expectedRevision: revision, patch: parsed.data } : { ...parsed.data, preferences: { theme: "system", density: "comfortable", motion: "full", accent: "green", dashboardLayout: null } }),
       });
       setRevision(startup.revision);
       clearSubmittedDraft(draftKey,{ data,custom,revision,baseline });
@@ -105,6 +109,7 @@ export function ProfileForm({ initial, onSaved, onCancel, onReloaded }: { initia
       {invalid.length > 0 && <ul>{invalid.map(k => <li key={k}><a href={`#field-${k}`} onClick={e => { e.preventDefault(); document.getElementById(`field-${k}`)?.focus(); }}>{fieldNames[k]}: {fields[k]}</a></li>)}</ul>}
     </div>}
     <fieldset disabled={saving || !hydrated}>
+      {!initial && <button type="button" className="sample-fill" onClick={() => { setData(sample); setFields({}); setError(null); }}><Sparkles size={15} aria-hidden/>Fill with a synthetic example</button>}
       <Field name="name" label="Startup name" value={data.name} onChange={v => update("name", v)} error={fields.name} required maxLength={120} autoComplete="organization"/>
       <Field name="description" label="Description" value={data.description} onChange={v => update("description", v)} error={fields.description} textarea required maxLength={2000} help="What you build, for whom, and why it matters. Two or three sentences."/>
       <div className="form-columns">

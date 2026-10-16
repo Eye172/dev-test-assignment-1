@@ -3,11 +3,18 @@ import { useEffect, useId, useRef, useSyncExternalStore, type ReactNode } from "
 import { AlertCircle, ArrowUpRight, Check, Circle, CircleDashed, FlaskConical, X } from "lucide-react";
 import Link from "next/link";
 
+/** Our own mark: a dark disc, an open orbit, a core and a satellite on the orbit's open end. */
 export function Mark({ size = 30 }: { size?: number }) {
-  return <svg width={size} height={size} viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M25.4 12.58A10 10 0 1 1 19.42 6.6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/><circle cx="16" cy="16" r="3" fill="currentColor"/><circle cx="25.9" cy="6.1" r="2.75" fill="var(--accent)"/></svg>;
+  return <svg className="mark" width={size} height={size} viewBox="0 0 32 32" fill="none" aria-hidden="true">
+    <circle cx="16" cy="16" r="16" fill="var(--inst-body)"/>
+    <path className="mark-orbit" d="M24.6 11.4A9.6 9.6 0 1 1 19.8 7.2" stroke="var(--inst-ink)" strokeWidth="2.2" strokeLinecap="round"/>
+    <circle cx="16" cy="16" r="3.2" fill="var(--inst-ink)"/>
+    <circle className="mark-sat" cx="23.4" cy="8.6" r="2.6" fill="var(--inst-accent)"/>
+  </svg>;
 }
 export function Brand() {
-  return <Link href="/" className="brand" aria-label="Orbit GTM Studio, home"><Mark/><span className="brand-word">Orbit GTM <span className="muted">Studio</span></span></Link>;
+  // The accessible name starts with the visible words, so voice control users can say what they see.
+  return <Link href="/" className="brand"><Mark/><span className="brand-word">Orbit <span className="brand-gtm">GTM</span></span><span className="sr-only"> Studio, home</span></Link>;
 }
 export function ArrowLink({ href, children, className = "" }: { href: string; children: ReactNode; className?: string }) {
   return <Link href={href} className={`button primary ${className}`}>{children}<ArrowUpRight size={17} aria-hidden/></Link>;
@@ -28,22 +35,24 @@ export function ErrorNotice({ error, onReload, onCopy, onRetry }: { error: Error
     {onReload && <button type="button" className="button small" onClick={onReload}>Load latest</button>}
     {onCopy && <button type="button" className="button small ghost" onClick={onCopy}>Copy my draft</button>}</div>;
 }
-export function Field({ name, label, value, onChange, help, error, required = false, textarea = false, type = "text", placeholder = "", maxLength = 3000, onBlur, autoComplete, list, inputMode }: {
+export function Field({ name, label, value, onChange, help, error, required = false, textarea = false, type = "text", placeholder = "", maxLength = 3000, onBlur, autoComplete, list, inputMode, className = "", children, minRows = 96 }: {
   name: string; label: string; value: string; onChange: (value: string) => void; help?: string; error?: string; required?: boolean; textarea?: boolean;
   type?: string; placeholder?: string; maxLength?: number; onBlur?: () => void; autoComplete?: string; list?: string; inputMode?: "url" | "text";
+  className?: string; children?: ReactNode; minRows?: number;
 }) {
   const ref = useRef<HTMLTextAreaElement>(null);
-  useEffect(() => { const el = ref.current; if (el) { el.style.height = "auto"; el.style.height = `${Math.min(320, Math.max(96, el.scrollHeight + 2))}px`; } }, [value]);
+  useEffect(() => { const el = ref.current; if (el) { el.style.height = "auto"; el.style.height = `${Math.min(420, Math.max(minRows, el.scrollHeight + 2))}px`; } }, [value, minRows]);
   const id = `field-${name}`;
   const describedBy = [help && `${id}-help`, error && `${id}-error`].filter(Boolean).join(" ") || undefined;
   const shared = { id, name, value, placeholder, maxLength, "aria-required": required || undefined, "aria-invalid": !!error || undefined, "aria-describedby": describedBy, onBlur, autoComplete,
     onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => onChange(e.target.value) };
-  return <div className="field">
+  return <div className={`field ${className}`}>
     <label htmlFor={id}>{label}{required && <span className="field-required">Required</span>}</label>
-    {textarea ? <textarea {...shared} ref={ref} rows={3}/> : <input {...shared} type={type} list={list} inputMode={inputMode}/>}
+    {textarea ? <textarea {...shared} ref={ref} rows={minRows < 96 ? 1 : 3}/> : <input {...shared} type={type} list={list} inputMode={inputMode}/>}
     {help && <p className="field-help" id={`${id}-help`}>{help}</p>}
     {error && <p className="field-error" id={`${id}-error`}><AlertCircle size={14} aria-hidden/>{error}</p>}
     {value.length > maxLength * 0.8 && <span className="field-count">{value.length}/{maxLength}</span>}
+    {children}
   </div>;
 }
 export function Choice<T extends string>({ label, name, value, options, onChange, className = "", labels }: {
@@ -56,12 +65,12 @@ export function Choice<T extends string>({ label, name, value, options, onChange
     </label>)}</div></fieldset>;
 }
 /** Single controlled close path. While `locked` (a request is pending) Escape, backdrop and Close do nothing. */
-export function Dialog({ open, onClose, title, children, locked = false }: { open: boolean; onClose: () => void; title: string; children: ReactNode; locked?: boolean }) {
+export function Dialog({ open, onClose, title, children, locked = false, className = "" }: { open: boolean; onClose: () => void; title: string; children: ReactNode; locked?: boolean; className?: string }) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
   useEffect(() => { const dialog = ref.current; if (open && !dialog?.open) dialog?.showModal(); else if (!open && dialog?.open) dialog.close(); }, [open]);
   const request = () => { if (!locked) onClose(); };
-  return <dialog ref={ref} className="dialog" onCancel={event => { event.preventDefault(); request(); }} aria-labelledby={titleId} aria-busy={locked || undefined}
+  return <dialog ref={ref} className={`dialog ${className}`} onCancel={event => { event.preventDefault(); request(); }} aria-labelledby={titleId} aria-busy={locked || undefined}
     onClick={e => { if (e.target === ref.current) request(); }}>
     <div className="dialog-head"><h2 id={titleId}>{title}</h2><button type="button" className="icon-button" onClick={request} disabled={locked} aria-label="Close"><X size={20}/></button></div>
     {children}
@@ -103,3 +112,9 @@ export function SaveState({ saving, dirty, savedAt, failed }: { saving: boolean;
 
 const noop = () => () => {};
 export function useHydrated() { return useSyncExternalStore(noop, () => true, () => false); }
+/** Media query state; false on the server and during hydration. */
+export function useMedia(query: string) {
+  return useSyncExternalStore(
+    listener => { const m = window.matchMedia(query); m.addEventListener("change", listener); return () => m.removeEventListener("change", listener); },
+    () => window.matchMedia(query).matches, () => false);
+}

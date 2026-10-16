@@ -4,7 +4,7 @@ A founder workspace for a go-to-market strategy and a transparent 30-day action 
 
 Independent developer-test implementation for the AI Startify ecosystem. All demonstration content is synthetic. Strategy completeness and completed tasks are not commercial validation.
 
-[Live review candidate](https://orbit-gtm-studio.vercel.app) · [Seeded Fieldnote profile](https://orbit-gtm-studio.vercel.app/startups/11111111-1111-4111-8111-111111111111). The current frontend composition/motion revision is still under review; delivery status is recorded in [SUBMISSION.md](docs/SUBMISSION.md).
+[Live review candidate](https://orbit-gtm-studio.vercel.app) · [Seeded Fieldnote profile](https://orbit-gtm-studio.vercel.app/startups/11111111-1111-4111-8111-111111111111). Delivery status is recorded in [SUBMISSION.md](docs/SUBMISSION.md).
 
 ## Run locally
 
@@ -63,6 +63,17 @@ Five strategy sections: Ideal Customer Profile, Value Proposition, Acquisition C
 
 The roadmap uses predefined rules to generate 8–10 current suggestions depending on saved fields and channels. Every suggestion includes a week, deliverable, rationale and status. Generation reconciles stable rule keys. It preserves statuses, founder edits, custom tasks and completed content; superseded suggestions remain in history. Eight dashboard plates can be rearranged, resized and hidden through validated database-backed preferences; the required summary remains visible.
 
+## Using the workspace
+
+The interface is built as "paper and instruments": a light Black Orbit-inspired canvas (dark by preference) with dark instrument objects. Direction and the review of the previous version: [docs/design/REMAKE.md](docs/design/REMAKE.md).
+
+- **Orbit dial** — inner ring: the five strategy sections (filled when complete, dotted when drafted); outer ring: the 30 plan days lit by finished work; satellite: today's plan day, counted from when the plan was generated. Each ring segment on Overview links to its section.
+- **Strategy** is a writing surface: autosave after a pause in typing (switchable per device; conflicts stop it and ask), a live list of missing inputs that jumps to the field, and optional clearly-labelled synthetic examples with a one-click "Use".
+- **Dashboard** — drag a plate by its grip, drag its right edge to resize (snaps to its allowed sizes), hide plates into a tray, or apply a preset (Default, Focus, Planning, Everything). Rows always fill; every pointer action has a button and keyboard equivalent. Saved in the database.
+- **Roadmap** — a four-week board: drag a task to another week, tick its ring to mark it done, or switch to a compact list. Phones get a stacked timeline.
+- **Ctrl/⌘ K** opens a command menu for every screen, section, open task and action; `G` then `O`/`S`/`D`/`R` switches screens; `?` opens preferences (theme, accent, density, motion).
+- Motion respects the operating-system reduced-motion setting and the workspace "reduced" preference; content is server-rendered and readable before JavaScript.
+
 ## Routes
 
 | Route | Purpose |
@@ -79,7 +90,7 @@ The roadmap uses predefined rules to generate 8–10 current suggestions dependi
 
 The full HTTP route map, inputs and error contract are in [CONTRACT.md](docs/CONTRACT.md). Profile links work directly and after refresh; browser storage is not required to reopen saved work.
 
-Unsaved editor/layout changes have separate per-tab recovery for browser Back/Forward and reload. These recovery copies expire after seven days and retain the original revision, so recovering an old draft cannot silently overwrite a newer database save. Explicit Save/Done persists to PostgreSQL; Cancel/Discard removes the recovery copy. Browser storage being unavailable does not prevent database saves or saved direct links.
+Unsaved editor/layout changes have separate per-tab recovery for browser Back/Forward and reload. These recovery copies expire after seven days and retain the original revision, so recovering an old draft cannot silently overwrite a newer database save. Explicit Save/Done (or strategy autosave) persists to PostgreSQL; Cancel/Discard removes the recovery copy. Autosave never retries after a failure or revision conflict; it shows the same recovery choices as an explicit save. Browser storage being unavailable does not prevent database saves or saved direct links.
 
 ## Verify
 

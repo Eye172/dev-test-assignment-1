@@ -121,6 +121,8 @@ test("founder completes the six-screen flow with real persistence and an exporte
 });
 
 test("failed saves retain drafts and conflicts can load the current version", async ({ page }) => {
+  // Explicit-save path: autosave (a per-device option) is covered by its own scenario below.
+  await page.addInitScript(() => localStorage.setItem("orbit:device:autosave","off"));
   const ws = await copyDemo(page); const id = ws.startup.id;
   await page.goto(`/startups/${id}/strategy?section=icp`);
   const buyer = page.getByLabel(/^Buyer type/);
@@ -323,4 +325,41 @@ test("pointer dragging and keyboard cancellation keep a predictable panel order"
   await expect(page.getByRole("button",{ name: "Customize",exact: true })).toBeVisible();
   await page.reload();
   await expect.poll(order).toEqual(moved);
+});
+
+test("autosave writes a pause in typing without moving focus, and stops on a conflict", async ({ page }) => {
+  const ws = await copyDemo(page); const id = ws.startup.id;
+  await page.goto(`/startups/${id}/strategy?section=pricing`);
+  const price = page.getByLabel(/^Initial price assumption/);
+  await expect(page.getByRole("switch",{ name: "Autosave" })).toBeChecked();
+  const autosaved = page.waitForResponse(r => r.request().method() === "PUT" && r.url().endsWith("/strategy/pricing"));
+  await price.fill("$39 per workspace");
+  expect((await autosaved).status()).toBe(200);
+  await expect(page.getByText(/^Saved ·/)).toBeVisible();
+  await expect(price).toBeFocused();
+  expect((await savedWorkspace(page,id)).sections.find(s => s.key === "pricing")!.data).toMatchObject({ initialPrice: "$39 per workspace" });
+  // A newer external revision turns autosave into an explicit, visible conflict; it never retries over it.
+  const latest = (await savedWorkspace(page,id)).sections.find(s => s.key === "pricing")!;
+  expect((await page.request.put(`/api/startups/${id}/strategy/pricing`,{ data: { expectedRevision: latest.revision,data: { ...latest.data,initialPrice: "$45 from another tab" } } })).ok()).toBe(true);
+  await price.fill("$49 per workspace");
+  await expect(page.getByRole("button",{ name: "Load latest",exact: true })).toBeVisible();
+  await expect(price).toHaveValue("$49 per workspace");
+  expect((await savedWorkspace(page,id)).sections.find(s => s.key === "pricing")!.data).toMatchObject({ initialPrice: "$45 from another tab" });
+  // Turning autosave off is remembered on this device.
+  await page.getByRole("switch",{ name: "Autosave" }).uncheck();
+  await page.reload();
+  await expect(page.getByRole("switch",{ name: "Autosave" })).not.toBeChecked();
+});
+
+test("command menu jumps to a strategy section from the keyboard", async ({ page }) => {
+  const ws = await copyDemo(page);
+  await page.goto(`/startups/${ws.startup.id}`);
+  await expect(page.getByRole("heading",{ name: ws.startup.name,exact: true })).toBeVisible();
+  await page.getByRole("button",{ name: /^Jump to/ }).click();
+  const menu = page.getByRole("dialog",{ name: "Command menu",exact: true });
+  await expect(menu).toBeVisible();
+  await page.keyboard.type("pricing");
+  await page.keyboard.press("Enter");
+  await page.waitForURL(/\/strategy\?section=pricing$/);
+  await expect(page.getByLabel(/^Initial price assumption/)).toBeVisible();
 });
