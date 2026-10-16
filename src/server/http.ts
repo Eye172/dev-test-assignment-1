@@ -26,7 +26,10 @@ export function idFrom(value: string) {
 async function guard(request: Request) {
   const isWrite = !["GET","HEAD","OPTIONS"].includes(request.method);
   const origin = request.headers.get("origin");
-  const expected = process.env.APP_ORIGIN || new URL(request.url).origin;
+  const requestUrl = new URL(request.url);
+  // Next's development Request URL can use localhost even when the browser uses
+  // 127.0.0.1. Host is the actual HTTP destination; never trust forwarded host here.
+  const expected = process.env.APP_ORIGIN || new URL(`${requestUrl.protocol}//${request.headers.get("host") || requestUrl.host}`).origin;
   if (isWrite && origin && origin !== expected) throw new AppError("ORIGIN_MISMATCH", "Open this workspace directly to save changes.", 403);
   const rawIdentity = process.env.TRUST_PROXY === "true" ? (request.headers.get("x-forwarded-for")?.split(",")[0].trim() || "unknown") : "local";
   const identity = createHash("sha256").update(rawIdentity).digest("hex").slice(0,32);

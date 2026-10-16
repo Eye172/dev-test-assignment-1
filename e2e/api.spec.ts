@@ -86,9 +86,9 @@ test("HTTP boundary returns safe actionable errors", async ({ request }) => {
   expect(JSON.stringify(error)).not.toMatch(/postgres:\/\/|stack|password/i);
 });
 
-test("demo copies use independent database identities and do not reset the shared example", async ({ request }) => {
+test("demo copies accept their browser origin and do not reset the shared example", async ({ request, baseURL }) => {
   const shared = await data<Workspace>(await request.get("/api/demo"));
-  const copy = await data<Workspace>(await request.post("/api/demo"),201);
+  const copy = await data<Workspace>(await request.post("/api/demo",{ headers: { origin: new URL(baseURL!).origin } }),201);
   expect(copy.startup.id).not.toBe(shared.startup.id);
   expect(copy.completion.percentage).toBe(100);
   const changed = await data<Startup>(await request.patch(`/api/startups/${copy.startup.id}`,{ data: { expectedRevision: copy.startup.revision,patch: { name: "Independent acceptance copy" } } }));
