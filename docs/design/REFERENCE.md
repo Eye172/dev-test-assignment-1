@@ -95,7 +95,7 @@ Adopt the *family resemblance*, not the brand:
 2. Grotesk display + neutral sans body; uppercase tracked micro-labels for statuses.
 3. Hairline-bordered cards without shadows, 16px radius, 44px controls, pill buttons.
 4. Explicit, honest status vocabulary — and our own rule from the spec: nothing is ever auto-labelled "validated".
-5. Working UI ≠ landing page: drop the continuous orbit animation, scroll reveals and dashed rotated chips inside the app (owner asked for no continuous motion in the working interface). Keep one authored moment on the welcome page.
+5. Working UI ≠ landing page: drop the continuous orbit animation, scroll reveals and dashed rotated chips inside the app (design judgment; the lead's brief relayed "avoid continuous animation in the working interface". See MOTION.md for the corrected attribution). Keep one authored moment on the welcome page.
 
 Do **not** reuse: the Black Orbit / Founder Orbit name or logo, its orbit illustration, page copy, section structure, or font files fetched from their site (we load our own fonts from Google Fonts / `next/font`).
 
@@ -140,7 +140,7 @@ Pattern across the owner's work: **one characterful object per screen, calm ever
 | Idea | Benefit | Usability risk | Verdict |
 |---|---|---|---|
 | Plates arranged around a 3D orbit (as in the reel) inside the app | Memorable | Tilted text hurts readability, spatial nav is slow, poor on mobile | **Welcome page only**, flat 2.5D, static, decorative |
-| Freeform canvas for strategy forms | Feels creative | Forms need linear order, focus order breaks, mobile unusable | **Rejected** (owner also excluded it) |
+| Freeform canvas for strategy forms | Feels creative | Forms need linear order, focus order breaks, mobile unusable | **Rejected** (design judgment; later echoed by the lead) |
 | Reorderable dashboard plates in edit mode | Personal, matches founder priorities | Drag-only is inaccessible; dense packing breaks focus order | **Adopted** with move buttons, keyboard drag, fixed sizes, no dense packing, reset |
 | One dark "instrument plate" per screen (mixed style) | Clear focal readout, ecosystem flavor | Too many dark blocks = noise | **Adopted**, max one per screen |
 | Mono type for readouts and key hints | Precise, owner's taste | Mono as decoration = costume | **Adopted for numbers, codes, shortcuts only** |

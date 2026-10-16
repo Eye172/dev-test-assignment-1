@@ -1,5 +1,7 @@
 # Frontend design specification — Orbit GTM Studio
 
+> **Update (implementation):** motion rules and deliberate differences from this spec (dock navigation, mandatory dashboard summary, in-house drag, week bands) are in [MOTION.md](MOTION.md), which supersedes the motion cap below.
+
 Owner: Claude (design) · Implementer: GPT (lead) · Status: proposal for lead review · 2026-10-16
 
 Evidence base: [REFERENCE.md](REFERENCE.md). Data/API truth: [../CONTRACT.md](../CONTRACT.md) — this spec never changes the contract; where a UI idea needs data the contract lacks, it is marked **(needs contract)** and is optional.
