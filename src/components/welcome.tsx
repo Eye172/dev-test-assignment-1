@@ -42,11 +42,11 @@ export function OrbitVisual() {
   };
   return <div className="orbit-visual" aria-hidden>
     <svg className="orbit-ring" viewBox="-260 -200 520 400">
-      <ellipse cx="0" cy="0" rx="200" ry="150" fill="none" stroke="var(--line-strong)" strokeWidth="1" strokeDasharray="2 6"/>
+      <path d="M 173.2 -75 A 200 150 0 1 1 100 -129.9" fill="none" stroke="var(--line-strong)" strokeWidth="1" strokeDasharray="2 6"/>
       <circle cx="0" cy="0" r="7" fill="var(--ink)"/>
       <motion.circle r="7" fill="var(--accent)"
         initial={reduce ? { cx: 228, cy: -160 } : { cx: -200, cy: 0, opacity: 0 }}
-        animate={reduce ? undefined : { cx: [-200, -120, 60, 186, 228], cy: [0, -120, -146, -58, -160], opacity: [0, 1, 1, 1, 1] }}
+        animate={reduce ? undefined : { cx: [-200, -100, 0, 141, 228], cy: [0, -130, -150, -106, -160], opacity: [0, 1, 1, 1, 1] }}
         transition={{ duration: 1.1, delay: 0.35, ease: [0.23, 1, 0.32, 1] }}/>
     </svg>
     {plates.map((p, i) => <motion.div key={p.name} className="orbit-plate" style={{ left: `calc(50% + ${p.x}px)`, top: `calc(50% + ${p.y}px)`, rotate: p.r }} {...settle(i)}>

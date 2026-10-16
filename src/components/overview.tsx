@@ -37,7 +37,7 @@ export function Overview() {
           <SectionSegments workspace={workspace}/>
         </div>
         <p className="inst-row" style={{ marginTop: 12 }}><span><span className={`led ${roadmapProgress.total ? "" : "off"}`}/> Roadmap</span><strong>{roadmapProgress.done}/{roadmapProgress.total} done</strong></p>
-        <div className="plate-foot"><Link className="plate-link" href={`${base}/strategy?section=${firstGap}`}>Continue strategy<ArrowRight size={15} aria-hidden/></Link></div>
+        <div className="plate-foot"><Link className="plate-link" href={`${base}/strategy?section=${firstGap}`}>{completion.completed === 5 ? "Review strategy" : "Continue strategy"}<ArrowRight size={15} aria-hidden/></Link></div>
       </section>
 
       <section className="plate next-plate" data-size="M" aria-labelledby="next-title">

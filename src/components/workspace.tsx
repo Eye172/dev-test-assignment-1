@@ -6,7 +6,7 @@ import { AnimatePresence, MotionConfig, motion } from "motion/react";
 import { ArrowDownToLine, Check, Compass, LayoutGrid, Link2, Orbit, Route, Settings2, X } from "lucide-react";
 import { api } from "@/lib/client-api";
 import type { Preferences, Startup, Workspace } from "@/lib/domain/types";
-import { Brand, Choice, Dialog, ErrorNotice } from "./ui";
+import { Brand, Choice, Dialog, ErrorNotice, confirmLeave } from "./ui";
 
 type WorkspaceContext = {
   workspace: Workspace;
@@ -64,7 +64,7 @@ export function WorkspaceShell({ initial, children }: { initial: Workspace; chil
       if (prefix) {
         prefix = false;
         const route = ({ o: base, s: `${base}/strategy`, d: `${base}/dashboard`, r: `${base}/roadmap` } as Record<string, string>)[e.key.toLowerCase()];
-        if (route) { e.preventDefault(); router.push(route); }
+        if (route) { e.preventDefault(); if (confirmLeave()) router.push(route); }
       } else if (e.key === "g") { prefix = true; clearTimeout(timer); timer = setTimeout(() => { prefix = false; }, 1200); }
       else if (e.key === "?") setPreferencesOpen(true);
     };
@@ -122,7 +122,7 @@ export function WorkspaceShell({ initial, children }: { initial: Workspace; chil
           <a className="dock-utility" href={`/api/startups/${workspace.startup.id}/export`} aria-label="Export workspace as JSON" title="Export JSON" download><ArrowDownToLine size={18}/></a>
         </nav>
         <Dialog open={preferencesOpen} onClose={() => setPreferencesOpen(false)} title="Workspace preferences">
-          <p className="muted">Saved with this startup. Your device's reduced-motion setting is always respected.</p>
+          <p className="muted">Saved with this startup. Your device’s reduced-motion setting is always respected.</p>
           <fieldset disabled={saving} className="preference-fields">
             <Choice label="Appearance" name="theme" value={preferences.theme} options={["dark", "light", "system"] as const} onChange={theme => void savePreferences({ theme }).catch(() => {})}/>
             <Choice label="Accent" name="accent" value={preferences.accent} options={["green", "lime", "blue"] as const} onChange={accent => void savePreferences({ accent }).catch(() => {})}/>

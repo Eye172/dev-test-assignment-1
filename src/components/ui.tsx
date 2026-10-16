@@ -66,16 +66,24 @@ export function Dialog({ open, onClose, title, children }: { open: boolean; onCl
   </dialog>;
 }
 export function Spinner() { return <span className="spinner" aria-hidden/>; }
+/* One draft-protection mechanism shared by in-app links, keyboard shortcuts and page unload. */
+const dirtySources = new Set<symbol>();
+export function hasUnsavedChanges() { return dirtySources.size > 0; }
+export function confirmLeave() { return !hasUnsavedChanges() || window.confirm("You have unsaved changes. Leave without saving?"); }
 export function useDirtyGuard(dirty: boolean) {
   useEffect(() => {
     if (!dirty) return;
+    const token = Symbol("draft");
+    dirtySources.add(token);
     const beforeUnload = (event: BeforeUnloadEvent) => { event.preventDefault(); };
     const click = (event: MouseEvent) => {
       const link = (event.target as Element).closest("a[href]") as HTMLAnchorElement | null;
-      if (link && link.origin === location.origin && link.pathname !== location.pathname && !window.confirm("You have unsaved changes. Leave without saving?")) { event.preventDefault(); event.stopPropagation(); }
+      if (!link || link.target === "_blank" || link.hasAttribute("download") || link.origin !== location.origin) return;
+      if (link.pathname === location.pathname && link.search === location.search) return;
+      if (!window.confirm("You have unsaved changes. Leave without saving?")) { event.preventDefault(); event.stopPropagation(); }
     };
     window.addEventListener("beforeunload", beforeUnload); document.addEventListener("click", click, true);
-    return () => { window.removeEventListener("beforeunload", beforeUnload); document.removeEventListener("click", click, true); };
+    return () => { dirtySources.delete(token); window.removeEventListener("beforeunload", beforeUnload); document.removeEventListener("click", click, true); };
   }, [dirty]);
 }
 export function formatTime(iso: string | null) {
