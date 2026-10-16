@@ -85,7 +85,7 @@ export class Store {
       const keys = suggestions.map(s => s.ruleKey);
       for (const old of previous) {
         const archived = !keys.includes(old.ruleKey!);
-        if (old.archived !== archived) await tx.query("UPDATE roadmap_tasks SET archived=$2,revision=revision+1,updated_at=now() WHERE id=$1", [old.id,archived]);
+        if (old.archived !== archived && !(old.edited && old.archived && !archived)) await tx.query("UPDATE roadmap_tasks SET archived=$2,revision=revision+1,updated_at=now() WHERE id=$1", [old.id,archived]);
       }
       for (const suggestion of suggestions) {
         const old = previous.find(t => t.ruleKey === suggestion.ruleKey);

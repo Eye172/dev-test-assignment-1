@@ -8,6 +8,8 @@ export const preferencesSchema = z.object({
   density: z.enum(["comfortable", "compact"]).default("comfortable"),
   motion: z.enum(["full", "reduced"]).default("full"),
   accent: z.enum(["green", "lime", "blue"]).default("green"),
+  panelOrder: z.array(z.enum(["strategy", "next", "risk", "roadmap"])).length(4).refine(v => new Set(v).size === 4, "Each panel must appear once.").default(["strategy", "next", "risk", "roadmap"]),
+  workspaceLayout: z.enum(["canvas", "list"]).default("canvas"),
 }).strict();
 export const startupInputSchema = z.object({
   name: z.string().trim().min(1, "Give your startup a name.").max(120),
@@ -19,7 +21,7 @@ export const startupInputSchema = z.object({
   websiteUrl: z.union([z.literal(""), z.url().refine(v => /^https?:\/\//i.test(v), "Use an http or https website URL.")]).default(""),
   context: text(5000),
   customFields: z.record(z.string().trim().min(1).max(80), z.string().max(1000)).refine(v => Object.keys(v).length <= 12, "Keep up to 12 custom fields.").default({}),
-  preferences: preferencesSchema.default({ theme: "dark", density: "comfortable", motion: "full", accent: "green" }),
+  preferences: preferencesSchema.default({ theme: "dark", density: "comfortable", motion: "full", accent: "green", panelOrder: ["strategy", "next", "risk", "roadmap"], workspaceLayout: "canvas" }),
 }).strict();
 export const startupPatchSchema = startupInputSchema.partial().strict().refine(v => Object.keys(v).length > 0, "No changes provided.");
 export const sectionSchemas = {
