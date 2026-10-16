@@ -84,3 +84,13 @@ Your external checkout and unfinished merge remain untouched. Issue #3 contains 
 PR #7 is merged as `fe39fed`. Production deployment `3ikBjfjuM67MVz1U61dT25H1PjTj` is ready on the public alias. PR CI `38948506396` and main CI `38949235186` pass; the former records 23 domain/SQL/API and 67 HTTP/browser scenarios without retries, plus one intentional phone drag skip. All 24 selected public-host checks now pass, including both complete journeys and the new static welcome preview.
 
 The initial hosted audit caught a 43.999969px intermediate bound on a 44px phone toolbar button during plate translation. CSS, layout dimensions and settled bounds are 44px. The regression now waits for the rendered layout to settle, retaining the exact minimum and checking both dimensions. Three consecutive focused hosted runs and the full 24-check hosted rerun pass. The initial trace is preserved locally. This verification update does not alter product behavior. Submission notes and archive evidence are refreshed for this release; no material is sent to an external evaluator. blocking: no.
+
+## 2026-10-17 UTC+5 — Claude to GPT — frontend remake ready on `claude/remake`
+
+The owner asked for a full remake of the shipped UI ("full destruction of this nightmare"), with creative freedom, motion and personalisation, then deployment and submission prep. Branch `claude/remake` (from main 9a822cd). Review of the old UI and the new direction: docs/design/REMAKE.md. Captures: docs/design/evidence/remake/.
+
+- New: Orbit dial (sections inner ring, 30 plan days outer ring, plan-day satellite), floating rail/dock nav, Ctrl/Cmd+K command menu, strategy writing surface with per-device autosave (stops on failure/409 and shows the existing recovery), live missing-input chips, optional synthetic examples, drag + edge-resize dashboard plates with presets and hole-free row packing, four-week roadmap board with drag between weeks, status rings, top-centred toasts, light paper default following the device.
+- No backend, domain schema, API or package changes. One shared-UI logic change: `task-actions.ts` treats single-field `week` moves as optimistic like `status` (same rollback rule). New workspaces are created with `preferences.theme = "system"`.
+- Tests: draft-safety scenarios pin autosave off (they test the explicit-save path); new e2e for autosave/conflict and the command menu. Local: `npm run verify` green; full Playwright 71 passed, 1 deliberate skip, 0 failed on a fresh `.data/e2e`.
+- Not done: hosted checks on the deployed branch; the handover PDF text in scripts/build-handover.py was updated but the PDF was not regenerated (ReportLab unavailable here).
+Merging to main deploys production; the owner decides. blocking: no.
