@@ -79,7 +79,7 @@ test("strategy feedback and phone customization leave their controls usable", as
   expect(feedback && save).toBeTruthy();
   expect(feedback!.y + feedback!.height <= save!.y || feedback!.y >= save!.y + save!.height || feedback!.x + feedback!.width <= save!.x || feedback!.x >= save!.x + save!.width).toBe(true);
   if (isMobile) {
-    await expect(page.locator(".editor-footer .save-state")).toHaveText("Saved");
+    await expect(page.locator(".editor-footer .save-state")).toHaveText("Saved",{ useInnerText: true });
     await page.getByRole("navigation",{ name: "Workspace",exact: true }).getByRole("link",{ name: "Dashboard",exact: true }).click();
     await page.getByRole("button",{ name: "Customize",exact: true }).click();
     const toolbar = page.locator(".plate-toolbar").first();
