@@ -1,0 +1,40 @@
+/* A recorded hypothesis joins its suggested task. Every word is visible before JavaScript. */
+.experiment-preview { margin: 0; min-width: 0; padding: 8px 0; }
+.experiment-preview figcaption { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; margin: 0 0 24px 32px; font-size: 0.8125rem; color: var(--muted); }
+.experiment-preview figcaption > :first-child { font-weight: 600; color: var(--ink); }
+.preview-input, .preview-task { border: 1px solid var(--line-strong); border-radius: var(--r-lg); padding: clamp(20px, 2.5vw, 28px); }
+.preview-input { margin-left: 32px; background: var(--surface); rotate: -2deg; transform-origin: 12px 100%; animation: preview-source 420ms var(--ease-out) both; }
+.preview-heading { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
+.preview-untested { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; font-size: 0.75rem; color: var(--warn); }
+.preview-input blockquote { margin: 18px 0 12px; font-family: var(--font-display); font-weight: 500; font-size: clamp(1.2rem, 2vw, 1.5rem); line-height: 1.3; letter-spacing: -0.015em; }
+.preview-buyer { font-size: 0.8125rem; color: var(--muted); max-width: 42ch; }
+.preview-connection { display: flex; align-items: center; gap: 8px; min-height: 76px; margin: 0 20px 0 36px; }
+.preview-connection svg { width: 64px; height: 54px; flex: none; overflow: visible; }
+.preview-connection path { stroke: var(--accent-ink); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1; animation: preview-join 420ms 80ms var(--ease-out) both; }
+.preview-connection p { max-width: 36ch; color: var(--muted); font-size: 0.8125rem; line-height: 1.45; }
+.preview-task { position: relative; margin-right: 32px; background: var(--inst-body); border-color: color-mix(in srgb, var(--accent) 32%, var(--line)); animation: preview-task 440ms 140ms var(--ease-out) both; }
+.preview-week { padding: 3px 9px; border-radius: var(--r-pill); background: var(--accent-soft); color: var(--accent-ink); font-size: 0.75rem; font-weight: 600; white-space: nowrap; }
+.preview-task h2 { margin: 18px 0 20px; font-size: clamp(1.375rem, 2.1vw, 1.75rem); line-height: 1.16; max-width: 28ch; }
+.preview-evidence { padding-top: 16px; border-top: 1px solid var(--line); display: grid; gap: 8px; }
+.preview-evidence p { color: var(--muted); font-size: 0.875rem; line-height: 1.5; }
+@keyframes preview-source { from { transform: translateY(6px); } to { transform: translateY(0); } }
+@keyframes preview-join { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+@keyframes preview-task { from { transform: translate(8px, 12px); } to { transform: translate(0, 0); } }
+@media (max-width: 1023px) {
+  .welcome-hero { gap: 40px; padding: 48px 0; }
+  .welcome-copy h1 { max-width: none; font-size: clamp(2.5rem, 6.6vw, 4rem); }
+  .welcome-copy .lead { max-width: 52ch; }
+  .experiment-preview { width: min(100%, 640px); }
+  .preview-input { rotate: 0deg; }
+}
+@media (max-width: 599px) {
+  .welcome-hero { gap: 32px; padding: 36px 0 40px; }
+  .welcome-copy .lead { margin-top: 20px; font-size: 1rem; }
+  .welcome-actions { margin-top: 24px; }
+  .experiment-preview figcaption { margin-left: 0; margin-bottom: 16px; }
+  .preview-input, .preview-task { margin: 0; }
+  .preview-input blockquote { font-size: 1.25rem; }
+  .preview-connection { margin-left: 16px; margin-right: 8px; min-height: 72px; }
+  .preview-task h2 { font-size: 1.5rem; }
+}
+@media (prefers-reduced-motion: reduce) { .experiment-preview * { animation: none !important; } }

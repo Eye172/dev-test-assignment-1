@@ -9,7 +9,7 @@ function channelKey(name: string): string {
   const normalized = name.trim().toLowerCase();
   return `channel:${Array.from(normalized).map(c => c.codePointAt(0)!.toString(16)).join("-")}`;
 }
-export function generateRoadmap(startup: Startup, sections: StrategySection[]): TaskSuggestion[] {
+export function generateRoadmap(startup: Pick<Startup, "customerSegment" | "targetMarket">, sections: StrategySection[]): TaskSuggestion[] {
   const completion = calculateCompletion(sections);
   const complete = (key: string) => completion.sections.find(s => s.key === key)!.complete;
   const get = (key: StrategySection["key"]) => sections.find(s => s.key === key)?.data ?? emptySection(key).data;

@@ -123,10 +123,6 @@
 .save-state.ok svg { animation: tick-in 260ms var(--ease-out); }
 @keyframes tick-in { from { transform: scale(0.4); opacity: 0; } }
 
-/* Welcome settle: CSS-only so it plays at first paint. */
-.settle { animation: settle 520ms cubic-bezier(0.23, 1, 0.32, 1) both; animation-delay: calc(80ms + var(--i, 0) * 45ms); }
-@keyframes settle { from { opacity: 0; transform: translateY(10px); } }
-@media (max-width: 1023px) { .settle { animation: none; } }
 @media (max-width: 599px) { .decision-text { -webkit-line-clamp: 1; } .decision-list li { padding: 10px 0; } }
 @media (max-width: 599px) { .week-list a { white-space: normal; } .week-list li { align-items: start; } .week-list .status-dot { margin-top: 7px; } }
 /* In Customize mode plate content is a preview, not a control surface. */
