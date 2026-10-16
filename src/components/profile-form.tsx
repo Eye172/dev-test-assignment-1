@@ -5,7 +5,7 @@ import { ArrowRight, Plus, X } from "lucide-react";
 import { api, ClientError } from "@/lib/client-api";
 import { startupInputSchema, type StartupInput } from "@/lib/domain/schemas";
 import type { Startup, Workspace } from "@/lib/domain/types";
-import { Choice, ErrorNotice, Field, Spinner, useDirtyGuard } from "./ui";
+import { Choice, DraftOffer, ErrorNotice, Field, Spinner, useDirtyGuard, useDraftRecovery } from "./ui";
 
 const editable = ["name", "description", "businessModel", "stage", "targetMarket", "customerSegment", "websiteUrl", "context"] as const;
 type Draft = Pick<StartupInput, (typeof editable)[number]>;
@@ -28,6 +28,8 @@ export function ProfileForm({ initial, onSaved, onCancel }: { initial?: Startup;
   const summary = useRef<HTMLDivElement>(null);
   const dirty = JSON.stringify({ data, custom }) !== baseline;
   useDirtyGuard(dirty);
+  const recovery = useDraftRecovery(`orbit:draft:${initial?.id ?? "new"}:profile`, { data, custom }, dirty, revision, JSON.parse(baseline) as { data: Draft; custom: [string, string][] });
+  function restoreDraft() { const o = recovery.accept(); if (o) { setData(o.value.data); setCustom(o.value.custom); if (initial) setRevision(o.revision); } }
 
   // Focus the error summary after it has rendered.
   useEffect(() => { if (focusToken) summary.current?.focus(); }, [focusToken]);
@@ -83,6 +85,7 @@ export function ProfileForm({ initial, onSaved, onCancel }: { initial?: Startup;
   const conflict = error instanceof ClientError && error.status === 409;
   const invalid = fieldOrder.filter(k => fields[k]);
   return <form onSubmit={save} ref={form} noValidate className="profile-form">
+    <DraftOffer offer={recovery.offer} currentRevision={revision} onRestore={restoreDraft} onDiscard={recovery.discard} what={initial ? "profile edit" : "startup profile"}/>
     {error && <div ref={summary} tabIndex={-1} className="error-summary" role="alert">
       <ErrorNotice error={conflict ? "This profile changed in another tab or by someone else. Load the latest version, or copy your draft first." : error}
         onReload={conflict ? () => void loadLatest() : undefined}

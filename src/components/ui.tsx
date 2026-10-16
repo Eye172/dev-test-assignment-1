@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useId, useRef, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { AlertCircle, ArrowUpRight, Check, Circle, CircleDashed, FlaskConical, X } from "lucide-react";
 import Link from "next/link";
 
@@ -55,13 +55,15 @@ export function Choice<T extends string>({ label, name, value, options, onChange
       <span>{labels?.[option] ?? option.replaceAll("_", " ")}</span>
     </label>)}</div></fieldset>;
 }
-export function Dialog({ open, onClose, title, children }: { open: boolean; onClose: () => void; title: string; children: ReactNode }) {
+/** Single controlled close path. While `locked` (a request is pending) Escape, backdrop and Close do nothing. */
+export function Dialog({ open, onClose, title, children, locked = false }: { open: boolean; onClose: () => void; title: string; children: ReactNode; locked?: boolean }) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
   useEffect(() => { const dialog = ref.current; if (open && !dialog?.open) dialog?.showModal(); else if (!open && dialog?.open) dialog.close(); }, [open]);
-  return <dialog ref={ref} className="dialog" onCancel={event => { event.preventDefault(); onClose(); }} aria-labelledby={titleId}
-    onClick={e => { if (e.target === ref.current) onClose(); }}>
-    <div className="dialog-head"><h2 id={titleId}>{title}</h2><button type="button" className="icon-button" onClick={onClose} aria-label="Close"><X size={20}/></button></div>
+  const request = () => { if (!locked) onClose(); };
+  return <dialog ref={ref} className="dialog" onCancel={event => { event.preventDefault(); request(); }} aria-labelledby={titleId} aria-busy={locked || undefined}
+    onClick={e => { if (e.target === ref.current) request(); }}>
+    <div className="dialog-head"><h2 id={titleId}>{title}</h2><button type="button" className="icon-button" onClick={request} disabled={locked} aria-label="Close"><X size={20}/></button></div>
     {children}
   </dialog>;
 }
@@ -96,4 +98,51 @@ export function SaveState({ saving, dirty, savedAt, failed }: { saving: boolean;
   const text = saving ? "Saving…" : failed ? "Couldn't save" : dirty ? "Unsaved changes" : savedAt ? `Saved · ${formatTime(savedAt)}` : "Not saved yet";
   const tone = saving ? "" : failed ? "danger" : dirty ? "warn" : savedAt ? "ok" : "";
   return <span className={`save-state ${tone}`} aria-live="polite">{tone === "ok" && <Check size={14} aria-hidden/>}{text}</span>;
+}
+
+/* Per-tab draft recovery. Browser Back/Forward and reloads bypass navigation guards, so dirty drafts are
+   mirrored to sessionStorage (this tab only, never sent anywhere) and offered back when the editor mounts again.
+   A restored draft keeps the revision it was based on, so saving it over newer data raises the normal conflict.
+   Storage is read through useSyncExternalStore: the server snapshot is empty, so hydration never mismatches. */
+type StoredDraft<T> = { value: T; revision: number; at: number; owner: string };
+const draftListeners = new Set<() => void>();
+const notifyDrafts = () => draftListeners.forEach(l => l());
+const subscribeDrafts = (l: () => void) => { draftListeners.add(l); return () => { draftListeners.delete(l); }; };
+const readRaw = (key: string) => { try { return sessionStorage.getItem(key); } catch { return null; } };
+const noop = () => () => {};
+export function useHydrated() { return useSyncExternalStore(noop, () => true, () => false); }
+export function useHasDraft(key: string) { return useSyncExternalStore(subscribeDrafts, () => readRaw(key) !== null, () => false); }
+export function clearDraft(key: string) { try { sessionStorage.removeItem(key); } catch { /* storage unavailable */ } notifyDrafts(); }
+function writeDraft(key: string, draft: StoredDraft<unknown>) { try { sessionStorage.setItem(key, JSON.stringify(draft)); } catch { /* storage full or blocked */ } notifyDrafts(); }
+export function useDraftRecovery<T>(key: string, value: T, dirty: boolean, revision: number, baseline: T) {
+  const [owner] = useState(() => Math.random().toString(36).slice(2));
+  const [decided, setDecided] = useState(false);
+  const hydrated = useHydrated();
+  const raw = useSyncExternalStore(subscribeDrafts, () => readRaw(key), () => null);
+  let stored: StoredDraft<T> | null = null;
+  try { stored = raw ? JSON.parse(raw) as StoredDraft<T> : null; } catch { stored = null; }
+  // Offer only a draft left by an earlier editor instance that differs from what is saved now.
+  const offer = !decided && stored && stored.owner !== owner && JSON.stringify(stored.value) !== JSON.stringify(baseline) ? stored : null;
+  const serialized = JSON.stringify(value);
+  const hasOffer = offer !== null;
+  // Mirror the draft when it changes. The stored value is deliberately not a dependency:
+  // this effect writes it, so depending on it would loop.
+  useEffect(() => {
+    if (!hydrated || hasOffer) return;
+    if (dirty) writeDraft(key, { value: JSON.parse(serialized), revision, at: Date.now(), owner });
+    else if (readRaw(key) !== null) clearDraft(key);
+  }, [hydrated, hasOffer, dirty, key, serialized, revision, owner]);
+  return {
+    offer,
+    accept: () => { setDecided(true); return offer; },
+    discard: () => { setDecided(true); clearDraft(key); },
+  };
+}
+export function DraftOffer({ offer, currentRevision, onRestore, onDiscard, what = "draft" }: { offer: { at: number; revision: number } | null; currentRevision: number; onRestore: () => void; onDiscard: () => void; what?: string }) {
+  if (!offer) return null;
+  const time = `${new Date(offer.at).toISOString().slice(11, 16)} UTC`;
+  return <div className="draft-offer" role="region" aria-label="Unsaved draft found">
+    <p><strong>Unsaved {what} found in this tab</strong> · last edited {time}.{offer.revision !== currentRevision && " The saved version changed since. Saving the restored draft will ask you to resolve the conflict."}</p>
+    <div className="draft-offer-actions"><button type="button" className="button small primary" onClick={onRestore}>Restore draft</button><button type="button" className="button small ghost" onClick={onDiscard}>Discard</button></div>
+  </div>;
 }
