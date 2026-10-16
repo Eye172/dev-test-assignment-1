@@ -146,6 +146,39 @@ test("failed saves retain drafts and conflicts can load the current version", as
   await saveSection(page,"icp");
 });
 
+test("a profile can be revised with personal context and reopened by its shared URL", async ({ page, context }) => {
+  const ws = await copyDemo(page); const id = ws.startup.id;
+  const profilePath = `/startups/${id}`;
+  await page.goto(profilePath);
+  await page.getByRole("button",{ name: "Edit profile",exact: true }).click();
+  await page.getByLabel(/^Startup name/).fill("Fieldnote — founder's revised pilot");
+  await page.getByLabel(/^Target country or market/).fill("Kazakhstan and nearby markets");
+  await page.getByLabel(/^Website \(optional\)/).fill("example.com/pilot");
+  await page.getByLabel(/^Startup name/).click();
+  if (!await page.getByLabel(/^Anything the plan should consider/).isVisible()) await page.getByText("More context (optional)",{ exact: true }).click();
+  await page.getByLabel(/^Anything the plan should consider/).fill("One founder; two afternoons available each week.");
+  await page.getByRole("button",{ name: "Add field",exact: true }).click();
+  const customNames = page.getByRole("textbox",{ name: /^Custom field \d+ name$/ });
+  const customValues = page.getByRole("textbox",{ name: /^Custom field \d+ value$/ });
+  await customNames.last().fill("Personal success criterion");
+  await customValues.last().fill("Four observed conversations before building more");
+  const saved = page.waitForResponse(r => r.request().method() === "PATCH" && r.url().endsWith(`/api/startups/${id}`));
+  await page.getByRole("button",{ name: "Save profile",exact: true }).click();
+  expect((await saved).status()).toBe(200);
+  await expect(page.getByRole("button",{ name: "Edit profile",exact: true })).toBeVisible();
+  const persisted = (await savedWorkspace(page,id)).startup;
+  expect(persisted).toMatchObject({ name: "Fieldnote — founder's revised pilot",targetMarket: "Kazakhstan and nearby markets",websiteUrl: "https://example.com/pilot",context: "One founder; two afternoons available each week." });
+  expect(persisted.customFields["Personal success criterion"]).toBe("Four observed conversations before building more");
+  const direct = await context.newPage();
+  await direct.goto(profilePath);
+  await expect(direct.getByRole("heading",{ name: persisted.name,exact: true })).toBeVisible();
+  await expect(direct.getByRole("region").filter({ has: direct.getByRole("heading",{ name: persisted.name,exact: true }) }).getByText(persisted.targetMarket,{ exact: true })).toBeVisible();
+  await direct.getByRole("button",{ name: "Edit profile",exact: true }).click();
+  await expect(direct.getByLabel(/^Anything the plan should consider/)).toHaveValue(persisted.context);
+  await direct.close();
+  await page.screenshot({ path: test.info().outputPath("reopened-profile.png"),fullPage: true });
+});
+
 test("layout changes and appearance preferences survive a full reload", async ({ page, isMobile }) => {
   const ws = await copyDemo(page); const id = ws.startup.id;
   await page.goto(`/startups/${id}/dashboard`);

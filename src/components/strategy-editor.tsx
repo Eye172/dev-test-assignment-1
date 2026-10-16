@@ -3,12 +3,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import { ArrowRight, Check, Circle, Plus, Save, X } from "lucide-react";
+import { z } from "zod";
 import { calculateCompletion, fieldLabels, sectionCompletion, sectionTitles } from "@/lib/domain/completion";
 import { sectionKeys, sectionSchemas, type SectionKey, type StrategyData } from "@/lib/domain/schemas";
 import type { StrategySection, Workspace } from "@/lib/domain/types";
 import { api, ClientError } from "@/lib/client-api";
 import { Badge, Choice, ErrorNotice, Field, SaveState, Spinner, useDirtyGuard } from "./ui";
 import { spring, useWorkspace } from "./workspace";
+import { clearDraft, useDraftRecovery } from "./draft-recovery";
 
 const sectionHelp: Record<SectionKey, string> = {
   icp: "Who has the problem badly enough to act first?",
@@ -117,6 +119,12 @@ function SectionEditor({ section, index, onDirtyChange, onLive, onNext, nextTitl
   const form = useRef<HTMLFormElement>(null);
   const dirty = JSON.stringify({ data, notes }) !== baseline;
   useDirtyGuard(dirty);
+  const draftKey = `strategy:${workspace.startup.id}:${section.key}`;
+  useDraftRecovery(draftKey,{ data,notes,revision,baseline },dirty,value => {
+    const recovered = z.object({ data: sectionSchemas[section.key],notes: z.string(),revision: z.number().int().nonnegative(),baseline: z.string() }).parse(value);
+    setData(recovered.data); setNotes(recovered.notes); setRevision(recovered.revision); setBaseline(recovered.baseline);
+    notify("Unsaved section draft restored. Save to keep it in the workspace.");
+  });
   useEffect(() => { onDirtyChange(dirty); }, [dirty, onDirtyChange]);
   const completion = sectionCompletion(section.key, data);
   const completionKey = JSON.stringify(completion.missing);
@@ -127,9 +135,10 @@ function SectionEditor({ section, index, onDirtyChange, onLive, onNext, nextTitl
   }, []);
 
   async function save(event: React.FormEvent) {
-    event.preventDefault(); setSaving(true); setError(null);
+    event.preventDefault(); if (saving) return; setSaving(true); setError(null);
     try {
       const result = await api<StrategySection>(`/api/startups/${workspace.startup.id}/strategy/${section.key}`, { method: "PUT", body: JSON.stringify({ expectedRevision: revision, data, notes }) });
+      clearDraft(draftKey);
       setData(result.data); setNotes(result.notes); setRevision(result.revision); setSavedAt(result.updatedAt);
       setBaseline(JSON.stringify({ data: result.data, notes: result.notes }));
       setWorkspace(ws => {
@@ -148,6 +157,7 @@ function SectionEditor({ section, index, onDirtyChange, onLive, onNext, nextTitl
     try {
       const latest = await api<Workspace>(`/api/startups/${workspace.startup.id}`);
       const next = latest.sections.find(s => s.key === section.key)!;
+      clearDraft(draftKey);
       setData(next.data); setNotes(next.notes); setRevision(next.revision); setSavedAt(next.updatedAt);
       setBaseline(JSON.stringify({ data: next.data, notes: next.notes })); setError(null); setWorkspace(latest);
     } catch (err) { setError(err as Error); }

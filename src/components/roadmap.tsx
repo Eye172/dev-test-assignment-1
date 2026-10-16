@@ -3,14 +3,18 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion } from "motion/react";
 import { Archive, ArchiveRestore, Info, Pencil, Plus, RefreshCw } from "lucide-react";
-import { api } from "@/lib/client-api";
+import { z } from "zod";
+import { api, ClientError } from "@/lib/client-api";
 import type { Task, Workspace } from "@/lib/domain/types";
 import { Badge, Dialog, ErrorNotice, Field, Spinner, useDirtyGuard } from "./ui";
 import { useTaskUpdate } from "./task-actions";
 import { spring, useWorkspace } from "./workspace";
+import { clearDraft, useHasDraft, useDraftRecovery } from "./draft-recovery";
 
 const statusLabels = { todo: "To do", in_progress: "In progress", done: "Done", skipped: "Skipped" } as const;
 const weekDays = (w: number) => w === 4 ? "Days 22–30" : `Days ${(w - 1) * 7 + 1}–${w * 7}`;
+const taskDraftSchema = z.object({ title: z.string(),deliverable: z.string(),week: z.number().int().min(1).max(4),notes: z.string() });
+const emptyTask = { title: "",deliverable: "",week: 1,notes: "" };
 const rules: [string, string][] = [
   ["Week 1 · icp-focus", "Complete ICP → interview five target buyers. Incomplete → refine the buyer persona first."],
   ["Week 1 · value-test", "Complete value proposition → test the promise with customers. Incomplete → write a testable one."],
@@ -73,7 +77,7 @@ export function Roadmap() {
           </div>
           <div className="day-ruler" aria-hidden>{Array.from({ length: 30 }, (_, i) => <span key={i} className={(i + 1) % 7 === 1 && i < 28 ? "major" : ""}>{((i + 1) % 7 === 1 && i < 28) || i === 29 ? i + 1 : ""}</span>)}</div>
         </div>
-        <p className="muted readout-note">Progress = done ÷ active tasks. Completing tasks is activity, not market validation.</p>
+        <p className="muted readout-note">Progress = done ÷ actionable tasks; skipped and archived tasks are excluded. Completing tasks is activity, not market validation.</p>
       </section>
       <div className="weeks">{[1, 2, 3, 4].map(w => {
         const tasks = active.filter(t => t.week === w);
@@ -102,22 +106,23 @@ export function Roadmap() {
       <ul className="rule-list">{rules.map(([k, v]) => <li key={k}><span className="mono rule-key">{k}</span><span>{v}</span></li>)}</ul>
       <p className="field-help">Refreshing keeps completed tasks, your edits and custom tasks. Superseded tasks are archived, not deleted.</p>
     </Dialog>
-    <AddTaskDialog open={adding} onClose={() => setAdding(false)}/>
+    <AddTaskDialog open={adding} onClose={() => setAdding(false)} onRecover={() => setAdding(true)}/>
   </div>;
 }
 
 function TaskCard({ task }: { task: Task }) {
-  const update = useTaskUpdate();
+  const { update } = useTaskUpdate();
   const [editing, setEditing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const recovered = useHasDraft(`task:${task.startupId}:${task.id}`);
   async function run(patch: Parameters<typeof update>[1], message?: string) {
     setError(null); setBusy(true);
     try { await update(task, patch, message); return true; }
     catch (e) { setError((e as Error).message); return false; }
     finally { setBusy(false); }
   }
-  if (editing) return <TaskEditor task={task} onDone={() => setEditing(false)}/>;
+  if (editing || recovered) return <TaskEditor task={task} onDone={() => setEditing(false)} onReloaded={() => setEditing(true)}/>;
   return <article className={`task-card status-${task.status}`} aria-labelledby={`t-${task.id}`}>
     <div className="task-top">
       <label className="sr-only" htmlFor={`s-${task.id}`}>Status for {task.title}</label>
@@ -134,36 +139,59 @@ function TaskCard({ task }: { task: Task }) {
     <div className="task-actions">
       {task.source === "generated" && task.rationale && <details className="why"><summary>Why this task</summary><p>{task.rationale}</p>{task.ruleKey && <p className="mono faint rule-key">rule: {task.ruleKey}</p>}</details>}
       <span className="task-buttons">
-        <button type="button" className="icon-button" aria-label={`Edit ${task.title}`} onClick={() => setEditing(true)}><Pencil size={16}/></button>
+        <button type="button" className="icon-button" aria-label={`Edit ${task.title}`} disabled={busy} onClick={() => setEditing(true)}><Pencil size={16}/></button>
         <button type="button" className="icon-button" aria-label={`Archive ${task.title}`} disabled={busy} onClick={() => void run({ archived: true }, "Task archived")}><Archive size={16}/></button>
       </span>
     </div>
   </article>;
 }
 
-function TaskEditor({ task, onDone }: { task: Task; onDone: () => void }) {
-  const update = useTaskUpdate();
+function TaskEditor({ task, onDone, onReloaded }: { task: Task; onDone: () => void; onReloaded: () => void }) {
+  const { update } = useTaskUpdate();
+  const { workspace,setWorkspace } = useWorkspace();
   const [d, setD] = useState({ title: task.title, deliverable: task.deliverable, week: task.week, notes: task.notes });
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<Error | null>(null);
   const [saving, setSaving] = useState(false);
-  const dirty = d.title !== task.title || d.deliverable !== task.deliverable || d.week !== task.week || d.notes !== task.notes;
+  const [revision, setRevision] = useState(task.revision);
+  const [baseline, setBaseline] = useState(JSON.stringify(d));
+  const dirty = JSON.stringify(d) !== baseline;
   useDirtyGuard(dirty);
+  const draftKey = `task:${task.startupId}:${task.id}`;
+  useDraftRecovery(draftKey,{ d,revision,baseline },dirty,value => {
+    const recovered = z.object({ d: taskDraftSchema,revision: z.number().int().nonnegative(),baseline: z.string() }).parse(value);
+    setD(recovered.d); setRevision(recovered.revision); setBaseline(recovered.baseline);
+  });
+  function cancel() { if (!saving && (!dirty || window.confirm("Discard task edits?"))) { clearDraft(draftKey); onDone(); } }
   async function save(e: React.FormEvent) {
-    e.preventDefault();
-    if (!d.title.trim() || !d.deliverable.trim()) { setError("Title and deliverable are required."); return; }
+    e.preventDefault(); if (saving) return;
+    if (!d.title.trim() || !d.deliverable.trim()) { setError(new Error("Title and deliverable are required.")); return; }
     if (!dirty) { onDone(); return; }
     setSaving(true); setError(null);
-    try { await update(task, d, "Task saved"); onDone(); } catch (err) { setError((err as Error).message); setSaving(false); }
+    try { await update({ ...task,revision }, d, "Task saved"); clearDraft(draftKey); onDone(); } catch (err) { setError(err as Error); setSaving(false); }
   }
-  return <form className="task-card editing" onSubmit={save} onKeyDown={e => { if (e.key === "Escape" && (!dirty || window.confirm("Discard task edits?"))) onDone(); }}>
-    {error && <p className="field-error" role="alert">{error}</p>}
+  async function loadLatest() {
+    if (!window.confirm("Replace your task edits with the latest saved version? Copy your draft first if you want to keep it.")) return;
+    try {
+      const latest = await api<Workspace>(`/api/startups/${workspace.startup.id}`);
+      const saved = latest.tasks.find(next => next.id === task.id);
+      if (!saved) throw new Error("This task is unavailable. Your draft is still here.");
+      const next = { title: saved.title,deliverable: saved.deliverable,week: saved.week,notes: saved.notes };
+      onReloaded();
+      clearDraft(draftKey); setD(next); setBaseline(JSON.stringify(next)); setRevision(saved.revision); setError(null); setWorkspace(latest);
+    } catch (err) { setError(err as Error); }
+  }
+  const conflict = error instanceof ClientError && error.status === 409;
+  return <form className="task-card editing" onSubmit={save} onKeyDown={e => { if (e.key === "Escape") { e.preventDefault(); cancel(); } }}>
+    <ErrorNotice error={conflict ? "This task changed elsewhere. Load the latest version, or copy your draft first." : error}
+      onReload={conflict ? () => void loadLatest() : undefined}
+      onCopy={conflict ? () => void navigator.clipboard.writeText(JSON.stringify(d,null,2)).catch(() => {}) : undefined}/>
     <fieldset disabled={saving}>
       <Field name={`edit-title-${task.id}`} label="Title" value={d.title} onChange={title => setD({ ...d, title })} required maxLength={240}/>
       <Field name={`edit-deliv-${task.id}`} label="Deliverable" value={d.deliverable} onChange={deliverable => setD({ ...d, deliverable })} required textarea/>
       <WeekSelect id={`edit-week-${task.id}`} value={d.week} onChange={week => setD({ ...d, week })}/>
       <Field name={`edit-notes-${task.id}`} label="Notes (optional)" value={d.notes} onChange={notes => setD({ ...d, notes })} textarea maxLength={5000}/>
       {task.source === "generated" && <p className="field-help">Your edits are kept when the plan is refreshed.</p>}
-      <div className="form-footer"><button className="button small primary" aria-busy={saving}>{saving ? <><Spinner/>Saving…</> : "Save task"}</button><button type="button" className="button small ghost" onClick={() => { if (!dirty || window.confirm("Discard task edits?")) onDone(); }}>Cancel</button></div>
+      <div className="form-footer"><button className="button small primary" aria-busy={saving}>{saving ? <><Spinner/>Saving…</> : "Save task"}</button><button type="button" className="button small ghost" onClick={cancel}>Cancel</button></div>
     </fieldset>
   </form>;
 }
@@ -173,28 +201,32 @@ function WeekSelect({ id, value, onChange }: { id: string; value: number; onChan
 }
 
 function ArchivedRow({ task }: { task: Task }) {
-  const update = useTaskUpdate(); const [error, setError] = useState<string | null>(null);
+  const { update } = useTaskUpdate(); const [error, setError] = useState<string | null>(null);
   return <li><span>{task.title}</span><span className="faint mono">W{task.week}</span>
     <button type="button" className="button small" onClick={() => void update(task, { archived: false }, "Task restored").catch(e => setError((e as Error).message))}><ArchiveRestore size={14} aria-hidden/>Restore</button>
     {error && <span className="field-error" role="alert">{error}</span>}</li>;
 }
 
-function AddTaskDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+function AddTaskDialog({ open, onClose, onRecover }: { open: boolean; onClose: () => void; onRecover: () => void }) {
   const { workspace, setWorkspace, refresh, notify } = useWorkspace();
-  const empty = { title: "", deliverable: "", week: 1, notes: "" };
-  const [d, setD] = useState(empty); const [error, setError] = useState<string | null>(null); const [saving, setSaving] = useState(false);
+  const [d, setD] = useState(emptyTask); const [error, setError] = useState<string | null>(null); const [saving, setSaving] = useState(false);
+  const dirty = JSON.stringify(d) !== JSON.stringify(emptyTask);
+  const draftKey = `new-task:${workspace.startup.id}`;
+  useDirtyGuard(open && dirty);
+  useDraftRecovery(draftKey,d,dirty,value => { setD(taskDraftSchema.parse(value)); onRecover(); notify("Unsaved task draft restored."); });
   async function save(e: React.FormEvent) {
-    e.preventDefault();
+    e.preventDefault(); if (saving) return;
     if (!d.title.trim() || !d.deliverable.trim()) { setError("Add a title and a deliverable."); return; }
     setSaving(true); setError(null);
     try {
       const task = await api<Task>(`/api/startups/${workspace.startup.id}/tasks`, { method: "POST", body: JSON.stringify(d) });
+      clearDraft(draftKey);
       setWorkspace(ws => ({ ...ws, tasks: [...ws.tasks, task] })); await refresh().catch(() => {});
-      notify("Custom task added"); setD(empty); onClose();
+      notify("Custom task added"); setD(emptyTask); onClose();
     } catch (err) { setError((err as Error).message); }
     finally { setSaving(false); }
   }
-  return <Dialog open={open} onClose={() => { if (!(d.title || d.deliverable) || window.confirm("Discard this task?")) { setD(empty); onClose(); } }} title="Add a custom task">
+  return <Dialog open={open} onClose={() => { if (!saving && (!dirty || window.confirm("Discard this task?"))) { clearDraft(draftKey); setD(emptyTask); setError(null); onClose(); } }} title="Add a custom task">
     <form onSubmit={save}>
       {error && <p className="field-error" role="alert">{error}</p>}
       <fieldset disabled={saving}>

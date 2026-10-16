@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { AnimatePresence, MotionConfig, motion } from "motion/react";
 import { ArrowDownToLine, Check, Compass, LayoutGrid, Link2, Orbit, Route, Settings2, X } from "lucide-react";
 import { api } from "@/lib/client-api";
+import { mergeWorkspace } from "@/lib/client-workspace";
 import type { Preferences, Startup, Workspace } from "@/lib/domain/types";
 import { Brand, Choice, Dialog, ErrorNotice, confirmLeave } from "./ui";
 
@@ -13,7 +14,7 @@ type WorkspaceContext = {
   setWorkspace: Dispatch<SetStateAction<Workspace>>;
   refresh: () => Promise<void>;
   notify: (message: string) => void;
-  savePreferences: (patch: Partial<Preferences>) => Promise<void>;
+  savePreferences: (patch: Partial<Preferences>, expectedRevision?: number) => Promise<void>;
 };
 const Context = createContext<WorkspaceContext | null>(null);
 export function useWorkspace() { const value = useContext(Context); if (!value) throw new Error("Workspace provider missing"); return value; }
@@ -29,7 +30,10 @@ export function themeAttributes(preferences: Pick<Preferences, "theme" | "accent
 }
 
 export function WorkspaceShell({ initial, children }: { initial: Workspace; children: ReactNode }) {
-  const [workspace, setWorkspace] = useState(initial);
+  const [workspace, setWorkspaceState] = useState(initial);
+  const setWorkspace: Dispatch<SetStateAction<Workspace>> = useCallback(action => {
+    setWorkspaceState(current => mergeWorkspace(current,typeof action === "function" ? action(current) : action));
+  }, []);
   const [notice, setNotice] = useState("");
   const [preferencesOpen, setPreferencesOpen] = useState(false);
   const [preferenceError, setPreferenceError] = useState<Error | null>(null);
@@ -40,7 +44,10 @@ export function WorkspaceShell({ initial, children }: { initial: Workspace; chil
   const base = `/startups/${workspace.startup.id}`;
   const preferences = workspace.startup.preferences;
 
-  const refresh = useCallback(async () => { setWorkspace(await api<Workspace>(`/api/startups/${initial.startup.id}`)); }, [initial.startup.id]);
+  const refresh = useCallback(async () => {
+    const latest = await api<Workspace>(`/api/startups/${initial.startup.id}`);
+    setWorkspace(latest);
+  }, [initial.startup.id,setWorkspace]);
   const notify = useCallback((message: string) => {
     setNotice(message);
     if (noticeTimer.current) clearTimeout(noticeTimer.current);
@@ -72,15 +79,15 @@ export function WorkspaceShell({ initial, children }: { initial: Workspace; chil
     return () => { window.removeEventListener("keydown", keydown); clearTimeout(timer); };
   }, [base, router]);
 
-  const savePreferences = useCallback(async (patch: Partial<Preferences>) => {
+  const savePreferences = useCallback(async (patch: Partial<Preferences>, expectedRevision = workspace.startup.revision) => {
     setPreferenceError(null); setSaving(true);
     try {
       const startup = await api<Startup>(`/api/startups/${workspace.startup.id}`, { method: "PATCH",
-        body: JSON.stringify({ expectedRevision: workspace.startup.revision, patch: { preferences: { ...workspace.startup.preferences, ...patch } } }) });
+        body: JSON.stringify({ expectedRevision, patch: { preferences: { ...workspace.startup.preferences, ...patch } } }) });
       setWorkspace(current => ({ ...current, startup }));
     } catch (error) { setPreferenceError(error as Error); throw error; }
     finally { setSaving(false); }
-  }, [workspace.startup]);
+  }, [workspace.startup,setWorkspace]);
 
   const nav = [
     { name: "Overview", href: base, Icon: Orbit, key: "O" },

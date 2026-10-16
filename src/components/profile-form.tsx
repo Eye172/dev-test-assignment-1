@@ -2,10 +2,12 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Plus, X } from "lucide-react";
+import { z } from "zod";
 import { api, ClientError } from "@/lib/client-api";
 import { startupInputSchema, type StartupInput } from "@/lib/domain/schemas";
 import type { Startup, Workspace } from "@/lib/domain/types";
 import { Choice, ErrorNotice, Field, Spinner, useDirtyGuard } from "./ui";
+import { clearDraft, useDraftRecovery } from "./draft-recovery";
 
 const editable = ["name", "description", "businessModel", "stage", "targetMarket", "customerSegment", "websiteUrl", "context"] as const;
 type Draft = Pick<StartupInput, (typeof editable)[number]>;
@@ -13,8 +15,12 @@ const blank: Draft = { name: "", description: "", businessModel: "B2B", stage: "
 const fromStartup = (s: Startup): Draft => Object.fromEntries(editable.map(k => [k, s[k]])) as Draft;
 const fieldOrder = ["name", "description", "targetMarket", "customerSegment", "websiteUrl"];
 const fieldNames: Record<string, string> = { name: "Startup name", description: "Description", targetMarket: "Target market", customerSegment: "Customer segment", websiteUrl: "Website" };
+const recoverySchema = z.object({
+  data: z.object({ name: z.string(),description: z.string(),businessModel: z.enum(["B2B","B2C","B2G"]),stage: z.enum(["Idea","MVP","Early Traction"]),targetMarket: z.string(),customerSegment: z.string(),websiteUrl: z.string(),context: z.string() }),
+  custom: z.array(z.tuple([z.string(),z.string()])),revision: z.number().int().nonnegative(),baseline: z.string(),
+});
 
-export function ProfileForm({ initial, onSaved, onCancel }: { initial?: Startup; onSaved?: () => Promise<void>; onCancel?: () => void }) {
+export function ProfileForm({ initial, onSaved, onCancel, onReloaded }: { initial?: Startup; onSaved?: () => Promise<void>; onCancel?: () => void; onReloaded?: (workspace: Workspace) => void }) {
   const router = useRouter();
   const [data, setData] = useState<Draft>(() => initial ? fromStartup(initial) : blank);
   const [custom, setCustom] = useState<[string, string][]>(() => Object.entries(initial?.customFields ?? {}));
@@ -28,6 +34,11 @@ export function ProfileForm({ initial, onSaved, onCancel }: { initial?: Startup;
   const summary = useRef<HTMLDivElement>(null);
   const dirty = JSON.stringify({ data, custom }) !== baseline;
   useDirtyGuard(dirty);
+  const draftKey = `profile:${initial?.id ?? "new"}`;
+  useDraftRecovery(draftKey,{ data,custom,revision,baseline },dirty,value => {
+    const recovered = recoverySchema.parse(value);
+    setData(recovered.data); setCustom(recovered.custom); setRevision(recovered.revision); setBaseline(recovered.baseline);
+  });
 
   // Focus the error summary after it has rendered.
   useEffect(() => { if (focusToken) summary.current?.focus(); }, [focusToken]);
@@ -35,7 +46,7 @@ export function ProfileForm({ initial, onSaved, onCancel }: { initial?: Startup;
   function update<K extends keyof Draft>(key: K, value: Draft[K]) { setData(c => ({ ...c, [key]: value })); setFields(c => ({ ...c, [key]: "" })); }
 
   async function save(e: React.FormEvent) {
-    e.preventDefault(); setError(null); setFields({});
+    e.preventDefault(); if (saving) return; setError(null); setFields({});
     const names = custom.map(([k]) => k.trim()).filter(Boolean);
     if (new Set(names).size !== names.length) { setError(new Error("Give each custom field a different name.")); setFocusToken(t => t + 1); return; }
     const customFields = Object.fromEntries(custom.filter(([k]) => k.trim()).map(([k, v]) => [k.trim(), v]));
@@ -52,6 +63,7 @@ export function ProfileForm({ initial, onSaved, onCancel }: { initial?: Startup;
         body: JSON.stringify(initial ? { expectedRevision: revision, patch: parsed.data } : parsed.data),
       });
       setRevision(startup.revision);
+      clearDraft(draftKey);
       setBaseline(JSON.stringify({ data: fromStartup(startup), custom: Object.entries(startup.customFields) }));
       setData(fromStartup(startup)); setCustom(Object.entries(startup.customFields));
       if (onSaved) await onSaved(); else router.push(`/startups/${startup.id}`);
@@ -68,7 +80,9 @@ export function ProfileForm({ initial, onSaved, onCancel }: { initial?: Startup;
     if (!window.confirm("Replace your edits with the latest saved profile? Copy your draft first if you want to keep it.")) return;
     try {
       const ws = await api<Workspace>(`/api/startups/${initial.id}`);
+      onReloaded?.(ws);
       const latest = fromStartup(ws.startup);
+      clearDraft(draftKey);
       setData(latest); setCustom(Object.entries(ws.startup.customFields)); setRevision(ws.startup.revision);
       setBaseline(JSON.stringify({ data: latest, custom: Object.entries(ws.startup.customFields) }));
       setError(null); setFields({});
@@ -116,7 +130,7 @@ export function ProfileForm({ initial, onSaved, onCancel }: { initial?: Startup;
       </details>
       <div className="form-footer">
         <button className="button primary" aria-busy={saving}>{saving ? <><Spinner/>Saving…</> : initial ? "Save profile" : <>Create startup<ArrowRight size={17} aria-hidden/></>}</button>
-        {onCancel && <button type="button" className="button ghost" onClick={() => { if (!dirty || window.confirm("Discard your unsaved profile edits?")) onCancel(); }}>Cancel</button>}
+        {onCancel && <button type="button" className="button ghost" onClick={() => { if (!dirty || window.confirm("Discard your unsaved profile edits?")) { clearDraft(draftKey); onCancel(); } }}>Cancel</button>}
       </div>
     </fieldset>
   </form>;

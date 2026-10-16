@@ -19,9 +19,8 @@ export function SectionSegments({ workspace, labels = true }: { workspace: Works
   </div>;
 }
 
-export function RoadmapBar({ done, total }: { done: number; total: number }) {
-  const pct = total ? Math.round(done / total * 100) : 0;
-  return <div className="progress" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct} aria-label={`Roadmap ${done} of ${total} tasks done`}><span style={{ width: `${pct}%` }}/></div>;
+export function RoadmapBar({ progress: { done,total,skipped,percentage } }: { progress: Workspace["roadmapProgress"] }) {
+  return <div className="progress" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={percentage} aria-label={`Roadmap ${done} of ${total - skipped} actionable tasks done; ${skipped} skipped`}><span style={{ width: `${percentage}%` }}/></div>;
 }
 
 /** The single most useful next move, derived from saved data. */

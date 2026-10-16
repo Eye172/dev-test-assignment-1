@@ -3,13 +3,15 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import Link from "next/link";
 import { AnimatePresence, LayoutGroup, motion } from "motion/react";
 import { ArrowDown, ArrowRight, ArrowUp, Eye, EyeOff, GripVertical, LayoutTemplate, RotateCcw } from "lucide-react";
-import { sectionSchemas } from "@/lib/domain/schemas";
+import { dashboardLayoutSchema, sectionSchemas } from "@/lib/domain/schemas";
+import { z } from "zod";
 import { defaultDashboardLayout, plateCatalog, type DashboardLayout, type DashboardPlate, type DashboardPlateId, type PlateSize } from "@/lib/domain/dashboard";
 import type { Task, Workspace } from "@/lib/domain/types";
 import { Badge, ErrorNotice, formatTime, Spinner, useDirtyGuard } from "./ui";
 import { nextStep, RoadmapBar, SectionSegments } from "./progress";
 import { useTaskUpdate } from "./task-actions";
 import { spring, useWorkspace } from "./workspace";
+import { clearDraft, useDraftRecovery } from "./draft-recovery";
 
 const sizeNames: Record<PlateSize, string> = { S: "One third", M: "Half", L: "Two thirds", XL: "Full width" };
 
@@ -26,6 +28,7 @@ export function Dashboard() {
   const saved = useMemo(() => normalize(workspace.startup.preferences.dashboardLayout), [workspace.startup.preferences.dashboardLayout]);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<DashboardLayout>(saved);
+  const [draftRevision, setDraftRevision] = useState(workspace.startup.revision);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [announcement, setAnnouncement] = useState("");
@@ -35,6 +38,12 @@ export function Dashboard() {
   const hidden = layout.plates.filter(p => p.hidden);
   const changed = JSON.stringify(draft) !== JSON.stringify(saved);
   useDirtyGuard(editing && changed);
+  const draftKey = `layout:${workspace.startup.id}`;
+  useDraftRecovery(draftKey,{ draft,revision: draftRevision },editing && changed,value => {
+    const recovered = z.object({ draft: dashboardLayoutSchema,revision: z.number().int().nonnegative() }).parse(value);
+    setDraft(recovered.draft); setDraftRevision(recovered.revision); setEditing(true);
+    notify("Unsaved layout restored. Select Done to save it.");
+  });
 
   const title = (id: DashboardPlateId) => plateCatalog[id].title;
   const position = (plates: DashboardPlate[], id: DashboardPlateId) => plates.filter(p => !p.hidden).findIndex(p => p.id === id) + 1;
@@ -65,14 +74,15 @@ export function Dashboard() {
     return { ...d, plates };
   });
 
-  function start() { setDraft(saved); setError(null); setEditing(true); setAnnouncement("Customizing dashboard. Use each plate's move buttons, or pick up a plate with its handle."); }
-  function cancel() { if (changed && !window.confirm("Discard your layout changes?")) return; setDraft(saved); setEditing(false); setLifted(null); setAnnouncement("Layout changes discarded."); }
-  function reset() { if (!window.confirm("Reset the dashboard layout? Your data is not affected.")) return; setDraft(defaultDashboardLayout()); setAnnouncement("Layout reset to default. Select Done to save."); }
+  function start() { setDraft(saved); setDraftRevision(workspace.startup.revision); setError(null); setEditing(true); setAnnouncement("Customizing dashboard. Use each plate's move buttons, or pick up a plate with its handle."); }
+  function cancel() { if (saving || changed && !window.confirm("Discard your layout changes?")) return; clearDraft(draftKey); setDraft(saved); setEditing(false); setLifted(null); setAnnouncement("Layout changes discarded."); }
+  function reset() { if (saving || !window.confirm("Reset the dashboard layout? Your data is not affected.")) return; setDraft(defaultDashboardLayout()); setAnnouncement("Layout reset to default. Select Done to save."); }
   async function done() {
+    if (saving) return;
     if (!changed) { setEditing(false); setLifted(null); return; }
     setSaving(true); setError(null);
     const isDefault = JSON.stringify(draft) === JSON.stringify(defaultDashboardLayout());
-    try { await savePreferences({ dashboardLayout: isDefault ? null : draft }); setEditing(false); setLifted(null); notify("Dashboard layout saved"); }
+    try { await savePreferences({ dashboardLayout: isDefault ? null : draft },draftRevision); clearDraft(draftKey); setEditing(false); setLifted(null); notify("Dashboard layout saved"); }
     catch (e) { setError(e as Error); }
     finally { setSaving(false); }
   }
@@ -80,6 +90,7 @@ export function Dashboard() {
   // Keyboard pick-up: Space/Enter on the handle lifts; arrows move; Space/Enter drops; Escape returns.
   const liftOrigin = useRef<DashboardPlate[] | null>(null);
   function handleKey(e: React.KeyboardEvent, id: DashboardPlateId) {
+    if (saving) return;
     if (e.key === " " || e.key === "Enter") {
       e.preventDefault();
       if (lifted === id) { setLifted(null); liftOrigin.current = null; setAnnouncement(`${title(id)} dropped at position ${position(draft.plates, id)} of ${visible.length}.`); }
@@ -94,6 +105,7 @@ export function Dashboard() {
   }
   // Pointer drag on the handle: the plate snaps into whichever slot the pointer is over.
   function handlePointerDown(e: React.PointerEvent, id: DashboardPlateId) {
+    if (saving) return;
     if (e.button !== 0 || e.pointerType === "touch" && window.matchMedia("(max-width: 767px)").matches) return;
     e.preventDefault();
     const handle = e.currentTarget as HTMLElement; handle.setPointerCapture(e.pointerId);
@@ -125,7 +137,7 @@ export function Dashboard() {
     <Summary workspace={workspace}/>
     <AnimatePresence>{editing && <motion.div className="customize-bar" initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8, transition: { duration: 0.12 } }}>
       <p>Customizing. Move plates with the arrows, or drag the handle. Sizes and hiding are saved with this startup.</p>
-      <button className="button small ghost" onClick={reset}><RotateCcw size={14} aria-hidden/>Reset</button>
+      <button className="button small ghost" onClick={reset} disabled={saving}><RotateCcw size={14} aria-hidden/>Reset</button>
       <button className="button small" onClick={cancel} disabled={saving}>Cancel</button>
       <button className="button small primary" onClick={done} disabled={saving} aria-busy={saving}>{saving ? <><Spinner/>Saving…</> : "Done"}</button>
     </motion.div>}</AnimatePresence>
@@ -136,7 +148,7 @@ export function Dashboard() {
       <div className="plate-grid dashboard-grid">
         {visible.map((p, i) => <motion.div layout="position" transition={spring} key={p.id} data-plate-id={p.id} data-size={p.size}
           className={`plate-frame ${editing ? "editing" : ""} ${lifted === p.id ? "lifted" : ""}`}>
-          <PlateBody id={p.id} workspace={workspace} toolbar={editing ? <div className="plate-toolbar" role="group" aria-label={`${plateCatalog[p.id].title} layout controls`}>
+          <PlateBody id={p.id} workspace={workspace} toolbar={editing ? <div className="plate-toolbar" role="group" inert={saving} aria-label={`${plateCatalog[p.id].title} layout controls`}>
             <button type="button" className="icon-button drag-handle" aria-roledescription="sortable plate" aria-describedby="drag-help" aria-pressed={lifted === p.id}
               aria-label={`Move ${plateCatalog[p.id].title}, position ${i + 1} of ${visible.length}`} onKeyDown={e => handleKey(e, p.id)} onPointerDown={e => handlePointerDown(e, p.id)}><GripVertical size={16}/></button>
             <button type="button" className="icon-button" disabled={i === 0} aria-label={`Move ${plateCatalog[p.id].title} earlier`} onClick={() => move(p.id, -1)}><ArrowUp size={16}/></button>
@@ -255,7 +267,7 @@ function GapsPlate({ workspace, base, toolbar }: PlateProps) {
   </PaperPlate>;
 }
 function WeekPlate({ workspace, base, toolbar }: PlateProps) {
-  const update = useTaskUpdate(); const [error, setError] = useState<string | null>(null);
+  const { update,isPending } = useTaskUpdate(); const [error, setError] = useState<string | null>(null);
   const active = workspace.tasks.filter(t => !t.archived);
   const week = [1, 2, 3, 4].find(w => active.some(t => t.week === w && (t.status === "todo" || t.status === "in_progress")));
   const tasks = week ? active.filter(t => t.week === week) : [];
@@ -265,10 +277,10 @@ function WeekPlate({ workspace, base, toolbar }: PlateProps) {
   };
   return <PaperPlate id="week" title={week ? `This week · Week ${week}` : "This week"} meta={`${workspace.roadmapProgress.done}/${workspace.roadmapProgress.total} done`} toolbar={toolbar}
     foot={<Link className="plate-link" href={`${base}/roadmap`}>Open roadmap<ArrowRight size={15} aria-hidden/></Link>}>
-    <RoadmapBar done={workspace.roadmapProgress.done} total={workspace.roadmapProgress.total}/>
+    <RoadmapBar progress={workspace.roadmapProgress}/>
     {error && <p className="field-error" role="alert">{error}</p>}
     {!active.length ? <p className="plate-empty">No roadmap yet.</p> : !week ? <p className="plate-empty">No open tasks left.</p> :
-      <ul className="check-list">{tasks.map(t => <li key={t.id}><label className={t.status === "done" ? "is-done" : ""}><input type="checkbox" checked={t.status === "done"} disabled={t.status === "skipped"} onChange={e => void toggle(t, e.target.checked)}/><span>{t.title}</span></label></li>)}</ul>}
+      <ul className="check-list">{tasks.map(t => <li key={t.id}><label className={t.status === "done" ? "is-done" : ""}><input type="checkbox" checked={t.status === "done"} disabled={t.status === "skipped" || isPending(t.id)} aria-busy={isPending(t.id)} onChange={e => void toggle(t, e.target.checked)}/><span>{t.title}</span></label></li>)}</ul>}
   </PaperPlate>;
 }
 function RisksPlate({ workspace, base, toolbar }: PlateProps) {
