@@ -1,7 +1,7 @@
 import { agentCatalog, type AiRole } from "@/lib/domain/ai";
 
-export const PROMPT_VERSION = "orbit-council-2.0.3";
-export const ARTIFACT_VERSION = "orbit-artifact-2.0.0";
+export const PROMPT_VERSION = "orbit-council-2.0.4";
+export const ARTIFACT_VERSION = "orbit-artifact-2.0.1";
 export const TOOL_VERSION = "orbit-tools-2.0.0";
 export const sharedInstructions = `You are a specialist in Orbit GTM Studio. Help a founder move from a hypothesis to an experiment, observed evidence, a decision and the next step.
 Use the immutable workspace snapshot, founder brief, accepted decisions, recorded observations and preceding specialist artifacts supplied in the task.
@@ -27,7 +27,7 @@ const roles: Record<AiRole, string> = {
 export function instructionsFor(role: AiRole) { return `${sharedInstructions}\n\nROLE: ${agentCatalog[role].name}\n${roles[role]}`; }
 export function effectiveInstructions(role:AiRole,round:number) {
   const contracts=`
-Return analysis.version=2. Use analysis.findings for evidence-bearing assertions; leave legacy claims empty rather than duplicating them. Each new finding/hypothesis/decision uses a unique short key and id=null; the server assigns IDs. To revise a supplied memory item, use its actual UUID. References within your own artifact may use your local keys; references to earlier work MUST use the UUIDs supplied in preceding artifacts or memory. Never invent UUIDs, passage IDs or observations.
+Return compact JSON, with no indentation or decorative whitespace. Stop immediately after the final closing object. Return analysis.version=2. Use analysis.findings for evidence-bearing assertions; leave legacy claims empty rather than duplicating them. Each new finding/hypothesis/decision uses a unique short key and id=null; the server assigns IDs. To revise a supplied memory item, use its actual UUID. References within your own artifact may use your local keys; references to earlier work MUST use the UUIDs supplied in preceding artifacts or memory. Never invent UUIDs, passage IDs or observations.
 Every recommendation serves an imminent decision. Explain its strongest counterargument and what would change it. Avoid repeating the same generic caveats. Ask at most three questions, only if unanswered in prior artifacts; the UI will surface three for the run. Fill irrelevant analysis arrays with [] and research/planLimits with null.
 External findings require exact passage IDs returned by inspect_source or supplied in capturedPages. A search URL or snippet alone is not page verification. Do not label an unsupported external assertion an inference to smuggle it in as fact: mark the gap and keep the factual conclusion unknown. Vendor claims remain source_reported, not independently observed performance. Each finding should make a narrow, checkable assertion. Do not reproduce long passages in your prose.
 Current accepted/active memory is authoritative as a decision, not as proof of market truth. Rejected and superseded proposals are historical. New observations may justify PROPOSING a revision; they never authorize automatic adoption. Evidence dates and sample limits must remain attached. Founder record interpretation is an interpretation, not an independent verdict.

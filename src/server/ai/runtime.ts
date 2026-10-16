@@ -10,6 +10,7 @@ import { AiStore, type LeasedRun } from "./store";
 import { capturePage } from "./sources";
 import { executionInput } from "./context";
 import { receiptFetch, type ProviderReceipt } from "./provider-receipts";
+import { wireSchema } from "./wire-schema";
 
 setTracingDisabled(true);
 type JsonObject = Record<string, unknown>;
@@ -103,7 +104,7 @@ export async function executeSpecialist(store:AiStore,run:LeasedRun,step:AiStep,
     },
     async *getStreamedResponse() { throw new AppError("AI_STREAM_UNSUPPORTED","This worker uses metered non-streaming calls.",500); },
   };
-  const agent=new Agent({name:agentCatalog[step.role].name,model:metered,instructions:execution.instructions,outputType:modelOutputSchema(step.role),tools:step.role==="researcher"?[webSearchTool({searchContextSize:execution.settings.searchContextSize}),inspect]:step.role==="critic"?[inspect]:step.role==="monetizer"?[calculator(store,run,step)]:[],modelSettings:{reasoning:{effort:execution.settings.reasoningEffort},maxTokens:execution.settings.maxTokens,parallelToolCalls:true,store:execution.settings.store,retry:{maxRetries:execution.settings.retries},providerData:step.role==="researcher"?{include:["web_search_call.action.sources"],max_tool_calls:execution.settings.webSearchCalls}:{}}});
+  const agent=new Agent({name:agentCatalog[step.role].name,model:metered,instructions:execution.instructions,outputType:wireSchema(step.role),tools:step.role==="researcher"?[webSearchTool({searchContextSize:execution.settings.searchContextSize}),inspect]:step.role==="critic"?[inspect]:step.role==="monetizer"?[calculator(store,run,step)]:[],modelSettings:{reasoning:{effort:execution.settings.reasoningEffort},maxTokens:execution.settings.maxTokens,parallelToolCalls:true,store:execution.settings.store,retry:{maxRetries:execution.settings.retries},providerData:step.role==="researcher"?{include:["web_search_call.action.sources"],max_tool_calls:execution.settings.webSearchCalls}:{}}});
   const input=await executionInput(store,run,step,completed);await store.saveInput(run,step,input);const payload=JSON.stringify(input);
   const runner=new Runner({modelProvider:provider,tracingDisabled:true,traceIncludeSensitiveData:false});
   const result=await runner.run(agent,payload,{maxTurns:execution.settings.maxTurns,signal:AbortSignal.timeout(execution.settings.timeoutMs)});

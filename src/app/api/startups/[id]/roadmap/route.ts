@@ -4,7 +4,8 @@ import { z } from "zod";
 export const runtime = "nodejs";
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
   return handle(request,async()=>{
-    const options=request.body?z.object({replaceAiPlan:z.boolean(),expectedPlanId:z.uuid()}).strict().parse(await readJson(request)):{};
+    const input=await readJson(request,{allowEmpty:true});
+    const options=input===undefined?{}:z.object({replaceAiPlan:z.boolean(),expectedPlanId:z.uuid()}).strict().parse(input);
     return json(await(await getStore()).generate(idFrom((await context.params).id),options));
   });
 }
