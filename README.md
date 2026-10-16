@@ -4,6 +4,8 @@ A founder workspace for a go-to-market strategy and a transparent 30-day action 
 
 Independent developer-test implementation for the AI Startify ecosystem. All demonstration content is synthetic. Strategy completeness and completed tasks are not commercial validation.
 
+[Live review candidate](https://orbit-gtm-studio.vercel.app) · [Seeded Fieldnote profile](https://orbit-gtm-studio.vercel.app/startups/11111111-1111-4111-8111-111111111111). The current frontend composition/motion revision is still under review; delivery status is recorded in [SUBMISSION.md](docs/SUBMISSION.md).
+
 ## Run locally
 
 Requires Node.js 24 (Node 22+ supported). No cloud account or paid AI provider is needed for local development.
@@ -74,6 +76,8 @@ The roadmap uses predefined rules to generate 8–10 current suggestions dependi
 | `/api/startups/:id/export` | Downloadable JSON workspace backup |
 
 The full HTTP route map, inputs and error contract are in [CONTRACT.md](docs/CONTRACT.md). Profile links work directly and after refresh; browser storage is not required to reopen saved work.
+
+Unsaved editor/layout changes have separate per-tab recovery for browser Back/Forward and reload. These recovery copies expire after seven days and retain the original revision, so recovering an old draft cannot silently overwrite a newer database save. Explicit Save/Done persists to PostgreSQL; Cancel/Discard removes the recovery copy. Browser storage being unavailable does not prevent database saves or saved direct links.
 
 ## Verify
 
