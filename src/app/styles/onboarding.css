@@ -227,3 +227,6 @@
 .run-foot { display: flex; align-items: center; gap: 6px; }
 @media (max-width: 699px) { .compare { grid-template-columns: 1fr; } .studio-budget { margin-left: 0; width: 100%; } }
 .proposals > .button, .proposals > .badge { justify-self: start; }
+/* Grid children never grow past the viewport: the scrolling topic rail stays inside its track on phones. */
+.flow, .flow-step, .flow-panel, .guided-layout > *, .compose > *, .launch > * { min-width: 0; }
+.guided-rail ol { max-width: 100%; }

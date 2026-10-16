@@ -52,6 +52,36 @@ export function LaunchSequence({ startup, draft, brief, files }: { startup: Star
   useEffect(() => () => { alive.current = false; }, []);
   const set = (id: string, state: State, note?: string) => setSteps(s => s.map(x => x.id === id ? { ...x, state, note: note ?? x.note } : x));
 
+  const [needsCode, setNeedsCode] = useState(false);
+  const [code, setCode] = useState(""); const [unlockError, setUnlockError] = useState("");
+  // AI is optional: it starts when the owner is unlocked, and never blocks opening the workspace.
+  async function startAi() {
+    set("ai", "run");
+    try {
+      const state = await api<AiStudioState>(`/api/startups/${startup.id}/ai`);
+      if (!state.configured || !state.authorized) { setNeedsCode(state.configured); set("ai", "skip", state.configured ? "Locked — unlock below or later" : "Not configured on this deployment"); setFinished(true); return; }
+      setNeedsCode(false);
+      const created = await api<{ id: string }>(`/api/startups/${startup.id}/ai`, { method: "POST", body: JSON.stringify({ action: "create", payload: { mode: "full", brief, requestId: crypto.randomUUID() } }) });
+      set("ai", "run", "Working — you can keep going");
+      setFinished(true);
+      for (let i = 0; i < 200 && alive.current; i++) {
+        await sleep(document.visibilityState === "visible" ? 3000 : 8000);
+        if (!alive.current) break;
+        const latest = (await api<AiStudioState>(`/api/startups/${startup.id}/ai`)).runs.find(r => r.id === created.id);
+        if (!latest) continue;
+        setRun(latest);
+        if (["completed", "needs_attention", "failed", "cancelled", "paused"].includes(latest.status)) {
+          set("ai", latest.status === "completed" || latest.status === "needs_attention" ? "done" : "fail", latest.status.replace("_", " ")); break;
+        }
+      }
+    } catch { set("ai", "skip", "Unavailable right now — start it later from the workspace"); setFinished(true); }
+  }
+  async function unlock(e: React.FormEvent) {
+    e.preventDefault(); setUnlockError("");
+    try { await api(`/api/startups/${startup.id}/ai`, { method: "POST", body: JSON.stringify({ action: "unlock", payload: { code } }) }); setCode(""); await startAi(); }
+    catch (err) { setUnlockError((err as Error).message); }
+  }
+
   useEffect(() => {
     if (started.current) return; started.current = true;
     (async () => {
@@ -65,24 +95,7 @@ export function LaunchSequence({ startup, draft, brief, files }: { startup: Star
       set("plan", "run");
       try { await api<Workspace>(`/api/startups/${startup.id}/roadmap`, { method: "POST" }); set("plan", "done", "Generated from your profile"); }
       catch { set("plan", "fail", "Couldn’t generate — try again on the roadmap"); }
-      set("ai", "run");
-      try {
-        const state = await api<AiStudioState>(`/api/startups/${startup.id}/ai`);
-        if (!state.configured || !state.authorized) { set("ai", "skip", state.configured ? "Needs the owner access code" : "Not configured on this deployment"); setFinished(true); return; }
-        const created = await api<{ id: string }>(`/api/startups/${startup.id}/ai`, { method: "POST", body: JSON.stringify({ action: "create", payload: { mode: "full", brief, requestId: crypto.randomUUID() } }) });
-        set("ai", "run", "Working — you can keep going");
-        setFinished(true);
-        for (let i = 0; i < 200 && alive.current; i++) {
-          await sleep(document.visibilityState === "visible" ? 3000 : 8000);
-          if (!alive.current) break;
-          const latest = (await api<AiStudioState>(`/api/startups/${startup.id}/ai`)).runs.find(r => r.id === created.id);
-          if (!latest) continue;
-          setRun(latest);
-          if (["completed", "needs_attention", "failed", "cancelled", "paused"].includes(latest.status)) {
-            set("ai", latest.status === "completed" || latest.status === "needs_attention" ? "done" : "fail", latest.status.replace("_", " ")); break;
-          }
-        }
-      } catch { set("ai", "skip", "Unavailable right now — start it later from the workspace"); setFinished(true); }
+      await startAi();
     })();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -112,6 +125,12 @@ export function LaunchSequence({ startup, draft, brief, files }: { startup: Star
         <span className="ls-icon" aria-hidden>{st.state === "done" ? <Check size={13} strokeWidth={3}/> : st.state === "skip" ? <Minus size={13}/> : st.state === "fail" ? <X size={13}/> : <span className="ls-dot"/>}</span>
         <span className="ls-label">{st.label}</span>{st.note && <span className="ls-note">{st.note}</span>}
       </li>)}</ol>
+      {needsCode && <form className="unlock" onSubmit={unlock}>
+        <label className="sr-only" htmlFor="launch-code">Owner access code</label>
+        <input id="launch-code" className="input" type="password" autoComplete="off" value={code} onChange={e => setCode(e.target.value)} placeholder="Owner access code for AI"/>
+        <button className="button small" disabled={!code}>Unlock and start</button>
+        {unlockError && <p className="field-error" role="alert">{unlockError}</p>}
+      </form>}
       {segments.length > 0 && <ul className="launch-agents">{segments.map(st => <li key={st.id} className={st.status}>{agentCatalog[st.role].short}</li>)}</ul>}
       <div className="flow-actions">
         <button type="button" className="button primary" onClick={open}>{finished ? "See what was prepared" : "Open workspace now"}<ArrowRight size={17} aria-hidden className="arrow"/></button>

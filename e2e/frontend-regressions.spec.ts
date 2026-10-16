@@ -47,7 +47,7 @@ test("form and task controls wait for hydration and retain typed input", async (
     await expect(control).toBeEnabled();
     await page.unroute(scripts);
   }
-  await hydrate("/startups/new",page.getByLabel(/^Startup name/));
+  await hydrate("/startups/new",page.getByRole("button",{ name: /^Free form/ }));
   await hydrate(`/startups/${ws.startup.id}/roadmap`,page.getByLabel(`Status for ${ws.tasks[0].title}`,{ exact: true }));
   const price = page.getByLabel(/^Initial price assumption/);
   await hydrate(`/startups/${ws.startup.id}/strategy?section=pricing`,price);

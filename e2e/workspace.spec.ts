@@ -32,7 +32,24 @@ async function navigate(page: Page, name: string) {
 test("founder completes the six-screen flow with real persistence and an exported backup", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("link",{ name: "Create startup",exact: true }).click();
-  await page.getByRole("button",{ name: "Create startup",exact: true }).click();
+  // Free-form path: the founder writes; rules pick out what they can and ask only for the rest.
+  await page.getByRole("button",{ name: /^Free form/ }).click();
+  await page.getByLabel("Your startup in your own words").fill("Harbor pilot\nShared delivery coordination for small independent shops in Central Asia. We have an MVP.");
+  await page.getByRole("button",{ name: "Continue",exact: true }).click();
+  // At most seven questions, and only for what the text did not cover; each screen settles before the next action.
+  const confirm = page.getByRole("heading",{ name: "Is this your startup?",exact: true });
+  const skip = page.getByRole("button",{ name: "Skip",exact: true });
+  for (let i = 0; i < 8; i++) {
+    await expect(skip.or(confirm)).toBeVisible();
+    if (await confirm.isVisible()) break;
+    const question = (await page.locator(".clarify-q").first().textContent())!;
+    await skip.click();
+    await expect(page.getByRole("heading",{ name: question,exact: true })).toBeHidden();
+  }
+  await expect(confirm).toBeVisible();
+  await expect(page.getByLabel(/^Startup name/)).toHaveValue("Harbor pilot");
+  await page.getByLabel(/^Startup name/).fill("");
+  await page.getByRole("button",{ name: /Create and launch/ }).click();
   await expect(page.getByText("Some required details need attention.")).toBeVisible();
   await page.getByLabel(/^Startup name/).fill("Harbor pilot — synthetic example");
   await page.getByLabel(/^Description/).fill("Shared delivery coordination for small independent shops.");
@@ -41,10 +58,13 @@ test("founder completes the six-screen flow with real persistence and an exporte
   await page.getByLabel(/^Website \(optional\)/).fill("example.com");
   await page.getByLabel(/^Startup name/).click(); // Website normalization runs on blur.
   await page.getByRole("radio",{ name: "MVP",exact: true }).check();
-  await page.getByRole("button",{ name: "Create startup",exact: true }).click();
-  await page.waitForURL(/\/startups\/[a-f0-9-]{36}$/);
+  await page.getByRole("button",{ name: /Create and launch/ }).click();
+  await expect(page.getByRole("heading",{ name: /workspace/ })).toBeVisible();
+  await page.getByRole("button",{ name: /See what was prepared|Open workspace now/ }).click();
+  await page.waitForURL(/\/startups\/[a-f0-9-]{36}(\?from=onboarding)?$/);
   const id = new URL(page.url()).pathname.split("/").pop()!;
   await expect(page.getByRole("heading",{ name: "Harbor pilot — synthetic example",exact: true })).toBeVisible();
+  await expect(page.getByRole("heading",{ name: "Prepared for you",exact: true })).toBeVisible();
   await navigate(page,"Strategy");
   await page.getByLabel(/^Buyer type/).fill("Independent shop owner");
   await saveSection(page,"icp");
@@ -90,9 +110,12 @@ test("founder completes the six-screen flow with real persistence and an exporte
   await expect(page.getByRole("region",{ name: "Summary",exact: true })).toContainText("100%");
   expect((await savedWorkspace(page,id)).completion).toMatchObject({ percentage: 100,completed: 5 });
   await navigate(page,"Roadmap");
+  // Onboarding already generated a first plan from the profile; refreshing it now uses the completed strategy.
   const generated = page.waitForResponse(r => r.request().method() === "POST" && r.url().endsWith("/roadmap"));
-  await page.getByRole("button",{ name: "Generate plan",exact: true }).click();
+  page.once("dialog",dialog => dialog.accept());
+  await page.getByRole("button",{ name: "Refresh plan",exact: true }).click();
   expect((await generated).status()).toBe(200);
+  await expect(page.locator(".toast").filter({ hasText: "Plan refreshed" })).toBeVisible();
   const status = page.getByLabel(/^Status for /).first();
   const changed = page.waitForResponse(r => r.request().method() === "PATCH" && /\/tasks\//.test(r.url()));
   await status.selectOption("done");
@@ -362,4 +385,27 @@ test("command menu jumps to a strategy section from the keyboard", async ({ page
   await page.keyboard.press("Enter");
   await page.waitForURL(/\/strategy\?section=pricing$/);
   await expect(page.getByLabel(/^Initial price assumption/)).toBeVisible();
+});
+
+test("guided brief builds a complete profile from choices and short answers", async ({ page }) => {
+  await page.goto("/startups/new");
+  await page.getByRole("button",{ name: /^Guided brief/ }).click();
+  await page.getByPlaceholder("Fieldnote").fill("Kitabim — synthetic example");
+  await page.getByLabel(/^One sentence/).fill("A reading tracker that turns school reading lists into weekly goals.");
+  await page.getByRole("button",{ name: "Next",exact: true }).click();
+  await page.getByRole("radio",{ name: /People pay/ }).click();
+  await page.getByRole("button",{ name: "Next",exact: true }).click();
+  await page.getByRole("radio",{ name: /^MVP/ }).click();
+  await page.getByRole("button",{ name: "Next",exact: true }).click();
+  await page.getByRole("button",{ name: "Kazakhstan",exact: true }).click();
+  await page.getByRole("button",{ name: "Next",exact: true }).click();
+  await page.getByRole("button",{ name: "Parents",exact: true }).click();
+  await page.getByRole("button",{ name: "Next",exact: true }).click();
+  await page.getByRole("button",{ name: "Next",exact: true }).click();
+  await page.getByRole("button",{ name: "Review profile",exact: true }).click();
+  await expect(page.getByLabel(/^Primary customer segment/)).toHaveValue("Parents");
+  await expect(page.getByRole("radio",{ name: "B2C",exact: true })).toBeChecked();
+  await page.getByRole("button",{ name: /Create and launch/ }).click();
+  await page.getByRole("button",{ name: /See what was prepared|Open workspace now/ }).click();
+  await expect(page.getByRole("heading",{ name: "Kitabim — synthetic example",exact: true })).toBeVisible();
 });

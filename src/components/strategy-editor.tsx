@@ -106,7 +106,7 @@ export function StrategyEditor({ examples }: { examples?: StrategyExamples }) {
             {live.complete
               ? <motion.p key="ok" className="qc-ok" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}><span className="qc-led"/>All required inputs are filled.</motion.p>
               : <motion.ul key="list" className="qc-list" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                <AnimatePresence initial={false}>{live.missing.map(m => <motion.li key={m} layout initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 6, transition: { duration: 0.15 } }}>
+                <AnimatePresence initial={false}>{live.missing.map(m => <motion.li key={m} layout="position" initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 6, transition: { duration: 0.15 } }}>
                   <a href={`#${anchorFor(selected, m)}`} onClick={e => { e.preventDefault(); jump(anchorFor(selected, m)); }}>{m}</a>
                 </motion.li>)}</AnimatePresence>
               </motion.ul>}
@@ -116,8 +116,8 @@ export function StrategyEditor({ examples }: { examples?: StrategyExamples }) {
       </nav>
       <div className="editor-col">
         <AnimatePresence mode="wait" initial={false} custom={direction}>
-          <motion.div key={selected} custom={direction} variants={{ enter: (d: number) => ({ opacity: 0, x: 28 * d, filter: "blur(4px)" }), center: { opacity: 1, x: 0, filter: "blur(0px)" }, exit: (d: number) => ({ opacity: 0, x: -20 * d, filter: "blur(4px)", transition: { duration: 0.14 } }) }}
-            initial="enter" animate="center" exit="exit" transition={{ duration: 0.32, ease: easeOut }}>
+          <motion.div key={selected} custom={direction} variants={{ enter: (d: number) => ({ opacity: 0, x: 16 * d }), center: { opacity: 1, x: 0 }, exit: (d: number) => ({ opacity: 0, x: -10 * d, transition: { duration: 0.12 } }) }}
+            initial="enter" animate="center" exit="exit" transition={{ duration: 0.24, ease: easeOut }}>
             <SectionEditor section={workspace.sections.find(s => s.key === selected)!} index={index} onDirtyChange={setDirty} onLive={setLive}
               autosave={autosave === "on"} example={showExamples === "on" ? examples?.[selected] : undefined}
               onNext={() => select(sectionKeys[(index + 1) % 5])} nextTitle={sectionTitles[sectionKeys[(index + 1) % 5]]}
@@ -273,7 +273,7 @@ function Channels({ data, onChange, example }: { data: ReturnType<typeof section
   return <>
     <datalist id="channel-suggestions">{channelSuggestions.map(v => <option value={v} key={v}/>)}</datalist>
     <div className="repeat-group">
-      <AnimatePresence initial={false}>{channels.map((channel, i) => <motion.div layout className="repeat-item" key={i} initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.28, ease: easeOut }}>
+      <AnimatePresence initial={false}>{channels.map((channel, i) => <motion.div className="repeat-item" key={i} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, transition: { duration: 0.12 } }} transition={{ duration: 0.22, ease: easeOut }}>
         <div className="repeat-head"><span className="repeat-num" aria-hidden>{i + 1}</span><h3>Channel {i + 1}</h3>
           {channels.length > 1 && <button type="button" className="icon-button small" aria-label={`Remove channel ${i + 1}${channel.name ? `, ${channel.name}` : ""}`} onClick={() => set(channels.filter((_, j) => j !== i))}><X size={16}/></button>}</div>
         <Field name={`channel-${i}`} label="Channel" required list="channel-suggestions" maxLength={120} value={channel.name} className="prompt"

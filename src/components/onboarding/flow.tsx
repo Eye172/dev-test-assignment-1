@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { ArrowLeft, ArrowRight, Check, ListChecks, MessagesSquare, SkipForward } from "lucide-react";
 import type { Startup } from "@/lib/domain/types";
 import { ProfileForm, type ProfileSeed } from "../profile-form";
+import { useHydrated } from "../ui";
 import { answer, emptyDraft, extract, missing, nextQuestion, type IntakeDraft, type Question } from "../intake/extract";
 import { FileAttach, type Attached } from "./files";
 import { GuidedBrief, guidedToDraft, emptyGuided, type GuidedState } from "./guided";
@@ -150,19 +151,21 @@ function Back({ onClick }: { onClick: () => void }) {
 }
 
 function Choose({ onPick }: { onPick: (p: "free" | "guided") => void }) {
+  // Both paths need the client; until hydration they stay visibly inactive.
+  const hydrated = useHydrated();
   return <section className="flow-panel" aria-labelledby="choose-title">
     <p className="eyebrow">Create your startup</p>
     <h1 id="choose-title" tabIndex={-1}>How do you want to start?</h1>
     <p className="lead">Both paths end in the same place: a profile you confirm, strategy drafts and a 30-day plan. You can attach existing material on either.</p>
     <div className="choose-grid">
-      <button type="button" className="choose-card" onClick={() => onPick("free")}>
+      <button type="button" className="choose-card" disabled={!hydrated} onClick={() => onPick("free")}>
         <MessagesSquare size={24} aria-hidden/>
         <span className="choose-title">Free form</span>
         <span className="choose-text">Write it in your own words. We pick out what we can and ask only for what’s missing — at most seven short questions.</span>
         <span className="choose-meta">~3 min · best if you already pitch it often</span>
         <span className="choose-go" aria-hidden><ArrowRight size={18}/></span>
       </button>
-      <button type="button" className="choose-card" onClick={() => onPick("guided")}>
+      <button type="button" className="choose-card" disabled={!hydrated} onClick={() => onPick("guided")}>
         <ListChecks size={24} aria-hidden/>
         <span className="choose-title">Guided brief</span>
         <span className="choose-text">Seven short topics. Precise choices where the answer is a choice, short open questions where it’s a thought.</span>

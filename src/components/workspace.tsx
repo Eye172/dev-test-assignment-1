@@ -197,7 +197,7 @@ export function WorkspaceShell({ initial, children }: { initial: Workspace; chil
         </Dialog>
         <div className="toast-region" aria-live="polite">
           <AnimatePresence>{notice && <motion.div key={notice.id} className="toast" role="status" layout
-            initial={{ opacity: 0, y: -20, scale: 0.9, filter: "blur(4px)" }} animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
+            initial={{ opacity: 0, y: -12, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -12, scale: 0.96, transition: { duration: 0.16 } }} transition={{ type: "spring", stiffness: 500, damping: 32 }}>
             <span className="toast-check"><Check size={14} aria-hidden strokeWidth={3}/></span>{notice.text}
             <button className="icon-button small" aria-label="Dismiss notification" onClick={() => setNotice(null)}><X size={15}/></button>
