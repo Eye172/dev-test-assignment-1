@@ -1,7 +1,29 @@
 import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import { Brand } from "@/components/ui";
 import { ProfileForm } from "@/components/profile-form";
+
 export const metadata = { title: "Create your startup" };
+
 export default function NewStartup() {
-  return <div className="app-surface"><header className="site-header"><Brand/><span className="demo-tag">Demo mode</span></header><main id="content" className="onboarding"><div className="onboarding-intro"><Link href="/" className="text-link">← Back to the studio</Link><span className="index-label">YOUR STARTING POINT</span><h1 tabIndex={-1}>Every trajectory<br/>starts somewhere.</h1><p className="muted">A few essentials to make this space yours. Your strategy can take shape at your own pace.</p><div className="onboarding-note"><span className="mini-orbit"/><p>A real workspace.<br/><strong>Your way of thinking.</strong></p></div></div><div className="onboarding-form"><h2>Create your startup</h2><ProfileForm/></div></main></div>;
+  return <div className="app-surface">
+    <header className="site-header"><Brand/><div className="header-actions"><span className="demo-tag">Demo mode</span></div></header>
+    <main id="content" className="onboarding">
+      <aside className="onboarding-intro">
+        <Link href="/" className="text-link back-link"><ArrowLeft size={16} aria-hidden/>Back</Link>
+        <h1 tabIndex={-1}>Create your startup</h1>
+        <p className="lead">Six essentials give your workspace a starting point. You can refine everything later, and your strategy can take shape in any order.</p>
+        <div className="plate instrument onboarding-note">
+          <span className="screw tl"/><span className="screw tr"/>
+          <div className="screen">
+            <p className="inst-row"><span>Required fields</span><strong>6</strong></p>
+            <p className="inst-row"><span>Optional</span><strong>website, context</strong></p>
+            <p className="inst-row"><span>Time</span><strong>~2 min</strong></p>
+          </div>
+          <p className="muted onboarding-warn">Demo mode: anyone with the link can view and edit. Use synthetic, non-sensitive information.</p>
+        </div>
+      </aside>
+      <section className="plate onboarding-form" aria-label="Startup profile form"><ProfileForm/></section>
+    </main>
+  </div>;
 }

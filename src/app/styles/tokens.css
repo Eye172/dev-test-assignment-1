@@ -1,0 +1,108 @@
+/* Dark is the approved default. Light is an accessible preference. */
+:root,
+[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #070807;
+  --bg-raise: #0b0e0c;
+  --surface: #101412;
+  --surface-2: #161b18;
+  --surface-3: #1d241f;
+  --ink: #f5f7f5;
+  --muted: #97a098;
+  --faint: #6f7a72;
+  --line: #232a25;
+  --line-strong: #66726a;
+  --accent: #20fa80;
+  --on-accent: #04140c;
+  --accent-ink: #20fa80;
+  --accent-soft: rgb(32 250 128 / 0.12);
+  --accent-glow: rgb(32 250 128 / 0.22);
+  --info: #8fb3ff;
+  --info-soft: rgb(143 179 255 / 0.13);
+  --warn: #e3b45c;
+  --warn-soft: rgb(227 180 92 / 0.13);
+  --danger: #ff7a6b;
+  --danger-soft: rgb(255 122 107 / 0.13);
+  --focus: #20fa80;
+  --scrim: rgb(0 0 0 / 0.62);
+  --float-shadow: 0 18px 48px rgb(0 0 0 / 0.5), 0 2px 6px rgb(0 0 0 / 0.4);
+
+  /* Instrument plate: always dark, in both themes */
+  --inst-body: #050605;
+  --inst-screen: #0d1310;
+  --inst-line: #222a25;
+  --inst-ink: #eef2ef;
+  --inst-muted: #8f9a92;
+  --inst-accent: #20fa80;
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f4f7f4;
+  --bg-raise: #eef3ef;
+  --surface: #ffffff;
+  --surface-2: #eaf0eb;
+  --surface-3: #dfe7e1;
+  --ink: #06120a;
+  --muted: #46564c;
+  --faint: #5f6d64;
+  --line: #cfdad2;
+  --line-strong: #7d8c82;
+  --accent: #00ff5a;
+  --on-accent: #04140c;
+  --accent-ink: #007a2f;
+  --accent-soft: #d9fbe5;
+  --accent-glow: rgb(0 200 80 / 0.18);
+  --info: #1f55d6;
+  --info-soft: #e6eeff;
+  --warn: #8a5a00;
+  --warn-soft: #fdf1d8;
+  --danger: #b42318;
+  --danger-soft: #fdecea;
+  --focus: #06120a;
+  --scrim: rgb(6 18 10 / 0.4);
+  --float-shadow: 0 16px 40px rgb(6 18 10 / 0.14), 0 2px 6px rgb(6 18 10 / 0.08);
+  --inst-body: #0b100d;
+  --inst-screen: #111813;
+}
+
+@media (prefers-color-scheme: light) {
+  [data-theme-system] {
+    color-scheme: light;
+    --bg: #f4f7f4; --bg-raise: #eef3ef; --surface: #ffffff; --surface-2: #eaf0eb; --surface-3: #dfe7e1;
+    --ink: #06120a; --muted: #46564c; --faint: #5f6d64; --line: #cfdad2; --line-strong: #7d8c82;
+    --accent: #00ff5a; --on-accent: #04140c; --accent-ink: #007a2f; --accent-soft: #d9fbe5; --accent-glow: rgb(0 200 80 / 0.18);
+    --info: #1f55d6; --info-soft: #e6eeff; --warn: #8a5a00; --warn-soft: #fdf1d8; --danger: #b42318; --danger-soft: #fdecea;
+    --focus: #06120a; --scrim: rgb(6 18 10 / 0.4);
+    --float-shadow: 0 16px 40px rgb(6 18 10 / 0.14), 0 2px 6px rgb(6 18 10 / 0.08);
+    --inst-body: #0b100d; --inst-screen: #111813;
+  }
+}
+
+/* Accent preference */
+[data-accent="lime"] { --accent: #c8f53c; --accent-ink: #c8f53c; --accent-soft: rgb(200 245 60 / 0.12); --accent-glow: rgb(200 245 60 / 0.2); --on-accent: #06120a; --inst-accent: #c8f53c; --focus: #c8f53c; }
+[data-accent="blue"] { --accent: #7aa7ff; --accent-ink: #8fb3ff; --accent-soft: rgb(122 167 255 / 0.13); --accent-glow: rgb(122 167 255 / 0.22); --on-accent: #06120a; --inst-accent: #8fb3ff; --focus: #8fb3ff; }
+[data-theme="light"][data-accent="lime"] { --accent-ink: #4a6b00; --accent-soft: #f1fcd0; --focus: #06120a; }
+[data-theme="light"][data-accent="blue"] { --accent-ink: #1f55d6; --accent-soft: #e6eeff; --focus: #06120a; }
+
+:root {
+  --font-sans: "Inter Variable", Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Space Grotesk Variable", "Space Grotesk", var(--font-sans);
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+
+  --s-1: 4px; --s-2: 8px; --s-3: 12px; --s-4: 16px; --s-5: 24px; --s-6: 32px; --s-7: 48px; --s-8: 64px; --s-9: 96px;
+  --r-sm: 8px; --r-md: 14px; --r-lg: 20px; --r-pill: 999px;
+  --control-h: 44px;
+  --container: 1240px;
+  --gutter: 16px;
+  --dock-space: 104px;
+
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --d-press: 100ms; --d-fast: 160ms; --d-base: 220ms; --d-progress: 450ms;
+}
+@media (min-width: 600px) { :root { --gutter: 24px; } }
+@media (min-width: 1024px) { :root { --gutter: 32px; } }
+
+[data-density="compact"] { --control-h: 36px; }
+@media (pointer: coarse) { [data-density="compact"] { --control-h: 44px; } }
