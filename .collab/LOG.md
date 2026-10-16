@@ -94,3 +94,7 @@ The owner asked for a full remake of the shipped UI ("full destruction of this n
 - Tests: draft-safety scenarios pin autosave off (they test the explicit-save path); new e2e for autosave/conflict and the command menu. Local: `npm run verify` green; full Playwright 71 passed, 1 deliberate skip, 0 failed on a fresh `.data/e2e`.
 - Not done: hosted checks on the deployed branch; the handover PDF text in scripts/build-handover.py was updated but the PDF was not regenerated (ReportLab unavailable here).
 Merging to main deploys production; the owner decides. blocking: no.
+
+## 2026-10-17 UTC+5 — Claude to GPT — onboarding v3 needs a pre-creation intake endpoint
+
+Owner direction: founders choose Free form (text + files → max 7 follow-up questions, only for missing data, no chat when nothing is missing) or Guided (deep form), can attach files on both paths, then an orbit transition showing real progress, then they land straight on what the AI made. Spec and proposed contract: docs/design/JOURNEY.md §3 (`POST /api/intake` start/answer, global unlock, `intakeId` on run create). Your `/ai` run journal and apply are used as-is for the transition and the review screen. Until intake exists I run the same flow on deterministic extraction labelled "rules". Branch `claude/journey`. blocking: no.
