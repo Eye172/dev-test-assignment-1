@@ -3,18 +3,17 @@ import { useEffect, useId, useRef, useSyncExternalStore, type ReactNode } from "
 import { AlertCircle, ArrowUpRight, Check, Circle, CircleDashed, FlaskConical, X } from "lucide-react";
 import Link from "next/link";
 
-/** Our own mark: a dark disc, an open orbit, a core and a satellite on the orbit's open end. */
+const blade = "M0 0 C 6 -11 16 -16 8 -28 C 14 -16 10 -6 0 0";
+/** The Black Orbit mark (from blackorbit.site): an open orbit around an eight-blade core. Theme-aware. */
 export function Mark({ size = 30 }: { size?: number }) {
-  return <svg className="mark" width={size} height={size} viewBox="0 0 32 32" fill="none" aria-hidden="true">
-    <circle cx="16" cy="16" r="16" fill="var(--inst-body)"/>
-    <path className="mark-orbit" d="M24.6 11.4A9.6 9.6 0 1 1 19.8 7.2" stroke="var(--inst-ink)" strokeWidth="2.2" strokeLinecap="round"/>
-    <circle cx="16" cy="16" r="3.2" fill="var(--inst-ink)"/>
-    <circle className="mark-sat" cx="23.4" cy="8.6" r="2.6" fill="var(--inst-accent)"/>
+  return <svg className="mark" width={size} height={size} viewBox="-50 -50 100 100" fill="none" aria-hidden="true">
+    <path className="mark-orbit" d="M-31.6 7.3 A 42 42 0 1 1 -14.4 39.5" stroke="currentColor" strokeWidth="9" strokeLinecap="butt"/>
+    <g className="mark-core">{[0, 45, 90, 135, 180, 225, 270, 315].map(r => <path key={r} d={blade} fill="var(--accent-mark, var(--accent))" transform={`rotate(${r})`}/>)}
+      <circle r="4.5" fill="var(--accent-mark, var(--accent))"/></g>
   </svg>;
 }
 export function Brand() {
-  // The accessible name starts with the visible words, so voice control users can say what they see.
-  return <Link href="/" className="brand"><Mark/><span className="brand-word">Orbit <span className="brand-gtm">GTM</span></span><span className="sr-only"> Studio, home</span></Link>;
+  return <Link href="/" className="brand"><Mark/><span className="brand-word">Black Orbit <span className="brand-sub">GTM Studio</span></span><span className="sr-only">, home</span></Link>;
 }
 export function ArrowLink({ href, children, className = "" }: { href: string; children: ReactNode; className?: string }) {
   return <Link href={href} className={`button primary ${className}`}>{children}<ArrowUpRight size={17} aria-hidden/></Link>;

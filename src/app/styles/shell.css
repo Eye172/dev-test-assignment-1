@@ -9,13 +9,11 @@
 
 /* Brand */
 .brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; color: var(--ink); min-height: 44px; flex: none; }
-.brand-word { font-family: var(--font-display); font-weight: 700; font-size: 1.0625rem; letter-spacing: -0.03em; display: inline-flex; align-items: baseline; gap: 5px; }
-.brand-gtm { font-size: 0.625rem; letter-spacing: 0.16em; font-family: var(--font-sans); font-weight: 700; color: var(--muted); padding: 2px 6px; border: 1px solid var(--line); border-radius: 6px; transform: translateY(-2px); }
+.brand-word { font-family: var(--font-display); font-weight: 700; font-size: 1rem; letter-spacing: -0.02em; display: inline-flex; align-items: baseline; gap: 8px; text-transform: uppercase; }
+.brand-sub { font-family: var(--font-sans); font-size: 0.6875rem; letter-spacing: 0.14em; font-weight: 600; color: var(--muted); }
 .mark { flex: none; }
-.mark-orbit { transform-origin: 16px 16px; transition: transform var(--d-slow) var(--ease-out); }
-.mark-sat { transform-origin: 16px 16px; transition: transform var(--d-slow) var(--ease-spring); }
-.brand:hover .mark-orbit { transform: rotate(-24deg); }
-.brand:hover .mark-sat { transform: rotate(-24deg); }
+.mark-core { transition: transform 900ms var(--ease-out); }
+.brand:hover .mark-core { transform: rotate(90deg); }
 
 /* Top bar: identity, save state, search, settings. Navigation lives elsewhere. */
 .topbar, .site-header {
