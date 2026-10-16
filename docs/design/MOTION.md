@@ -1,5 +1,7 @@
 # Motion and composition addendum (as implemented)
 
+> Superseded in part by [REVISION.md](REVISION.md) (issue #3): header navigation replaces the floating dock, the dashboard default is the active-work composition, and entrance motion never hides first paint.
+
 Supersedes the motion cap in SPEC.md §6 ("CSS-only, one authored moment"), as the independent critique asked. Motion now has a job per surface. Anything without a job does not move.
 
 ## What moves, and why
