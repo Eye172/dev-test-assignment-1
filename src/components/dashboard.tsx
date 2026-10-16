@@ -164,8 +164,8 @@ export function Dashboard() {
     </div>
     <Summary workspace={workspace}/>
     <AnimatePresence>{editing && <motion.div className="customize-bar" initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8, transition: { duration: 0.12 } }}>
-      <p>Customizing. Move plates with the arrows, or drag the handle. Sizes and hiding are saved with this startup.</p>
-      <button className="button small ghost" onClick={reset} disabled={saving}><RotateCcw size={14} aria-hidden/>Reset</button>
+      <p><span className="customize-help-wide">Move plates with arrows or drag a handle. Resize or hide what you need.</span><span className="customize-help-phone">Move with arrows. Hide what you don’t need.</span></p>
+      <button className="button small ghost customize-reset" onClick={reset} disabled={saving} aria-label="Reset" title="Reset dashboard layout"><RotateCcw size={14} aria-hidden/><span>Reset</span></button>
       <button className="button small" onClick={cancel} disabled={saving}>Cancel</button>
       <button className="button small primary" onClick={done} disabled={saving} aria-busy={saving}>{saving ? <><Spinner/>Saving…</> : "Done"}</button>
     </motion.div>}</AnimatePresence>
@@ -250,7 +250,7 @@ function ReadoutPlate({ workspace, toolbar }: PlateProps) {
   // Filled inputs are a starting line, not the achievement: once complete, execution takes the large figure.
   return <section className={`plate instrument readout-plate ${filled ? "is-filled" : ""}`} aria-labelledby="plate-readout">{toolbar}
     <div className="plate-body" inert={toolbar ? true : undefined}>
-    <div className="plate-head"><h2 id="plate-readout">Strategy readout</h2><span className="plate-meta">{filled ? "Inputs complete" : `${c.completed} of 5 inputs complete`}</span></div>
+    <div className="plate-head"><h2 id="plate-readout">{filled ? "Plan progress" : "Strategy inputs"}</h2><span className="plate-meta">{filled ? "Inputs complete" : `${c.completed} of 5 inputs complete`}</span></div>
     {filled ? <>
       <p className="readout xl">{p.percentage}<small>%</small></p>
       <p className="inst-caption">of plan tasks done · {p.done} of {p.total - p.skipped}{p.skipped ? ` · ${p.skipped} skipped` : ""}</p>

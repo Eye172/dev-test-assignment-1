@@ -195,10 +195,10 @@ test("layout changes and appearance preferences survive a full reload", async ({
   await preferences.getByRole("button",{ name: "Close",exact: true }).click();
   await page.getByRole("button",{ name: "Customize",exact: true }).click();
   const initialOrder = await page.locator("[data-plate-id]").evaluateAll(n => n.map(x => x.getAttribute("data-plate-id")));
-  const later = page.getByRole("button",{ name: "Move Strategy readout later",exact: true });
+  const later = page.getByRole("button",{ name: "Move Progress readout later",exact: true });
   if (await later.isEnabled()) await later.click();
-  else await page.getByRole("button",{ name: "Move Strategy readout earlier",exact: true }).click();
-  if (!isMobile) await page.getByRole("button",{ name: "Strategy readout: M, Half",exact: true }).click();
+  else await page.getByRole("button",{ name: "Move Progress readout earlier",exact: true }).click();
+  if (!isMobile) await page.getByRole("button",{ name: "Progress readout: M, Half",exact: true }).click();
   // Profile snapshot and Channel experiment start hidden in the authored default; hide a visible plate instead.
   await page.getByRole("button",{ name: "Hide Missing inputs",exact: true }).click();
   const saved = page.waitForResponse(r => r.request().method() === "PATCH" && r.url().endsWith(`/api/startups/${id}`));
@@ -293,7 +293,7 @@ test("pointer dragging and keyboard cancellation keep a predictable panel order"
   await page.getByRole("button",{ name: "Customize",exact: true }).click();
   const order = () => page.locator("[data-plate-id]").evaluateAll(nodes => nodes.map(n => n.getAttribute("data-plate-id")));
   const initial = await order();
-  const handle = page.getByRole("button",{ name: /^Move Strategy readout, position/ });
+  const handle = page.getByRole("button",{ name: /^Move Progress readout, position/ });
   await handle.focus(); await page.keyboard.press("Space"); await page.keyboard.press("ArrowDown");
   await expect.poll(order).not.toEqual(initial);
   await page.keyboard.press("Escape");

@@ -2,7 +2,7 @@
 import { createContext, useCallback, useContext, useEffect, useId, useRef, useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { AnimatePresence, MotionConfig, motion } from "motion/react";
+import { AnimatePresence, MotionConfig, motion, useReducedMotion } from "motion/react";
 import { ArrowDownToLine, Check, Compass, LayoutGrid, Link2, Orbit, Route, Settings2, Share2, X } from "lucide-react";
 import { api } from "@/lib/client-api";
 import { mergeWorkspace } from "@/lib/client-workspace";
@@ -30,6 +30,7 @@ export function themeAttributes(preferences: Pick<Preferences, "theme" | "accent
 }
 
 export function WorkspaceShell({ initial, children }: { initial: Workspace; children: ReactNode }) {
+  const systemReducedMotion = useReducedMotion();
   const [workspace, setWorkspaceState] = useState(initial);
   const setWorkspace: Dispatch<SetStateAction<Workspace>> = useCallback(action => {
     setWorkspaceState(current => mergeWorkspace(current,typeof action === "function" ? action(current) : action));
@@ -102,7 +103,7 @@ export function WorkspaceShell({ initial, children }: { initial: Workspace; chil
   }
 
   return <Context.Provider value={{ workspace, setWorkspace, refresh, notify, savePreferences }}>
-    <MotionConfig reducedMotion={preferences.motion === "reduced" ? "always" : "user"} transition={spring}>
+    <MotionConfig reducedMotion={preferences.motion === "reduced" ? "always" : "user"} skipAnimations={preferences.motion === "reduced" || !!systemReducedMotion} transition={spring}>
       <div className="app-surface" {...themeAttributes(preferences)}>
         <header className="site-header">
           <Brand/>
@@ -164,19 +165,30 @@ function ShareMenu({ startupId, onCopy }: { startupId: string; onCopy: () => voi
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
   const menuId = useId();
+  function close() { setOpen(false); root.current?.querySelector<HTMLButtonElement>("button")?.focus(); }
   useEffect(() => {
     if (!open) return;
     const outside = (e: PointerEvent) => { if (!root.current?.contains(e.target as Node)) setOpen(false); };
-    const key = (e: KeyboardEvent) => { if (e.key === "Escape") { setOpen(false); root.current?.querySelector<HTMLButtonElement>("button")?.focus(); } };
+    const key = (e: KeyboardEvent) => {
+      if (e.key === "Escape") { e.preventDefault(); close(); return; }
+      if (!root.current?.contains(e.target as Node)) return;
+      if (e.key === "Tab") { close(); return; }
+      if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(e.key)) return;
+      e.preventDefault();
+      const items = Array.from(root.current.querySelectorAll<HTMLElement>("[role=menuitem]"));
+      const current = items.indexOf(document.activeElement as HTMLElement);
+      const index = e.key === "Home" ? 0 : e.key === "End" ? items.length - 1 : (current + (e.key === "ArrowDown" ? 1 : -1) + items.length) % items.length;
+      items[index]?.focus();
+    };
     document.addEventListener("pointerdown", outside); document.addEventListener("keydown", key);
     root.current?.querySelector<HTMLElement>("[role=menu] a, [role=menu] button")?.focus();
     return () => { document.removeEventListener("pointerdown", outside); document.removeEventListener("keydown", key); };
   }, [open]);
   return <div className="share-menu" ref={root}>
-    <button type="button" className="icon-button" aria-label="Share and export" aria-haspopup="menu" aria-expanded={open} aria-controls={menuId} onClick={() => setOpen(o => !o)}><Share2 size={18}/></button>
-    <AnimatePresence>{open && <motion.div id={menuId} role="menu" className="menu-pop" initial={{ opacity: 0, y: -4, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, transition: { duration: 0.1 } }} transition={{ duration: 0.16, ease: [0.23, 1, 0.32, 1] }}>
-      <button type="button" role="menuitem" onClick={() => { setOpen(false); onCopy(); }}><Link2 size={16} aria-hidden/>Copy workspace link</button>
-      <a role="menuitem" href={`/api/startups/${startupId}/export`} download aria-label="Export workspace as JSON" onClick={() => setOpen(false)}><ArrowDownToLine size={16} aria-hidden/>Export JSON backup</a>
+    <button id={`${menuId}-trigger`} type="button" className="icon-button" aria-label="Share and export" aria-haspopup="menu" aria-expanded={open} aria-controls={menuId} onClick={() => setOpen(o => !o)}><Share2 size={18}/></button>
+    <AnimatePresence>{open && <motion.div id={menuId} role="menu" aria-labelledby={`${menuId}-trigger`} className="menu-pop" initial={{ opacity: 0, y: -4, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, transition: { duration: 0.1 } }} transition={{ duration: 0.16, ease: [0.23, 1, 0.32, 1] }}>
+      <button type="button" role="menuitem" tabIndex={-1} onClick={() => { close(); onCopy(); }}><Link2 size={16} aria-hidden/>Copy workspace link</button>
+      <a role="menuitem" tabIndex={-1} href={`/api/startups/${startupId}/export`} download onClick={close}><ArrowDownToLine size={16} aria-hidden/>Export workspace as JSON</a>
     </motion.div>}</AnimatePresence>
   </div>;
 }

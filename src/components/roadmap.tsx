@@ -255,7 +255,7 @@ function AddTaskDialog({ open, onClose, onRecover }: { open: boolean; onClose: (
     try {
       const task = await api<Task>(`/api/startups/${workspace.startup.id}/tasks`, { method: "POST", body: JSON.stringify(d) });
       clearSubmittedDraft(draftKey,d);
-      setWorkspace(ws => ({ ...ws, tasks: [...ws.tasks, task] })); await refresh().catch(() => {});
+      setWorkspace(ws => ({ ...ws, tasks: [...ws.tasks, task] })); void refresh().catch(() => {});
       notify("Custom task added"); setD(emptyTask); onClose();
     } catch (err) { setError((err as Error).message); }
     finally { setSaving(false); }

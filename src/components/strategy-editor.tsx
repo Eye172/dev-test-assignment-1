@@ -66,8 +66,8 @@ export function StrategyEditor() {
   useEffect(() => { document.querySelector(".station.current")?.scrollIntoView({ inline: "center", block: "nearest" }); }, [selected]);
 
   return <>
-    <div className="page-heading">
-      <div><h1 tabIndex={-1}>Strategy</h1><p className="lead">Five decisions, in any order. Save drafts freely. “Complete” means the required inputs are filled, not that the strategy is proven.</p></div>
+    <div className="page-heading strategy-heading">
+      <div><h1 tabIndex={-1}>Strategy</h1><p className="lead">Five decisions, in your order. Save drafts freely. Filled inputs are a starting point, not proof.</p></div>
     </div>
     <div className="strategy-layout">
       <nav className="section-rail" aria-label="Strategy sections">
@@ -186,7 +186,7 @@ function SectionEditor({ section, index, onDirtyChange, onLive, onNext, nextTitl
       </details>
     </fieldset>
     <div className="editor-footer">
-      <button className="button primary" disabled={saving} aria-busy={saving} aria-keyshortcuts="Control+S">{saving ? <><Spinner/>Saving…</> : <><Save size={16} aria-hidden/>Save section</>}</button>
+      <button className="button primary" disabled={saving} aria-busy={saving} aria-keyshortcuts="Control+S" aria-label={saving ? "Saving section" : "Save section"}>{saving ? <><Spinner/>Saving…</> : <><Save size={16} aria-hidden/>Save<span className="save-section-label"> section</span></>}</button>
       <SaveState saving={saving} dirty={dirty} savedAt={savedAt} failed={!!error && !conflict}/>
       <button type="button" className="button ghost next-btn" onClick={onNext}><span className="next-label">Next: {nextTitle}</span><span className="next-short">Next</span><ArrowRight size={16} aria-hidden/></button>
     </div>

@@ -4,7 +4,7 @@ export type PlateSize = "S" | "M" | "L" | "XL";
 export type DashboardPlate = { id: DashboardPlateId;size: PlateSize;hidden: boolean };
 export type DashboardLayout = { version: 1;plates: DashboardPlate[] };
 export const plateCatalog: Record<DashboardPlateId,{ title: string;allowedSizes: readonly PlateSize[];defaultSize: PlateSize }> = {
-  readout: { title: "Strategy readout",allowedSizes: ["M","L"],defaultSize: "M" },
+  readout: { title: "Progress readout",allowedSizes: ["M","L"],defaultSize: "M" },
   next: { title: "Next actions",allowedSizes: ["S","M"],defaultSize: "M" },
   decisions: { title: "Decisions",allowedSizes: ["L","XL"],defaultSize: "L" },
   gaps: { title: "Missing inputs",allowedSizes: ["S","M"],defaultSize: "S" },

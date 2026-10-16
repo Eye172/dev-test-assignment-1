@@ -97,7 +97,7 @@ export function formatTime(iso: string | null) {
 export function SaveState({ saving, dirty, savedAt, failed }: { saving: boolean; dirty: boolean; savedAt: string | null; failed?: boolean }) {
   const text = saving ? "Saving…" : failed ? "Couldn't save" : dirty ? "Unsaved changes" : savedAt ? `Saved · ${formatTime(savedAt)}` : "Not saved yet";
   const tone = saving ? "" : failed ? "danger" : dirty ? "warn" : savedAt ? "ok" : "";
-  return <span className={`save-state ${tone}`} aria-live="polite">{tone === "ok" && <Check size={14} aria-hidden/>}{text}</span>;
+  return <span className={`save-state ${tone}`} aria-live="polite" title={text}>{tone === "ok" && <Check size={14} aria-hidden/>}{tone === "ok" && savedAt ? <span>Saved<span className="save-time"> · {formatTime(savedAt)}</span></span> : text}</span>;
 }
 
 

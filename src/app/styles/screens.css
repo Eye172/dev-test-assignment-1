@@ -93,6 +93,11 @@ kbd { font-family: var(--font-mono); font-size: 0.75rem; padding: 2px 6px; borde
 /* ---------- Strategy ---------- */
 .strategy-layout { display: grid; gap: var(--s-5); align-items: start; }
 @media (min-width: 1024px) { .strategy-layout { grid-template-columns: 232px minmax(0, 1fr); } .quick-check { grid-column: 2; grid-row: 1; } }
+@media (min-width: 1024px) and (max-width: 1279px) {
+  .section-rail { grid-column: 1; grid-row: 1 / span 2; }
+  .editor-col { grid-column: 2; grid-row: 1; }
+  .quick-check { grid-column: 2; grid-row: 2; }
+}
 @media (min-width: 1280px) { .strategy-layout { grid-template-columns: 232px minmax(0, 1fr) 280px; } .quick-check { grid-column: 3; grid-row: 1; position: sticky; top: 88px; } }
 .section-rail ol { list-style: none; margin: 0; padding: 0; position: relative; }
 @media (min-width: 1024px) {
@@ -138,7 +143,11 @@ kbd { font-family: var(--font-mono); font-size: 0.75rem; padding: 2px 6px; borde
     background: color-mix(in srgb, var(--surface) 94%, transparent); backdrop-filter: blur(10px); border-radius: 0 0 var(--r-md) var(--r-md);
   }
   .editor-footer { flex-wrap: nowrap; gap: var(--s-2); }
-  .editor-footer .save-state { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .editor-footer .save-state { min-width: 0; flex: 1; line-height: 1.3; }
+  .editor-footer .save-state svg { flex: none; }
+  .editor-footer .save-time, .editor-footer .save-section-label { display: none; }
+  .editor-footer > .button:first-child { flex: none; gap: 0; }
+  .editor-footer > .button:first-child svg { margin-right: 6px; }
   .editor-footer .button { padding: 0 14px; }
   .editor-footer .next-btn { flex: none; }
   .next-label { display: none; } .next-short { display: inline; }
@@ -161,13 +170,17 @@ kbd { font-family: var(--font-mono); font-size: 0.75rem; padding: 2px 6px; borde
 .qc-ok { display: flex; gap: 8px; align-items: center; font-size: 0.875rem; color: var(--inst-ink); }
 .qc-rule { margin-top: var(--s-3); font-size: 0.8125rem; }
 @media (max-width: 1023px) {
-  .quick-check { order: -1; padding: var(--s-3) var(--s-4); border-radius: var(--r-md); }
+  .quick-check { order: 1; padding: var(--s-3) var(--s-4); border-radius: var(--r-md); }
   .quick-check .screw, .quick-check .plate-head, .quick-check .qc-rule { display: none; }
   .quick-check .screen { padding: var(--s-3); }
   .quick-check .qc-list { display: flex; flex-wrap: wrap; gap: 4px 12px; }
   .quick-check .qc-list a { margin: 0; padding: 2px 0; }
   .strategy-layout { grid-template-columns: minmax(0, 1fr); }
   .section-rail { order: -2; }
+}
+@media (max-width: 767px) {
+  .strategy-heading { margin-bottom: var(--s-4); }
+  .strategy-layout { gap: var(--s-3); }
 }
 
 /* ---------- Dashboard ---------- */

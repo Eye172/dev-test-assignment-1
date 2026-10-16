@@ -123,3 +123,5 @@ details > summary:hover { color: var(--ink); }
 .skeleton-title { height: 44px; width: min(420px, 70%); margin-bottom: var(--s-6); }
 .skeleton-grid { display: grid; gap: var(--s-5); grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
 .skeleton-panel { height: 220px; }
+.skeleton-field { height: 76px; margin-top: var(--s-5); }
+@media (max-width: 1023px) { .strategy-loading .section-rail { height: 44px; margin: 0; } }

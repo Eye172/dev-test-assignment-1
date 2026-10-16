@@ -149,6 +149,23 @@ test("rapid week-panel intents never restore a stale revision over an acknowledg
   expect((await savedWorkspace(page, id)).tasks.find(t => t.id === task.id)).toMatchObject({ status: finalTask.status, revision: finalTask.revision });
 });
 
+test("an acknowledged custom task closes immediately while its follow-up read is delayed", async ({ page }) => {
+  const ws = await copyDemo(page); const id = ws.startup.id;
+  await page.goto(`/startups/${id}/roadmap`);
+  const pending = await holdRequests(page, `**/api/startups/${id}`, "GET");
+  await page.getByRole("button", { name: "Add task", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Add a custom task", exact: true });
+  const title = "Schedule a pilot before the workspace refresh returns";
+  await dialog.getByLabel(/^Title/).fill(title);
+  await dialog.getByLabel(/^Deliverable/).fill("A confirmed pilot interview");
+  await dialog.getByRole("button", { name: "Add task", exact: true }).click();
+  await expect.poll(() => pending.length).toBe(1);
+  await expect(dialog).not.toBeVisible();
+  await expect(page.getByRole("button", { name: `Edit ${title}`, exact: true })).toBeVisible();
+  expect((await savedWorkspace(page, id)).tasks.some(task => task.title === title)).toBe(true);
+  await pending[0].continue();
+});
+
 test("a pending Add Task cannot be discarded and a failed save retains its complete draft", async ({ page }) => {
   const ws = await copyDemo(page); const id = ws.startup.id;
   await page.goto(`/startups/${id}/roadmap`);

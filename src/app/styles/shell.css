@@ -116,4 +116,6 @@
 .recovery { max-width: 640px; margin: 0 auto; padding: var(--s-9) var(--gutter); display: grid; gap: var(--s-4); justify-items: start; }
 .recovery h1 { font-size: clamp(2.25rem, 6vw, 3.5rem); line-height: 1.02; }
 .recovery .actions { display: flex; flex-wrap: wrap; gap: var(--s-2); margin-top: var(--s-2); }
-@media (max-width: 767px) { .toast { bottom: calc(var(--dock-space) + 12px); } }
+@media (max-width: 767px) {
+  .toast { top: 76px; bottom: auto; width: max-content; border-radius: var(--r-md); }
+}
