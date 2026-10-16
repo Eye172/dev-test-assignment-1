@@ -98,3 +98,52 @@ Adopt the *family resemblance*, not the brand:
 5. Working UI ≠ landing page: drop the continuous orbit animation, scroll reveals and dashed rotated chips inside the app (owner asked for no continuous motion in the working interface). Keep one authored moment on the welcome page.
 
 Do **not** reuse: the Black Orbit / Founder Orbit name or logo, its orbit illustration, page copy, section structure, or font files fetched from their site (we load our own fonts from Google Fonts / `next/font`).
+
+---
+
+# Beyond Black Orbit — creative and practical references (owner request, issue #1)
+
+Captured 2026-10-16. Goal: avoid another template; find purposeful, unusual composition that still passes a cold usability check.
+
+## A. Owner-supplied reference
+
+- **Instagram post `DL_KH_Cvie4` (uiuxbunker, credit @bachynskyi_ui, "UI/UX Product Design" reel)**. Without logging in, only the post's cover frames are visible. Slide 8 (a video) could not be viewed, so this note is based on the cover frame. Observed: rectangular **screen plates** (tablet/phone slabs, rounded, thick edges) floating at different tilts around a **glass orbit ring**, with one dark hero plate in the middle. Monochrome pink set, soft studio light. Takeaway: interface as a set of physical, separable plates arranged in space; one plate is dominant, the rest orbit it. This matches our product's name and the ecosystem's "orbit" metaphor.
+
+## B. The owner's own interfaces (`.codex/research/`, local screenshots)
+
+| Screen | What works (keep the idea, not the look) |
+|---|---|
+| Agent Deck | Mixed styles: a skeuomorphic **device plate** (bezel, screen, knob, power button) next to flat editorial type. One object carries the personality; the rest stays calm. |
+| WhiteBox Studio | Dark operational app. A sticky **"Quick check" side plate** with live counts ("Criteria covered 4 of 4") and segmented readiness bar. Blocks reorder with **explicit ↑ / ↓ buttons** next to a drag handle. |
+| SearchiousAI | Canvas with a minimap and a **keyboard legend bar** (pan, zoom, fold shortcuts) that is always visible. Canvas used only where the content really is spatial. |
+| inVision U | Numbered stepper with done/current/next states, then a **timeline chart** of events, neon lime on near-black, mono micro-labels ("ШАГ 2 / 4", "✓ минимум достигнут"). Shows the rule ("at least 7 events, 1 failure") together with whether it's met. |
+| CampusLense | Editorial profile: large name, fact row (city, founded, students, site), a photo bento, and a narrow **facts rail** on the right. Lots of white space; quiet type. |
+
+Pattern across the owner's work: **one characterful object per screen, calm everything else, live "rule + status" readouts, keyboard-visible affordances, explicit move buttons**.
+
+## C. Platform patterns for movable plates
+
+| Source | Pattern | Usability lesson |
+|---|---|---|
+| iOS / iPadOS Home Screen widgets | Edit mode ("jiggle") is entered on purpose; widgets come in fixed sizes S/M/L; Done exits; a hidden-widget gallery restores items. | Separate **edit mode** from use mode; fixed sizes only; easy restore. |
+| Android launcher widgets | Grid-snapped resizing with handles; items reflow. | Snap to a grid; never free pixel positioning. |
+| macOS widgets / Notification Center | "Edit widgets" sheet, add/remove from a gallery, order by drag. | Hidden-items tray instead of deleting. |
+| GitHub profile "Customize pins" | Drag to reorder with keyboard alternative; capped count. | Cap the number of items; keyboard path is required. |
+| Atlassian Pragmatic drag-and-drop guidance / dnd-kit | Drag handles + a menu or button alternative for every drag action; live-region announcements ("moved to position 3 of 7"). | Drag is an enhancement; **buttons are the baseline**. |
+| Grafana / Datadog dashboards | Freeform panel grids get messy; "reset to default" and saved layouts are essential. | Always provide **Reset layout**; keep a curated default. |
+| Linear / Raycast | Calm surfaces, dense, keyboard-first, shortcut hints shown inline. | Show shortcuts where the action is. |
+| Windows Snap Layouts | A few predefined layouts instead of free placement. | Offer **presets** rather than unlimited freedom. |
+| Teenage Engineering product pages | Hardware panels: labelled modules, readouts and controls on separate plates. | "Instrument" metaphor fits status readouts, but only for measured values. |
+
+## D. Cold evaluation of candidate ideas
+
+| Idea | Benefit | Usability risk | Verdict |
+|---|---|---|---|
+| Plates arranged around a 3D orbit (as in the reel) inside the app | Memorable | Tilted text hurts readability, spatial nav is slow, poor on mobile | **Welcome page only**, flat 2.5D, static, decorative |
+| Freeform canvas for strategy forms | Feels creative | Forms need linear order, focus order breaks, mobile unusable | **Rejected** (owner also excluded it) |
+| Reorderable dashboard plates in edit mode | Personal, matches founder priorities | Drag-only is inaccessible; dense packing breaks focus order | **Adopted** with move buttons, keyboard drag, fixed sizes, no dense packing, reset |
+| One dark "instrument plate" per screen (mixed style) | Clear focal readout, ecosystem flavor | Too many dark blocks = noise | **Adopted**, max one per screen |
+| Mono type for readouts and key hints | Precise, owner's taste | Mono as decoration = costume | **Adopted for numbers, codes, shortcuts only** |
+| Asymmetric grid with intentional empty columns | Calm, editorial, breathing room | Wasted space on small laptops | **Adopted ≥1280 only**; collapses at 1024 |
+| Timeline lanes for the 30-day roadmap | Time is actually spatial here | Horizontal scroll on mobile | **Adopted on desktop**; vertical timeline on mobile |
+| Rotated/tilted chips in the working UI | Playful | Harder to read, looks messy | **Rejected** in the app |
