@@ -88,7 +88,9 @@ export function useDirtyGuard(dirty: boolean) {
 }
 export function formatTime(iso: string | null) {
   if (!iso) return "";
-  return new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  // Server and browser locales/time zones can differ. A stable, labelled UTC
+  // value prevents hydration from remounting an editor and erasing early input.
+  return `${new Date(iso).toISOString().slice(11,16)} UTC`;
 }
 export function SaveState({ saving, dirty, savedAt, failed }: { saving: boolean; dirty: boolean; savedAt: string | null; failed?: boolean }) {
   const text = saving ? "Saving…" : failed ? "Couldn't save" : dirty ? "Unsaved changes" : savedAt ? `Saved · ${formatTime(savedAt)}` : "Not saved yet";
