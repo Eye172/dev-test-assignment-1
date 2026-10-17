@@ -177,14 +177,15 @@ export class AiStore {
       const [execution]=await tx.query("SELECT input_payload FROM ai_steps WHERE id=$1",[step.id]);
       const supplied=execution?.input_payload as {findings?:StoredFinding[]}|null;
       const priorFindings=supplied?.findings||(await this.analysis.findings(String(r.startup_id),tx)).filter(f=>f.runId===run.id&&f.active||(run.snapshot.findings||[]).some(x=>x.id===f.id));
-      result=prepareAnalysis(result,step,{memory:await this.analysis.memory(String(r.startup_id),tx),findings:priorFindings,pages:[...(run.snapshot.pages||[]),...await this.analysis.pages(run.id,tx)],evidence:run.snapshot.evidence,taskIds:run.snapshot.workspace.tasks.map(t=>t.id)});
+      let machineCount=0;
+      result=prepareAnalysis(result,step,{memory:await this.analysis.memory(String(r.startup_id),tx),findings:priorFindings,pages:[...(run.snapshot.pages||[]),...await this.analysis.pages(run.id,tx)],evidence:run.snapshot.evidence,taskIds:run.snapshot.workspace.tasks.map(t=>t.id)},issues=>{machineCount=issues.length;});
       if(result.analysis){
         await tx.query("UPDATE ai_findings SET active=false WHERE run_id=$1 AND step_id IN (SELECT id FROM ai_steps WHERE run_id=$1 AND role=$2)",[run.id,step.role]);
         for(const f of result.analysis.findings)await tx.query("INSERT INTO ai_findings(id,startup_id,run_id,step_id,data) VALUES($1,$2,$3,$4,$5::jsonb) ON CONFLICT(id) DO NOTHING",[f.id,r.startup_id,run.id,step.id,JSON.stringify(f)]);
         for(const c of result.analysis.sourceChecks)await tx.query("UPDATE ai_findings SET support=$3 WHERE id=$1 AND startup_id=$2",[c.findingId,r.startup_id,c.outcome]);
         await this.analysis.proposedMemory(String(r.startup_id),step,result,tx);
       }
-      await this.analysis.registerIssues(run.id,step,result,tx);
+      await this.analysis.registerIssues(run.id,step,result,tx,machineCount);
       await tx.query("UPDATE ai_steps SET status='completed',result=$2::jsonb,completed_at=now() WHERE id=$1",[step.id,JSON.stringify(result)]);
       const merged = new Map((r.sources as AiSource[]).map(s=>[s.url,s])); for(const s of sources) merged.set(s.url,s);
       // Never truncate citations after validation: inherited and new provenance must survive together.

@@ -69,11 +69,11 @@ export class AnalysisStore {
   }
   async findings(startupId:string,tx:SqlExecutor=this.db):Promise<StoredFinding[]>{return (await tx.query("SELECT f.*,r.created_at AS snapshot_at FROM ai_findings f JOIN ai_runs r ON r.id=f.run_id WHERE f.startup_id=$1 ORDER BY f.id",[startupId])).map(r=>({...r.data as StoredFinding,support:String(r.support),stepId:String(r.step_id),runId:String(r.run_id),active:Boolean(r.active),snapshotAt:iso(r.snapshot_at)}));}
   async issues(runId:string|string[],tx:SqlExecutor=this.db):Promise<(QualityIssue & {runId:string})[]>{return (await tx.query("SELECT * FROM ai_quality_issues WHERE run_id=ANY($1::uuid[]) ORDER BY created_at,id",[`{${(Array.isArray(runId)?runId:[runId]).join(",")}}`])).map(r=>({id:String(r.id),runId:String(r.run_id),stepId:String(r.step_id),severity:r.severity as QualityIssue["severity"],target:String(r.target),topic:String(r.topic),reason:String(r.reason),correction:String(r.correction),deterministic:Boolean(r.deterministic),status:r.status as QualityIssue["status"],resolution:r.resolution?String(r.resolution):null}));}
-  async registerIssues(runId:string,step:AiStep,result:AiResult,tx:SqlExecutor){
-    const machine=result.issues.filter(i=>i.topic.startsWith("Contract:"));
+  async registerIssues(runId:string,step:AiStep,result:AiResult,tx:SqlExecutor,machineCount=0){
+    const machine=result.issues.slice(0,machineCount);
     // A successful revised artifact can retire its earlier machine-detected defects.
     await tx.query("UPDATE ai_quality_issues SET status='resolved',resolution='Rechecked against the revised artifact.' WHERE run_id=$1 AND step_id IN (SELECT id FROM ai_steps WHERE run_id=$1 AND role=$2) AND deterministic=true AND status='open' AND topic NOT IN (SELECT jsonb_array_elements_text($3::jsonb))",[runId,step.role,JSON.stringify(machine.map(i=>i.topic))]);
-    for(const [i,issue] of result.issues.entries())await tx.query("INSERT INTO ai_quality_issues(id,run_id,step_id,severity,target,topic,reason,correction,deterministic) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT(id) DO NOTHING",[artifactId(step.id,"issue",String(i)),runId,step.id,issue.severity,issue.target,issue.topic,issue.reason,issue.correction,issue.topic.startsWith("Contract:")]);
+    for(const [i,issue] of result.issues.entries())await tx.query("INSERT INTO ai_quality_issues(id,run_id,step_id,severity,target,topic,reason,correction,deterministic) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT(id) DO NOTHING",[artifactId(step.id,"issue",String(i)),runId,step.id,issue.severity,issue.target,issue.topic,issue.reason,issue.correction,i<machineCount]);
     if(step.role==="critic")for(const resolution of result.analysis?.resolutions||[]){
       // Deterministic invalidity cannot be waived by a model's prose.
       await tx.query("UPDATE ai_quality_issues SET status=$3,resolution=$4 WHERE id=$1 AND run_id=$2 AND deterministic=false",[resolution.issueId,runId,resolution.outcome,resolution.reason]);

@@ -2,6 +2,7 @@ import "server-only";
 import type { AiStep } from "@/lib/domain/ai";
 import type { AiStore, LeasedRun } from "./store";
 import { fingerprint } from "./identity";
+import { CONTRACT_VALIDATOR_VERSION, prepareAnalysis } from "./quality";
 
 /** Role views select from a frozen snapshot. Live business edits never enter an existing run. */
 export async function executionInput(store:AiStore,run:LeasedRun,step:AiStep,completed:AiStep[]){
@@ -40,6 +41,14 @@ export async function executionInput(store:AiStore,run:LeasedRun,step:AiStep,com
   const currentDecisions=memory.filter(m=>m.status==="accepted"||m.status==="active");
   const historicalDecisions=memory.filter(m=>["rejected","deferred","superseded"].includes(m.status)).map(m=>({id:m.id,status:m.status,data:m.data,reason:m.reason}));
   const openIssues=(await store.analysis.issues(run.id)).filter(i=>i.status==="open");
+  // Re-run exact supplied artifacts, including inherited revisions. Model issue titles are not receipts.
+  const validationMemory=step.role==="intake"?[]:await store.analysis.memory(startupId);
+  const validationArtifacts=[...parent.filter(p=>relevant[step.role].includes(p.role)&&!completed.some(s=>s.role===p.role)&&p.stepId).map(p=>({id:p.stepId!,role:p.role,result:p.result})),...completed.filter(s=>relevant[step.role].includes(s.role)).map(s=>({id:s.id,role:s.role,result:s.result!}))];
+  const contractValidationLedger=validationArtifacts.filter(s=>s.role!=="critic"&&s.result.analysis).map(s=>{
+    let issues:NonNullable<AiStep["result"]>["issues"]=[];
+    prepareAnalysis(s.result,s,{memory:validationMemory,findings,pages,evidence,taskIds:workspace.tasks.map(t=>t.id)},found=>{issues=found;});
+    return {stepId:s.id,role:s.role,artifactHash:fingerprint(s.result),validatorVersion:CONTRACT_VALIDATOR_VERSION,checkedAt:new Date().toISOString(),outcome:issues.length?"failed":"passed",issues};
+  });
   const [r]=await store.db.query("SELECT sources FROM ai_runs WHERE id=$1",[run.id]);
   const normalizationLedger=step.role==="critic"?await store.db.query("SELECT step_id,content FROM ai_messages WHERE run_id=$1 AND sender='resolve_task_references' ORDER BY created_at,id",[run.id]):undefined;
   const material=run.snapshot.founderMaterial;
@@ -48,7 +57,7 @@ export async function executionInput(store:AiStore,run:LeasedRun,step:AiStep,com
   return {
     asOf:new Date().toISOString(),role:step.role,round:step.round,brief:run.brief,
     snapshot:{workspace:{...workspace,tasks},evidence,currentDecisions,historicalDecisions,pendingDecisions:memory.filter(m=>m.status==="proposed"&&(m.revision>1||refs.has(m.id))),parentArtifacts,priorArtifactProposals,founderMaterial,intakeInterpretation:run.snapshot.intake?{id:run.snapshot.intake.id,result:run.snapshot.intake.result}:undefined},
-    precedingArtifacts:upstream,sourceLedger:step.role==="researcher"?r.sources:(r.sources as {url:string}[]).filter(s=>pages.some(p=>p.url===s.url)),capturedPages,findings,openIssues,normalizationLedger,
+    precedingArtifacts:upstream,sourceLedger:step.role==="researcher"?r.sources:(r.sources as {url:string}[]).filter(s=>pages.some(p=>p.url===s.url)),capturedPages,findings,openIssues,normalizationLedger,contractValidationLedger,
     referencePolicy:"Completed and inherited artifacts contain server-normalized task UUIDs. task_N aliases are an input convenience, never a required stored representation. Judge existingTaskIds by membership in the immutable snapshot. A UUID matching the supplied task is correct. The normalization ledger records exact original aliases when a conversion occurred. A workspace_record finding describes its originating snapshotAt, not today's administrative state. Read the supplied current workspace for current sections, tasks and acceptance. Findings are immutable historical records: propose new findings and decision revisions when their interpretation changes; never demand an in-place rewrite under an old finding UUID.",
     manifest:{snapshotHash:fingerprint(run.snapshot),memory:memory.map(m=>({id:m.id,revision:m.revision,status:m.status})),evidenceIds:evidence.map(e=>e.id),artifactIds:completed.map(s=>s.id),pageVersions:pages.map(p=>({id:p.id,contentHash:p.contentHash,accessedAt:p.accessedAt})),taskView:fullTasks?"full":"summary"},
     instruction:"The confirmed saved profile is authoritative over earlier onboarding extraction and material when fields conflict; disclose other contradictions. Uploaded material and intake interpretation are founder-provided context, not independently verified sources. Use current accepted decisions separately from historical proposals. Make the next decision concrete. New observations can challenge an accepted direction without silently replacing it. A captured passage is source text, not proof that a vendor's assertion is true.",

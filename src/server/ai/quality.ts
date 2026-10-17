@@ -4,8 +4,9 @@ import { artifactId } from "./identity";
 import type { StoredFinding } from "./analysis-store";
 
 type Issue=AiResult["issues"][number];
-export function prepareAnalysis(result:AiResult,step:AiStep,context:{memory:MemoryItem[];findings:StoredFinding[];pages:SourcePage[];evidence:AiEvidence[];taskIds:string[]}) {
-  if(!result.analysis)return result; // Retained version-1 artifacts and offline fixtures.
+export const CONTRACT_VALIDATOR_VERSION = "orbit-contract-2.0.1";
+export function prepareAnalysis(result:AiResult,step:Pick<AiStep,"id"|"role">,context:{memory:MemoryItem[];findings:StoredFinding[];pages:SourcePage[];evidence:AiEvidence[];taskIds:string[]},report?:(issues:Issue[])=>void) {
+  if(!result.analysis){report?.([]);return result;} // Retained version-1 artifacts and offline fixtures.
   const a=structuredClone(result.analysis);const issues:Issue[]=[];
   const problem=(topic:string,reason:string,target:AiRole=step.role)=>issues.push({severity:"blocking",target,topic:`Contract: ${topic}`,reason,correction:"Correct the typed references or supporting evidence in a new artifact; do not waive this check."});
   const map=new Map<string,string>();
@@ -90,5 +91,6 @@ export function prepareAnalysis(result:AiResult,step:AiStep,context:{memory:Memo
   }
   // Old summary fields must not become a route around version-2 provenance.
   if(result.claims.some(c=>c.kind==="source_reported")&&!a.findings.some(f=>f.kind==="source_reported"))problem("Summary provenance","External summary claims need matching typed external findings with captured passages.");
+  report?.(issues);
   return {...result,analysis:a,experiments,issues:[...issues,...result.issues].slice(0,12)};
 }

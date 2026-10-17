@@ -100,6 +100,35 @@ describe("decision memory and one feasible active plan",()=>{
     await expect(ai.remember(c.startup.id,c.run.id,step.id,"hypothesis",h.key)).rejects.toMatchObject({code:"AI_MEMORY_CHANGED"});
     expect((await ai.analysis.memory(c.startup.id)).find(m=>m.id===h.id)!.data).toEqual(changed.data);
   });
+  it("gives the critic fresh contract receipts for corrected and inherited artifacts",async()=>{
+    const c=await ready(),created=await ai.create(c.startup.id,{mode:"full",brief:"Correct the missing billing period",requestId:randomUUID(),parentRunId:c.run.id}),run=(await ai.lease(created.id))!;
+    const steps=await ai.steps(run.id),researcher=steps.find(s=>s.role==="researcher")!;
+    const broken=structuredClone(c.specialist("researcher").result!);
+    broken.analysis!.research!.alternatives[0].pricing={description:"Founder hypothesis",amount:5000,currency:"KZT",unit:"recording review",period:null,conditions:"Untested",findingRefs:[broken.analysis!.findings[0].id!]};
+    await ai.startStep(run,researcher);await ai.completeStep(run,researcher,broken,[]);
+    expect((await ai.analysis.issues(run.id)).some(i=>i.deterministic&&i.status==="open"&&i.topic==="Contract: Pricing terms")).toBe(true);
+    await ai.scheduleRepair(run,["researcher"]);
+    const repair=(await ai.steps(run.id)).find(s=>s.role==="researcher"&&s.round===1)!;
+    const fixed=structuredClone(broken);fixed.analysis!.research!.alternatives[0].pricing.period="one-time";
+    await ai.startStep(run,repair);await ai.completeStep(run,repair,fixed,[]);
+    const all=await ai.steps(run.id),critic=all.find(s=>s.role==="critic"&&s.round===1)!;
+    const context=await executionInput(ai,run,critic,[all.find(s=>s.id===repair.id)!]);
+    const receipt=context.contractValidationLedger.find(r=>r.stepId===repair.id)!;
+    expect(receipt.outcome).toBe("passed");expect(receipt.artifactHash).toHaveLength(64);expect(receipt.issues).toEqual([]);
+    expect(context.openIssues.some(i=>i.topic==="Contract: Pricing terms")).toBe(false);
+    expect(context.contractValidationLedger.some(r=>r.stepId===c.specialist("experimenter").id&&r.outcome==="passed")).toBe(true);
+    await ai.cancel(c.startup.id,run.id);
+  });
+  it("does not turn a critic's Contract title into an unwaivable machine finding",async()=>{
+    const c=await ready(),critic=c.specialist("critic"),r=result();
+    r.issues=[{severity:"blocking",target:"researcher",topic:"Contract: corrected pricing awaits revalidation",reason:"A model judgment about missing clearance",correction:"Inspect the supplied server receipt"}];
+    await db.transaction(tx=>ai.analysis.registerIssues(c.run.id,critic,r,tx));
+    const issue=(await ai.analysis.issues(c.run.id)).find(i=>i.topic===r.issues[0].topic)!;
+    expect(issue.deterministic).toBe(false);
+    const resolved=result();resolved.analysis!.resolutions=[{issueId:issue.id,outcome:"resolved",reason:"The exact corrected artifact passed the server validator",findingRefs:[]}];
+    await db.transaction(tx=>ai.analysis.registerIssues(c.run.id,critic,resolved,tx));
+    expect((await ai.analysis.issues(c.run.id)).find(i=>i.id===issue.id)?.status).toBe("resolved");
+  });
   it("does not acknowledge observations that arrived after the memory editor's evidence snapshot",async()=>{
     const c=await ready(),step=c.specialist("strategist"),h=step.result!.analysis!.hypotheses[0];
     const before=await ai.remember(c.startup.id,c.run.id,step.id,"hypothesis",h.key);
