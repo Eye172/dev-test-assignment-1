@@ -5,17 +5,20 @@ import { getDatabase } from "./database";
 import { AppError } from "./errors";
 
 export function json<T>(data: T, status = 200) { return Response.json({ data }, { status, headers: { "Cache-Control": "no-store" } }); }
-export async function readJson(request: Request): Promise<unknown> {
-  if (!request.headers.get("content-type")?.toLowerCase().startsWith("application/json")) throw new AppError("CONTENT_TYPE", "Send application/json.", 415);
+export async function readJson(request: Request, options:{allowEmpty?:boolean;maxBytes?:number}={}): Promise<unknown> {
+  const validType=request.headers.get("content-type")?.toLowerCase().startsWith("application/json");
+  if (!validType&&!options.allowEmpty) throw new AppError("CONTENT_TYPE", "Send application/json.", 415);
   const reader = request.body?.getReader();
-  if (!reader) throw new AppError("INVALID_JSON", "The request body must contain valid JSON.");
+  if (!reader) {if(options.allowEmpty)return undefined;throw new AppError("INVALID_JSON", "The request body must contain valid JSON.");}
   const chunks: Uint8Array[] = []; let size = 0;
   for (;;) {
     const { done,value } = await reader.read(); if (done) break;
     size += value.length;
-    if (size > 65536) { await reader.cancel(); throw new AppError("BODY_TOO_LARGE", "Keep this request under 64 KB.", 413); }
+    if (size > (options.maxBytes ?? 65536)) { await reader.cancel(); throw new AppError("BODY_TOO_LARGE", `Keep this request under ${Math.floor((options.maxBytes ?? 65536)/1024)} KB.`, 413); }
     chunks.push(value);
   }
+  if(options.allowEmpty&&!size)return undefined;
+  if(!validType)throw new AppError("CONTENT_TYPE", "Send application/json.", 415);
   try { return JSON.parse(Buffer.concat(chunks).toString("utf8")); }
   catch { throw new AppError("INVALID_JSON", "The request body must contain valid JSON."); }
 }

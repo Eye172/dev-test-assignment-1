@@ -1,90 +1,136 @@
-# AI backend and frontend integration contract
+# Evidence, decision memory and AI execution
 
-Owner-authorized scope expansion, 17 October 2026. The original assignment's rule-based flow remains available. The owner additionally requested real OpenAI specialists, research, monetization, experiments and critique. Claude is independently revising the frontend; this document specifies the backend boundary without prescribing a visual layout.
+Owner-authorized expansion, 17 October 2026. The original assignment remains usable without paid AI: six required screens, five independently saved sections, exactly three market assumptions, up to three channels, saved-section completion, PostgreSQL persistence and a deterministic 30-day roadmap. `/startups/:id/ai` adds the private evidence workspace; `/agents` redirects there.
 
-## Runtime
+## Roles and communication
 
-The server uses the official OpenAI Agents SDK and Responses API. Six role-specific agents have versioned prompts in `src/server/ai/prompts.ts`, strict structured outputs in `src/lib/domain/ai.ts`, and application-owned orchestration in `src/server/ai/runtime.ts`.
+The official OpenAI Agents SDK calls the Responses API. Application code orchestrates six specialists in order:
 
 ```mermaid
 flowchart LR
-  Brief[Saved snapshot + founder brief + observations] --> Intake
-  Intake --> Researcher
-  Researcher --> Strategist
-  Strategist --> Monetizer
-  Monetizer --> Experimenter
-  Experimenter --> Critic
-  Critic -->|one bounded correction round| Specialists[Targeted specialists + affected downstream work]
-  Specialists --> FinalReview[Final critique]
-  Critic --> Review[Founder reviews proposals]
-  FinalReview --> Review
-  Review -->|explicit apply with version checks| Strategy[Five saved sections / AI experiment tasks]
-  Strategy --> Observation[Founder records observed results]
-  Observation --> Brief
+  B[Brief + immutable saved-state snapshot] --> I[Brief interpreter]
+  I --> R[Researcher and comparator]
+  R --> S[GTM strategist]
+  S --> M[Monetization specialist]
+  M --> E[Experiment designer]
+  E --> C[Evidence critic]
+  C -->|one bounded repair round| U[Affected roles and downstream work]
+  U --> F[Final critique]
+  C --> V[Founder review]
+  F --> V
+  V --> D[Accepted decisions and five saved strategy sections]
+  D --> P[Preview and reconcile one active plan]
+  P --> O[Real-world observations, including counter-evidence]
+  O --> B
 ```
 
-The full run is sequential to limit paid concurrency and preserve a predictable context order. Targeted modes are `research`, `strategy`, `pricing` and `experiments`; `modeRoles` is the authoritative graph. Research uses hosted web search; monetization has a deterministic `calculate_scenario` function tool. No agent can mutate strategy, invoke arbitrary shell/network tools, read environment secrets or apply its own proposals.
+`src/server/ai/prompts.ts` contains the complete role instructions. Each step freezes its effective instructions and execution settings, hashes them together and saves the exact assembled input. Deployment cannot silently change an existing step's instructions. The private export includes both the original workspace snapshot and the actual role view.
 
-Defaults: `gpt-6.1-sol` for specialists, `gpt-6-astra` for the critic. Agent traces are disabled and Responses `store:false` is explicit. Workspace snapshots, brief, observations and preceding artifacts are sent to OpenAI. This setting is not a claim of zero data retention under the provider's account policy.
+The brief interpreter identifies the next commercial decision and constraints. The researcher compares substitutes for the buyer's whole job, including the present manual or do-nothing workflow. The strategist proposes the first buyer, value promise, channels, three hypotheses and a decision with alternatives. The monetizer compares payment units and offer models, keeps willingness to pay unproven, and uses deterministic scenario arithmetic. The experimenter proposes 6–8 tasks with falsifiable criteria, dependencies and resource estimates. The critic assesses source support, contradictions, arithmetic, workflow fit and feasibility.
 
-## Endpoint
+Agents exchange typed persisted artifacts through the orchestrator. Recorded message kinds include task assignments, tool results and artifacts, with sender/recipients and IDs. This is an audit trail, not model chain-of-thought or simulated chat. Agents cannot write the startup, execute shell commands, read environment secrets or accept their own proposals. Targeted modes are research, strategy, pricing and experiments; `modeRoles` defines their graphs.
 
-All requests use `/api/startups/:id/ai`. Same-origin checks, JSON size validation and existing request limits apply. Responses use `{data: ...}` or `{error:{code,message,fields?}}`, with `Cache-Control:no-store`.
+Default models are `gpt-6.1-sol` for specialists and `gpt-6-astra` for the critic. Tracing is disabled and Responses `store:false` is explicit. The snapshot, brief, observations and relevant preceding artifacts are sent to OpenAI. This is not a claim about zero retention under the provider account policy.
 
-| Method/action | Payload/result |
+## Comparison and evidence
+
+Version-2 artifacts use `src/lib/domain/analysis.ts`. Comparison axes are selected for the case, rather than supplied as a fixed feature checklist. Every alternative has a buyer, job, workflow, switching costs, relevance and pricing terms. Every alternative × axis cell is present, including explicit unknowns. Advantages and disadvantages of the idea each include a next test. Coverage records the search scope, exclusions, gaps and stopping reason.
+
+Pricing separates description, amount, currency, payment unit, billing period and conditions. Annual prepayment and unknown taxes cannot silently become a monthly cash price. An unconfirmed currency removes the comparable numeric amount while preserving descriptive terms. Numeric competitor prices need compatible captured source findings; inference alone cannot ground reported competitor features or prices.
+
+The researcher can use at most four hosted search actions and six `inspect_source` captures. Inspection accepts only URLs actually returned by this run's search or inherited ledger. DNS answers and redirects must be public, are validated and pinned for the HTTPS connection, and have network/size limits. Immutable captures retain time, SHA-256, status, limitations and passage IDs. Unavailable or truncated pages remain explicit. A returned search URL does not count as a read page.
+
+Findings distinguish founder statements, saved workspace records, external source reports, inferences and hypotheses. External findings require actual captured passage IDs. Observations require actual IDs from the immutable snapshot. The critic must assess every current supplied external finding against its passages: supports, does not support or unclear. A relevant URL is insufficient. Vendor statements remain vendor-reported claims even after that support check; they do not prove customer outcomes.
+
+Machine-detected contract defects are registered and cannot be waived by a model's prose. Corrected artifacts can resolve their earlier defects. Current dependencies determine which inherited findings support a proposal; retracted historical claims remain exported without forcing the critic to approve them. The source inspector displays a short passage excerpt and the original link.
+
+## Memory and observations
+
+Hypotheses and decisions have UUIDs, revision numbers, origin, status, rationale and immutable history. Statuses are proposed, active, accepted, rejected, deferred and superseded. Decisions retain compared options, selected option, strongest counterargument and reopening condition. Hypotheses retain risk and an explicit review trigger.
+
+An AI proposal is not automatically accepted memory. The owner can accept a reviewed proposal or write/edit a record manually. Manual records work before any paid run. Existing memory revisions are checked at save/acceptance; an older AI proposal cannot overwrite a founder edit left in proposed status. The board distinguishes the saved judgment from a proposed replacement.
+
+Observations store what happened, interpretation, method, sample size, local calendar date, source URL and limitations separately. They link explicitly to hypothesis IDs and optionally a task. The full task/experiment version is frozen when the observation is saved. Completed tasks and founder-reported payments are not independent proof of demand or transactions.
+
+New observations flag linked hypotheses and dependent decisions for review, without changing their status or conclusion. A memory edit acknowledges only supplied reviewed evidence IDs plus previously reviewed observations. Evidence arriving after an editor opened stays unreviewed. Rejected, deferred and superseded memory remains historical context; current accepted/active decisions are separated from it in role inputs. Human-edited pending proposals are also identified separately.
+
+## One active execution plan
+
+Before applying a version-2 plan, the owner reviews a server-generated preview:
+
+- Untouched pending rule/AI suggestions are proposed for retirement. Human-edited, custom, in-progress and completed work is retained by default. Completed work cannot be retired through AI plan acceptance.
+- The founder can change scope, deliverable, method, week, effort, cash costs and decision deadline, recording a reason. The original proposal and reviewed selection remain in history.
+- New and retained unfinished work share the same weekly capacity and currency-specific cash limits. Explicit unknown estimates stay unknown. Existing overlapping experiments must be reconciled.
+- Dependencies must exist and precede their dependents; deadlines must fit assigned weeks. Workload and cash overruns block acceptance.
+- Missing estimates or unconfirmed combined sales/delivery allocation require explicit acknowledgement. The resulting plan is labelled conditional, rather than capacity-verified.
+
+A preview hash binds the reviewed selection to task, section and profile revisions. Changed data requires a new preview. Apply is transactional and idempotent. It supersedes the previous active plan, archives only selected suggestions and retains their history. Task notes and structured experiment criteria derive from the same accepted measurement.
+
+Rule regeneration is blocked while an AI plan is active. An explicit switch with the expected plan ID restores the rule path and preserves human-owned work. Roadmap status formulas remain unchanged. Moving or editing a task retains its accepted experiment contract and makes the need to recheck criteria visible.
+
+## API and access
+
+All AI operations use `/api/startups/:id/ai`, same-origin JSON, the existing error envelope and no-store responses. `AI_ACCESS_CODE` unlocks a signed 24-hour HttpOnly, SameSite=Strict cookie, Secure in production. Unlock attempts are bounded. This is a single-owner studio gate, not tenant authentication.
+
+| Operation | Contract |
 | --- | --- |
-| GET | `AiStudioState`: configuration/access flags, up to 30 recent runs, `nextCursor`, recorded evidence and configured estimated budgets. `?before=<nextCursor>` loads older runs. Without owner access: flags/limits and empty arrays only. |
-| POST `unlock` | `{action:"unlock",payload:{code}}`. Sets a signed 24-hour HttpOnly, SameSite=Strict cookie (Secure in production). Eight attempts per client per 15-minute bucket. |
-| POST `lock` | `{action:"lock"}`. Clears cookie. |
-| POST `create` | `{action:"create",payload:{mode,brief,requestId,parentRunId?}}`. `requestId` UUID is reused for retries of the exact same submission. Returns `{id,created}` immediately; job runs after the response. |
-| POST `resume` | `{action:"resume",runId}`. Continue queued/paused work, or recover an expired worker. Safe checkpoints do not rerun completed steps. |
-| POST `cancel` | `{action:"cancel",runId}`. Stops subsequent steps and prevents late artifact publication. In-flight provider work may still incur charges. |
-| POST `apply` | `{action:"apply",runId,stepId,target}`. Target is `icp`, `value`, `channels`, `pricing`, `assumptions` or `roadmap`. Returns the updated legacy `Workspace`. |
-| POST `evidence` | `{action:"evidence",payload:{requestId,taskId,kind,observation,interpretation,sampleSize,sourceUrl,method,observedOn,limitations}}`. Returns the saved observation. Same request ID/content is idempotent. |
-| GET `?export=1` | Owner-only JSON download of runs, messages and before/after application history. Returns 401 without owner access. |
+| GET | Configuration/access flags; authorized state includes up to 30 recent runs, nextCursor, evidence, memory, findings and private analysis layout. `?before=UUID` pages older runs. Unauthorized state has empty private arrays. |
+| GET `?sourcePageId=UUID` | Owner-only captured page, scoped to this startup. |
+| GET `?export=1` | Full owner-only history: runs, messages, calls, applications, frozen prompts/settings/inputs/snapshots, findings, memory revisions and plans. |
+| POST unlock / lock | `{action:"unlock",payload:{code}}` or `{action:"lock"}`. |
+| POST create | `{action:"create",payload:{mode,brief,requestId,parentRunId?}}`. Same request UUID/content is idempotent. Work starts after the response. |
+| POST resume / cancel | `{action,runId}`. Resume safe checkpoints; cancel fences late publication. Failed uncertain calls are never replayed automatically. |
+| POST evidence | `{action:"evidence",payload:{requestId,taskId,kind,observation,interpretation,sampleSize,sourceUrl,method,observedOn,limitations,hypothesisIds}}`. Scoped IDs and idempotency are enforced. |
+| POST memory | `{action:"memory",payload:{requestId,id,expectedRevision,status,data,reason,reviewedEvidenceIds}}`. `data` is a hypothesis/decision record. New client-generated IDs use revision 0. |
+| POST remember | `{action:"remember",runId,stepId,kind,key}` explicitly accepts a reviewed artifact proposal. |
+| POST layout | `{action:"layout",payload:{version:1,plates:[{id,hidden,collapsed,size}]}}`. Exactly six private analysis displays, once each; compact/wide sizes. |
+| POST preview_plan | `{action:"preview_plan",runId,stepId,selection?}` returns selection, preview hash, totals, blockers, unknowns and readiness. |
+| POST apply | `{action:"apply",runId,stepId,target,plan?}`. Version-2 roadmap acceptance requires `plan:{selection,previewHash}`. Other targets are the five section keys. |
 
-All POST actions except unlock require owner access. Every run, artifact, source, observation, application and AI export is behind that server gate. `AI_ACCESS_CODE` is a single-owner gate, not tenant authentication. The legacy public demo's workspace/profile/strategy/task/export routes still expose their synthetic shared data. Applying an AI proposal publishes that selected content into the shared workspace; disclose this before Apply. Private briefs and observations are excluded from legacy workspace/export responses.
+All POST actions except unlock require owner access. IDs are scoped to the requested startup. Public demo profile/strategy/task/export routes still expose their synthetic shared content. Apply explicitly discloses that selected strategy/task content becomes shared. Private briefs, observations, findings and memory are excluded from public workspace exports.
 
-Evidence kinds: `interview`, `commitment`, `payment`, `analytics`, `other`. Interpretations: `supports`, `contradicts`, `inconclusive`. `taskId` is nullable and must belong to the workspace; its full version is snapshotted. `sampleSize` is nullable or a positive integer. `observedOn` is an ISO date, URL is empty or HTTP(S). Observation/method/limitations remain separate. User-reported payment is not an independently verified transaction. No completion or validation percentage is changed by recording evidence.
+Strategy application checks business profile, section/task revisions, evidence IDs and accepted memory versions. Display preferences do not invalidate business context. Changes accepted from the same run advance its expected revision vector, allowing several independent section saves. Clean mounted strategy editors synchronize new saved values; dirty/recovered editors keep their baseline and stop autosave on conflict.
 
-## Run and artifact lifecycle
+## Limits, recovery and accounting
 
-Run states: `queued`, `running`, `paused`, `completed`, `needs_attention`, `failed`, `cancelled`. `completed` means the internal review finished without unresolved material critic issues, not that business hypotheses were validated. `needs_attention` exposes remaining concerns. UI must show failed/cancelled/paused states honestly and retain readable completed artifacts.
+Runs may be queued, running, paused, completed, needs_attention, failed or cancelled. Completed means an internal review finished; it does not mean a business case is validated. Remaining blocking concerns prevent dependent acceptance.
 
-Steps expose role, round, model, status, typed result, usage and estimated cost. Results contain summary, classified claims, recommendations/tradeoffs/next test, questions, nullable typed section proposals, experiments and review issues. Show only the newest revision by default; retain earlier revisions in history. A schema-valid response does not prove a claim. Validate all proposals against domain limits before checkpointing them as complete.
+Fenced leases prevent competing workers or late cancelled results from publishing. Each invocation pauses before the 300-second Vercel window. `after()` is not a durable queue: closing the browser at a checkpoint may require a later Resume. The client automatically resumes checkpoints for its newly started run and backs off polling when idle or hidden.
 
-Sources come from actual hosted-tool output and citation annotations, with server retrieval time. Unsupported URLs are removed; unsupported `source_reported` claims are downgraded and flagged. Source presence alone does not verify that a claim is supported. Downstream agents and the critic receive the source ledger; parent-run sources travel with inherited artifacts. Founder-provided URLs stay founder observations, not verified research.
+Limits include 18 model calls, 300,000 accumulated tokens before another call, one repair round, bounded searches/captures and no automatic provider retries. Intake timeout is 110 seconds; other roles have 200 seconds. Output allowance includes reasoning tokens. Settings and model rates live in prompts.ts/config.ts and are frozen per step.
 
-Application messages are persisted with IDs, sender, recipients, kind and structured content: task assignments, tool results and artifacts. They are not hidden model chain-of-thought. The journal is persisted from real state transitions, not simulated chat or progress percentages. From prompt/artifact version 1.2, the complete effective system prompt and execution settings are frozen per step, hashed together and included in the private export. A deployment that cannot replay that artifact/tool version rejects the step before paid work. Claim `evidenceIds` must reference supplied observation UUIDs; `workspace_record` claims describe saved snapshot state without requiring external URLs.
+Shared daily and per-run estimates are reserved transactionally before calls. Confirmed usage settles the reservation, including reported usage from incomplete Responses that the Agents SDK rejects. Uncertain interrupted calls retain their reservation and are never described as free. Application estimates are not provider invoices or account-wide spending guarantees. Defaults are $7/run and $15/day UTC; unknown model rates are rejected.
 
-## Checkpoints, cost and recovery
+Local unfinished briefs, memory, observations, plan reviews and layout changes recover per browser tab. Recovery permits incomplete fields but server saves retain full validation. Pending commits lock editable review controls; old acknowledgements do not erase newer drafts.
 
-Each invocation obtains a fenced lease. Work pauses before exhausting the 300-second Vercel function window; resume continues pending roles. `after()` is not a durable queue: if the browser closes at a pause, Resume is required later. A client may automatically resume checkpoints for the run it started. Poll active state approximately every 3 seconds; back off or stop polling in hidden tabs and after terminal states.
+## Verification and deployment
 
-There are at most 18 model calls, 300,000 accumulated tokens before another call, two hosted search actions per researcher call, four SDK turns per specialist, and one targeted correction round. Calls have a 110-second timeout; no automatic provider retry. Explicitly rejected 400/401/403/404/422/429 calls release their reservation. Interrupted or otherwise ambiguous calls retain the reservation. A settled paid call without a durable artifact also stops for owner review; it is not silently rebilled on lease recovery.
+`npm run verify` runs offline domain/SQL tests, lint, types and the production build. Playwright covers the original public journey and the private comparison → memory → five sections → plan preview/application → adverse-observation loop at desktop and phone sizes. Offline synthetic artifacts are seeded only in the isolated test environment; there is no public fake-provider or seeding endpoint.
 
-USD estimates use configured model input/output rates, long-context multipliers and search-call fees. A transaction reserves the shared daily and per-run budget before each call, then settles against reported usage. Research reserves conservatively for hosted search's hidden context; normal calls reserve against serialized request bytes plus output allowance. These are application estimates, not provider billing receipts or account-level spending guarantees. Unknown model rates are rejected. Defaults: $7/run, $15/day UTC; owner may configure lower limits. A small limit can prevent a research call from starting because its reservation is intentionally conservative.
+`npm run test:ai:live` is explicitly paid and excluded from CI. `AI_EVAL_PARENT_RUN_ID` optionally continues the same synthetic case using its captured research. `scripts/ai-eval-role.ts` is a separately labelled paid component diagnostic; it never claims end-to-end completion or applies proposals. `scripts/ai-smoke.ts` verifies owner-only HTTP application and can explicitly request a paid adverse-evidence follow-up. Private reports live under ignored `.data/ai-evals`.
 
-There is no fallback that labels rule-based or fabricated content as AI output. Sanitized errors distinguish credentials, permissions/model access, quota/rate limits, budget, provider timeout and invalid/incomplete output. Do not display raw SDK errors, secrets or sensitive request data.
+Use one process per local PGlite directory, or isolated PostgreSQL. On Windows, Node may need `--use-system-ca` for the installed root CA; certificate verification remains enabled. Production uses Vercel Secrets and PostgreSQL. No real API key is required in CI.
 
-## Applying and preserving work
+Current release verification and real-call outcomes are recorded in ACCEPTANCE.md and SUBMISSION.md. Earlier version-1 successful runs are historical evidence, not proof that every version-2 path passed.
 
-Compare saved typed fields with the proposed fields, then request Apply explicitly. The server checks the immutable snapshot's profile data, all section revisions, task revisions and evidence IDs. Preference-only changes do not invalidate business context. Accepted changes from the same run advance a separate expected revision vector, allowing multiple section applications without accepting unrelated edits. JSON fingerprints are canonical across PostgreSQL JSONB key ordering.
+## Integrated onboarding and material
 
-Blocking critic issues propagate to dependent proposals. A blocked researcher/strategist/monetizer also blocks an experiment plan using that work. Re-run/follow up with a correction instead of hiding the issue. Applying superseded specialist revisions is rejected.
+`GET /api/intake` returns only configuration/access flags. `POST {action:"unlock",payload:{code}}` sets the same signed HttpOnly owner cookie as AI studio. `POST {action:"analyze",payload:{requestId,text,files}}` explicitly requests one paid asynchronous interpretation and returns 202 with an `IntakeRecord`; `GET ?id=<uuid>` requires owner access and polls its status. Files contain `{name,size,kind,text,coverage,error}`; no binary or base64 upload is accepted. Input is capped at 256 KB, three 5 MB originals, 16,000 brief characters and 20,000 extracted characters per file. PDF.js reads at most 30 text-layer pages; fflate reads bounded DOCX body/header/footer or PPTX slide XML. Extraction limitations remain attached; images, scans, charts and speaker notes are not interpreted.
 
-Apply is transactional and idempotent by run/step/target; before and after values are retained. Section notes survive. A mounted clean editor should synchronize a newer server revision; a dirty/recovered editor must keep its original baseline, stop autosave on conflict, and provide comparison/reload/copy choices.
+The optional preflight uses frozen `orbit-preflight-1.0.0` instructions, low reasoning, at most 4,000 output tokens, a 95-second provider timeout and zero retries. Usage/reservations share `ai_budget_days` with specialist runs. `ai_intakes` and `ai_intake_calls` retain private inputs, instructions, result and actual usage. Duplicate workers can claim only queued work. An interrupted running attempt becomes failed after 150 seconds; its uncertain reservation remains. Re-dispatching queued work preserves its ID. Terminal failure requires an explicit new paid interpretation; an ambiguous HTTP retry preserves the original request ID.
 
-AI roadmap tasks use `source:"ai"` and stable `ai:<artifactUUID>:<index>` provenance. Rule-generated tasks retain `source:"generated"`; custom tasks retain `source:"custom"`. Applying a plan adds 6–10 typed experiments and retires only untouched older AI todo suggestions. Completed, edited, in-progress and custom work remains. Rule regeneration cannot archive AI tasks. Task notes carry hypothesis, method, metric, threshold, effort and dependencies. Existing progress formulas remain unchanged.
+Clarification is deterministic after extraction, asks only required gaps and stops at completion or seven questions. No additional paid conversation is needed to record an answer. Pending answers, guided topics and confirmation edits have validated per-tab recovery. A completed AI interpretation's unknowns stay unknown until founder input; an old file cannot silently fill them. The saved profile is authoritative over earlier extraction. Profile creation supports a UUID `Idempotency-Key`; identical retries return the same startup and changed retries expose a recoverable conflict.
 
-## Configuration and verification
+Full specialist creation additionally accepts `intakeId?` and `material?:{text,files}`. Its immutable private snapshot retains the full readable material, guided answers and clarification answers; each role receives a bounded view with visible truncation limits. A completed intake binds to one startup. Prompt instructions explicitly prefer confirmed saved values over earlier material and treat document claims as founder-provided context, not verified external evidence. Public exports exclude this material; owner export includes linked intake/call history.
 
-Use `.env.example`. Keep `OPENAI_API_KEY`, model settings, `AI_ACCESS_CODE` and budgets server-only. Never use `NEXT_PUBLIC_` or put a key/code into a shared URL. Production key and owner code are stored as Vercel Secrets; API models default in server configuration.
+Creating a workspace does not implicitly authorize paid specialist work. The founder chooses the checkbox or the launch/studio action explicitly. Startup identity and the exact frozen AI request survive reloads and lost acknowledgements. Setup seeds drafts synchronously and only into empty recovery keys; it never overwrites newer editor recovery. Checkpoints continue through the existing resume endpoint, without retrying ambiguous paid calls.
 
-`npm run verify` runs offline tests and the build. CI never needs a real API key. `npm run test:ai:live` is an explicitly paid synthetic evaluation; it creates a workspace and saves its private report under ignored `.data/ai-evals`. It is not part of CI. Use a separate local PGlite directory and only one process per directory, or isolated PostgreSQL.
+Prompt version `orbit-council-2.0.10` permits the monetizer's payment hypothesis and the experimenter's operational hypothesis/sequence decision alongside the strategist's three priority market assumptions. Specialists may propose issue resolutions; only the independent critic can close persisted review issues. Experiment contracts allow up to ten explicit bounded assumptions. Provider JSON decoding constrains structure/types; full Zod business validation follows it. Rejected artifacts and reported usage remain in owner history rather than being applied.
 
-Live evaluation on 17 October: all six roles completed, a critic-triggered experiment revision and final critique completed, five domain-valid section proposals, eight experiments, 36 retrieved URLs. Reported usage: 110,114 input + 26,044 output tokens, estimated $0.878916. No customer validation was claimed. Two earlier research timeout attempts were preserved as failed runs with conservative reservations; they are excluded from this successful run's estimate and must not be described as free.
+Official references: [Agents SDK](https://developers.openai.com/api/docs/guides/agents/quickstart), [structured outputs](https://developers.openai.com/api/docs/guides/structured-outputs), [web search](https://developers.openai.com/api/docs/guides/tools-web-search), [reasoning and output allowances](https://developers.openai.com/api/docs/guides/reasoning). Native source and tests are authoritative.
 
-HTTP acceptance subsequently applied all five sections and eight AI tasks idempotently, preserved private/idempotent observations, and invalidated the older proposal after counter-evidence. The prompt/artifact 1.2 follow-up consumed five founder-recorded interviews contradicting the original segment assumption. It retained 36 inherited sources, revised the plan toward segment reachability before payments, completed a critic-triggered experiment correction and final review, and produced eight tasks (estimated $0.947622). Internal evidence UUIDs and snapshot records were handled separately from external citations. A prior iteration's false external-citation warning on internal interviews was explicitly fixed and regression-tested.
+Correction-round context retains transitive referenced earlier-round proposals and their supporting findings, explicitly labelled historical/unaccepted. Referenced pending memory is included even at its first revision. Snapshot tasks expose exact short handles (`task_1`, etc.); model contracts may return those handles and the server resolves them only against the frozen snapshot. Persisted task links remain UUIDs. Unknown handles and guessed UUIDs are never matched approximately or expanded into another workspace. Artifact execution version is `orbit-artifact-2.0.3`; an incompatible old paused step requires a new follow-up, preserving completed artifacts and usage.
 
-Official references: [Agents SDK](https://developers.openai.com/api/docs/guides/agents/quickstart), [structured outputs](https://developers.openai.com/api/docs/guides/structured-outputs), [web search](https://developers.openai.com/api/docs/guides/tools-web-search), [Vercel duration](https://vercel.com/docs/functions/configuring-functions/duration). Native source files and tests are the authoritative implementation.
+Accepted/active memory is traversed through option-level references and linked hypotheses before the snapshot and role view are assembled. Referenced unaccepted hypotheses remain labelled proposals. Exact alias-to-UUID conversion receipts accompany the critic context; canonical UUID storage is not an artifact defect.
+
+Findings also retain their originating snapshot timestamp. A workspace_record is an as-of administrative observation, not a claim that sections or decisions are still empty today. Historical findings remain immutable; an agent proposes a new finding or revised decision rather than rewriting provenance under an old finding UUID.

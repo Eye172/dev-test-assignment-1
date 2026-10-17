@@ -8,6 +8,11 @@ import { AppError, notFound } from "../errors";
 import { Store, currentProfile } from "../store";
 import { aiConfig, requireConfiguration } from "./config";
 import { ARTIFACT_VERSION, effectiveInstructions, executionConfig, PROMPT_VERSION, TOOL_VERSION } from "./prompts";
+import { AnalysisStore, type StoredFinding } from "./analysis-store";
+import { prepareAnalysis } from "./quality";
+import type { MemoryData, MemoryItem, SourcePage, PlanSelection } from "@/lib/domain/analysis";
+import { buildPlanPreview, applyExperimentPlan } from "./plans";
+import { referenceIds } from "./references";
 
 type Row = Record<string, unknown>;
 const iso = (v: unknown) => v instanceof Date ? v.toISOString() : String(v);
@@ -18,24 +23,25 @@ function canonical(v:unknown):unknown {
   return v;
 }
 export const hash = (v: unknown) => createHash("sha256").update(JSON.stringify(canonical(v))).digest("hex");
-type Vector = { profile: string; sections: Record<string, number>; tasks: Record<string, number>; evidence: string[] };
-export type AiSnapshot = { workspace: Workspace; evidence: AiEvidence[]; parent: { role: AiRole; result: AiResult }[]; parentSources:AiSource[] };
+type Vector = { profile: string; sections: Record<string, number>; tasks: Record<string, number>; evidence: string[]; memory?:Record<string,string> };
+export type AiSnapshot = { workspace: Workspace; evidence: AiEvidence[]; parent: { role: AiRole; result: AiResult; runId?:string; stepId?:string; asOf?:string }[]; parentSources:AiSource[]; memory?:MemoryItem[]; pages?:SourcePage[]; findings?:StoredFinding[]; founderMaterial?:{text:string;files:import("@/lib/domain/intake-api").Attachment[]}; intake?:{id:string;inputHash:string;result:unknown;promptVersion:string;model:string} };
 export type LeasedRun = { id: string; token: string; snapshot: AiSnapshot; mode: AiRun["mode"]; brief: string };
-export function revisionVector(workspace: Workspace, evidence: AiEvidence[]): Vector {
+export function revisionVector(workspace: Workspace, evidence: AiEvidence[], memory:MemoryItem[]=[]): Vector {
   const profile = { ...currentProfile(workspace.startup), preferences: undefined };
   return { profile: hash(profile), sections: Object.fromEntries(workspace.sections.map(s => [s.key,s.revision])),
-    tasks: Object.fromEntries([...workspace.tasks].sort((a,b) => a.id.localeCompare(b.id)).map(t => [t.id,t.revision])), evidence: evidence.map(e => e.id).sort() };
+    tasks: Object.fromEntries([...workspace.tasks].sort((a,b) => a.id.localeCompare(b.id)).map(t => [t.id,t.revision])), evidence: evidence.map(e => e.id).sort(), memory:memory.some(m=>m.status!=="proposed")?Object.fromEntries(memory.filter(m=>m.status!=="proposed").map(m=>[m.id,`${m.revision}:${m.status}`])):undefined };
 }
 const sameVector = (a: unknown, b: unknown) => hash(a) === hash(b);
 function evidenceFromRow(r: Row): AiEvidence {
-  return { id: String(r.id),requestId:String(r.request_id||r.id),taskId: r.task_id ? String(r.task_id) : null, kind: r.kind as AiEvidence["kind"], observation: String(r.observation), interpretation: r.interpretation as AiEvidence["interpretation"],sampleSize: r.sample_size ? Number(r.sample_size) : null, sourceUrl: String(r.source_url), method: String(r.method),observedOn: String(r.observed_on),limitations: String(r.limitations),createdAt: iso(r.created_at) };
+  return { id: String(r.id),requestId:String(r.request_id||r.id),taskId: r.task_id ? String(r.task_id) : null, kind: r.kind as AiEvidence["kind"], observation: String(r.observation), interpretation: r.interpretation as AiEvidence["interpretation"],sampleSize: r.sample_size ? Number(r.sample_size) : null, sourceUrl: String(r.source_url), method: String(r.method),observedOn: String(r.observed_on),limitations: String(r.limitations),createdAt: iso(r.created_at),hypothesisIds:(r.hypothesis_ids||[]) as string[],taskSnapshot:r.task_snapshot as Record<string,unknown>|null };
 }
 function stepFromRow(r: Row): AiStep {
   return { id: String(r.id),role: r.role as AiRole,round: Number(r.round),status: r.status as AiStep["status"],result: r.result as AiResult | null,model: String(r.model),promptVersion:String(r.prompt_version),promptHash:String(r.prompt_hash),inputTokens: Number(r.input_tokens),outputTokens: Number(r.output_tokens),estimatedMicros: Number(r.estimated_micros),error: r.error ? String(r.error) : null,createdAt: iso(r.created_at),completedAt: r.completed_at ? iso(r.completed_at) : null };
 }
 export class AiStore {
   public workspaceStore: Store;
-  constructor(public db: Database) { this.workspaceStore = new Store(db); }
+  public analysis:AnalysisStore;
+  constructor(public db: Database) { this.workspaceStore = new Store(db); this.analysis=new AnalysisStore(db); }
   async evidence(id: string, tx: SqlExecutor = this.db) {
     return (await tx.query("SELECT * FROM ai_evidence WHERE startup_id=$1 ORDER BY created_at,id", [id])).map(evidenceFromRow);
   }
@@ -43,7 +49,8 @@ export class AiStore {
     return this.db.transaction(async tx => {
       const workspace = await this.workspaceStore.workspaceIn(id,tx);
       const evidence = await this.evidence(id,tx);
-      const vector = revisionVector(workspace,evidence);
+      const memory=await this.analysis.memory(id,tx);
+      const vector = revisionVector(workspace,evidence,memory);
       const fetched = await tx.query("SELECT * FROM ai_runs WHERE startup_id=$1"+(options.before?" AND (created_at,id) < (SELECT created_at,id FROM ai_runs WHERE id=$2 AND startup_id=$1)":"")+" ORDER BY created_at DESC,id DESC"+(options.all?"":" LIMIT 31"),[id,...(options.before?[options.before]:[])]);
       const rows=options.all?fetched:fetched.slice(0,30);
       const runIds=`{${rows.map(r=>r.id).join(",")}}`;
@@ -51,14 +58,16 @@ export class AiStore {
       const allSteps=await tx.query("SELECT * FROM ai_steps WHERE run_id=ANY($1::uuid[]) ORDER BY round,created_at,id",[runIds]);
       const allEvents=await tx.query("SELECT * FROM ai_events WHERE run_id=ANY($1::uuid[]) ORDER BY seq",[runIds]);
       const allApplications=await tx.query("SELECT * FROM ai_applications WHERE run_id=ANY($1::uuid[]) ORDER BY created_at",[runIds]);
+      const allPages=await this.analysis.pages(rows.map(r=>String(r.id)),tx);
+      const allIssues=await this.analysis.issues(rows.map(r=>String(r.id)),tx);
       const runs: AiRun[] = [];
       for (const r of rows) {
         const steps = allSteps.filter(s=>s.run_id===r.id).map(stepFromRow);
         const events = allEvents.filter(e=>e.run_id===r.id);
         const applications = allApplications.filter(a=>a.run_id===r.id);
-        runs.push({ id: String(r.id),startupId: id,mode: r.mode as AiRun["mode"],brief: String(r.brief),status: r.status as AiRun["status"],inputHash: String(r.input_hash),stale: !sameVector(vector,r.expected_vector),createdAt: iso(r.created_at),updatedAt: iso(r.updated_at),completedAt: r.completed_at ? iso(r.completed_at) : null,error: r.error ? String(r.error) : null,inputTokens: Number(r.input_tokens),outputTokens: Number(r.output_tokens),estimatedMicros: Number(r.estimated_micros),maxMicros: Number(r.max_micros),sources: r.sources as AiSource[],steps,events: events.map(e => ({seq:Number(e.seq),kind:String(e.kind),role:e.role as AiRole|null,message:String(e.message),createdAt:iso(e.created_at)})),applications: applications.map(a => ({stepId:String(a.step_id),target:a.target as SectionKey|"roadmap",createdAt:iso(a.created_at)})) });
+        runs.push({ id: String(r.id),startupId: id,mode: r.mode as AiRun["mode"],brief: String(r.brief),status: r.status as AiRun["status"],inputHash: String(r.input_hash),stale: !sameVector(vector,r.expected_vector),createdAt: iso(r.created_at),updatedAt: iso(r.updated_at),completedAt: r.completed_at ? iso(r.completed_at) : null,error: r.error ? String(r.error) : null,inputTokens: Number(r.input_tokens),outputTokens: Number(r.output_tokens),estimatedMicros: Number(r.estimated_micros),maxMicros: Number(r.max_micros),sources: r.sources as AiSource[],steps,pages:allPages.filter(p=>p.runId===r.id),qualityIssues:allIssues.filter(i=>i.runId===r.id),events: events.map(e => ({seq:Number(e.seq),kind:String(e.kind),role:e.role as AiRole|null,message:String(e.message),createdAt:iso(e.created_at)})),applications: applications.map(a => ({stepId:String(a.step_id),target:a.target as SectionKey|"roadmap",createdAt:iso(a.created_at)})) });
       }
-      const c = aiConfig(); return { configured:c.configured,authorized:true,runs,nextCursor:!options.all&&fetched.length>30?String(rows.at(-1)!.id):null,evidence,limits:{runBudgetUsd:c.runBudgetUsd,dailyBudgetUsd:c.dailyBudgetUsd} };
+      const c = aiConfig(); return { configured:c.configured,authorized:true,runs,nextCursor:!options.all&&fetched.length>30?String(rows.at(-1)!.id):null,evidence,memory,findings:await this.analysis.findings(id,tx),layout:await this.analysis.layout(id,tx),limits:{runBudgetUsd:c.runBudgetUsd,dailyBudgetUsd:c.dailyBudgetUsd} };
     });
   }
   async create(id: string, input: unknown) {
@@ -67,7 +76,8 @@ export class AiStore {
       const workspace = await this.workspaceStore.workspaceIn(id,tx);
       const [old] = await tx.query("SELECT * FROM ai_runs WHERE startup_id=$1 AND request_id=$2",[id,p.requestId]);
       if (old) {
-        if (old.mode !== p.mode || old.brief !== p.brief || (old.parent_run_id || null) !== (p.parentRunId || null)) throw new AppError("IDEMPOTENCY_CONFLICT","This request identifier was already used for another brief.",409);
+        if(old.request_payload&&hash(old.request_payload)!==hash(p))throw new AppError("IDEMPOTENCY_CONFLICT","This request identifier was already used for different material or settings.",409);
+        if (old.mode !== p.mode || old.brief !== p.brief || (old.parent_run_id || null) !== (p.parentRunId || null) || (old.intake_id||null)!==(p.intakeId||null) || (p.material&&hash((old.input_snapshot as AiSnapshot).founderMaterial)!==hash(p.material))) throw new AppError("IDEMPOTENCY_CONFLICT","This request identifier was already used for another brief.",409);
         return { id:String(old.id),created:false };
       }
       const [active] = await tx.query("SELECT id FROM ai_runs WHERE startup_id=$1 AND status IN ('queued','running','paused')",[id]);
@@ -78,16 +88,35 @@ export class AiStore {
       let parent: AiSnapshot["parent"] = [];
       let parentSources:AiSource[]=[];
       if (p.parentRunId) {
-        const [parentRun] = await tx.query("SELECT id,sources FROM ai_runs WHERE id=$1 AND startup_id=$2",[p.parentRunId,id]);
+        const [parentRun] = await tx.query("SELECT id,sources,input_snapshot FROM ai_runs WHERE id=$1 AND startup_id=$2",[p.parentRunId,id]);
         if (!parentRun) throw notFound();
-        const rows = await tx.query("SELECT DISTINCT ON(role) role,result FROM ai_steps WHERE run_id=$1 AND status='completed' ORDER BY role,round DESC",[p.parentRunId]);
-        parent = rows.map(r => ({role:r.role as AiRole,result:r.result as AiResult}));
+        const rows = await tx.query("SELECT DISTINCT ON(role) id,run_id,role,result,completed_at FROM ai_steps WHERE run_id=$1 AND status='completed' ORDER BY role,round DESC",[p.parentRunId]);
+        const inherited=(parentRun.input_snapshot as AiSnapshot).parent||[];
+        parent = [...new Map([...inherited,...rows.map(r => ({role:r.role as AiRole,result:r.result as AiResult,runId:String(r.run_id),stepId:String(r.id),asOf:iso(r.completed_at)}))].map(item=>[item.role,item])).values()];
         parentSources=parentRun.sources as AiSource[];
       }
-      const snapshot: AiSnapshot = { workspace,evidence,parent,parentSources };
-      if (Buffer.byteLength(JSON.stringify(snapshot)) > 160000) throw new AppError("AI_CONTEXT_LIMIT","This workspace is too large for one run. Export its history and use a focused working copy.",422);
-      const runId = randomUUID(); const vector = revisionVector(workspace,evidence);
+      const memory=await this.analysis.memory(id,tx);
+      const findingIds=new Set([...referenceIds(memory.map(m=>m.data)),...referenceIds(parent.map(p=>p.result)),...parent.flatMap(p=>p.result.analysis?.findings.map(f=>f.id!)||[])]);
+      const findings=(await this.analysis.findings(id,tx)).filter(f=>findingIds.has(f.id!));
+      const pageIds=new Set(findings.flatMap(f=>f.passageIds.map(p=>p.split(":")[0])));
+      const pageRows=await tx.query("SELECT DISTINCT run_id FROM ai_source_pages WHERE startup_id=$1 AND id=ANY($2::uuid[])",[id,`{${[...pageIds].join(",")}}`]);
+      const pages=(await Promise.all(pageRows.map(r=>this.analysis.pages(String(r.run_id),tx)))).flat().filter(p=>pageIds.has(p.id));
+      parentSources=[...new Map([...parentSources,...pages.map(p=>({url:p.url,title:p.title,accessedAt:p.accessedAt,method:"open_page" as const}))].map(s=>[s.url,s])).values()];
+      let intake:AiSnapshot["intake"];
+      if(p.intakeId){
+        const [record]=await tx.query("SELECT * FROM ai_intakes WHERE id=$1 FOR UPDATE",[p.intakeId]);
+        if(!record||record.status!=="completed")throw new AppError("AI_INTAKE_UNAVAILABLE","Complete the interpretation or continue with your confirmed profile and material.",409);
+        if(record.startup_id&&record.startup_id!==id)throw notFound();
+        await tx.query("UPDATE ai_intakes SET startup_id=$2 WHERE id=$1",[p.intakeId,id]);
+        intake={id:p.intakeId,inputHash:String(record.input_hash),result:record.result,promptVersion:String(record.prompt_version),model:String(record.model)};
+      }
+      const snapshot: AiSnapshot = { workspace,evidence,parent,parentSources,memory,findings,pages,...(p.material?{founderMaterial:p.material}:{}),...(intake?{intake}: {}) };
+      if(p.parentRunId&&!snapshot.founderMaterial){const [pr]=await tx.query("SELECT input_snapshot FROM ai_runs WHERE id=$1 AND startup_id=$2",[p.parentRunId,id]);snapshot.founderMaterial=(pr?.input_snapshot as AiSnapshot)?.founderMaterial;snapshot.intake??=(pr?.input_snapshot as AiSnapshot)?.intake;}
+      if (Buffer.byteLength(JSON.stringify(snapshot)) > 500000) throw new AppError("AI_CONTEXT_LIMIT","This workspace is too large for one run. Export its history and use a focused working copy.",422);
+      const runId = randomUUID(); const vector = revisionVector(workspace,evidence,memory);
       await tx.query(`INSERT INTO ai_runs(id,startup_id,request_id,parent_run_id,mode,brief,input_snapshot,input_hash,expected_vector,max_micros,sources) VALUES($1,$2,$3,$4,$5,$6,$7::jsonb,$8,$9::jsonb,$10,$11::jsonb)`,[runId,id,p.requestId,p.parentRunId||null,p.mode,p.brief,JSON.stringify(snapshot),hash(snapshot),JSON.stringify(vector),Math.round(config.runBudgetUsd*1000000),JSON.stringify(parentSources)]);
+      if(p.intakeId)await tx.query("UPDATE ai_runs SET intake_id=$2 WHERE id=$1",[runId,p.intakeId]);
+      await tx.query("UPDATE ai_runs SET request_payload=$2::jsonb WHERE id=$1",[runId,JSON.stringify(p)]);
       for (const role of modeRoles[p.mode]) await this.insertStep(tx,runId,role,0);
       await this.event(tx,runId,"queued",null,"Brief saved. The specialist team is ready to begin.");
       return { id:runId,created:true };
@@ -145,6 +174,17 @@ export class AiStore {
     if(step.role==="experimenter")for(const e of result.experiments)customTaskSchema.parse({title:e.title,deliverable:e.deliverable,week:e.week,notes:""});
     await this.db.transaction(async tx => {
       const r=await this.fence(tx,run);
+      const [execution]=await tx.query("SELECT input_payload FROM ai_steps WHERE id=$1",[step.id]);
+      const supplied=execution?.input_payload as {findings?:StoredFinding[]}|null;
+      const priorFindings=supplied?.findings||(await this.analysis.findings(String(r.startup_id),tx)).filter(f=>f.runId===run.id&&f.active||(run.snapshot.findings||[]).some(x=>x.id===f.id));
+      result=prepareAnalysis(result,step,{memory:await this.analysis.memory(String(r.startup_id),tx),findings:priorFindings,pages:[...(run.snapshot.pages||[]),...await this.analysis.pages(run.id,tx)],evidence:run.snapshot.evidence,taskIds:run.snapshot.workspace.tasks.map(t=>t.id)});
+      if(result.analysis){
+        await tx.query("UPDATE ai_findings SET active=false WHERE run_id=$1 AND step_id IN (SELECT id FROM ai_steps WHERE run_id=$1 AND role=$2)",[run.id,step.role]);
+        for(const f of result.analysis.findings)await tx.query("INSERT INTO ai_findings(id,startup_id,run_id,step_id,data) VALUES($1,$2,$3,$4,$5::jsonb) ON CONFLICT(id) DO NOTHING",[f.id,r.startup_id,run.id,step.id,JSON.stringify(f)]);
+        for(const c of result.analysis.sourceChecks)await tx.query("UPDATE ai_findings SET support=$3 WHERE id=$1 AND startup_id=$2",[c.findingId,r.startup_id,c.outcome]);
+        await this.analysis.proposedMemory(String(r.startup_id),step,result,tx);
+      }
+      await this.analysis.registerIssues(run.id,step,result,tx);
       await tx.query("UPDATE ai_steps SET status='completed',result=$2::jsonb,completed_at=now() WHERE id=$1",[step.id,JSON.stringify(result)]);
       const merged = new Map((r.sources as AiSource[]).map(s=>[s.url,s])); for(const s of sources) merged.set(s.url,s);
       // Never truncate citations after validation: inherited and new provenance must survive together.
@@ -156,6 +196,10 @@ export class AiStore {
   async recordTool(run:LeasedRun,step:AiStep,name:string,input:unknown,result:unknown) {
     await this.db.transaction(async tx=>{await this.fence(tx,run);await tx.query("INSERT INTO ai_messages(id,run_id,step_id,sender,recipients,kind,content) VALUES($1,$2,$3,$4,$5::jsonb,'tool_result',$6::jsonb)",[randomUUID(),run.id,step.id,name,JSON.stringify([step.role,"orchestrator"]),JSON.stringify({tool:name,input,result})]);});
   }
+  async capture(run:LeasedRun,step:AiStep,page:SourcePage){
+    return this.db.transaction(async tx=>{const r=await this.fence(tx,run);await this.analysis.savePage(String(r.startup_id),step,page,tx);return (await this.analysis.pages(run.id,tx)).find(p=>p.url===page.url)!;});
+  }
+  async saveInput(run:LeasedRun,step:AiStep,payload:unknown){await this.db.transaction(async tx=>{await this.fence(tx,run);await tx.query("UPDATE ai_steps SET input_payload=$2::jsonb WHERE id=$1",[step.id,JSON.stringify(payload)]);});}
   async scheduleRepair(run: LeasedRun, roles: AiRole[]) {
     await this.db.transaction(async tx => { await this.fence(tx,run); for(const role of roles) await this.insertStep(tx,run.id,role,1); await this.insertStep(tx,run.id,"critic",1); await this.event(tx,run.id,"revision",null,"The critic requested one focused correction round. Original proposals stay in history."); });
   }
@@ -209,32 +253,76 @@ export class AiStore {
       if(existing){const old=evidenceFromRow(existing);if(hash(Object.fromEntries(Object.keys(p).map(key=>[key,old[key as keyof AiEvidence]])))!==hash(p))throw new AppError("IDEMPOTENCY_CONFLICT","This observation request was already used for different content.",409);return old;}
       let task:Row|null=null;
       if(p.taskId) { const [found]=await tx.query("SELECT * FROM roadmap_tasks WHERE id=$1 AND startup_id=$2",[p.taskId,id]);if(!found)throw notFound();task=found; }
-      const [r]=await tx.query(`INSERT INTO ai_evidence(id,startup_id,task_id,kind,observation,interpretation,sample_size,source_url,method,observed_on,limitations,task_snapshot,request_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12::jsonb,$13) RETURNING *`,[randomUUID(),id,p.taskId,p.kind,p.observation,p.interpretation,p.sampleSize,p.sourceUrl,p.method,p.observedOn,p.limitations,JSON.stringify(task),p.requestId]);
+      for(const hypothesisId of p.hypothesisIds)if(!(await tx.query("SELECT id FROM ai_memory WHERE id=$1 AND startup_id=$2 AND kind='hypothesis'",[hypothesisId,id])).length)throw new AppError("AI_REFERENCE","The related hypothesis is absent from this workspace.",422);
+      const [experiment]=p.taskId?await tx.query("SELECT contract FROM ai_experiments WHERE task_id=$1",[p.taskId]):[];
+      const taskSnapshot=task?{...task,experimentContract:experiment?.contract||null}:null;
+      const [r]=await tx.query(`INSERT INTO ai_evidence(id,startup_id,task_id,kind,observation,interpretation,sample_size,source_url,method,observed_on,limitations,task_snapshot,request_id,hypothesis_ids,experiment_snapshot) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12::jsonb,$13,$14::jsonb,$15::jsonb) RETURNING *`,[randomUUID(),id,p.taskId,p.kind,p.observation,p.interpretation,p.sampleSize,p.sourceUrl,p.method,p.observedOn,p.limitations,JSON.stringify(taskSnapshot),p.requestId,JSON.stringify(p.hypothesisIds),JSON.stringify(experiment?.contract||null)]);
       return evidenceFromRow(r);
     });
   }
-  async apply(startupId:string,runId:string,stepId:string,target:SectionKey|"roadmap") {
+  async previewPlan(startupId:string,runId:string,stepId:string,selection?:PlanSelection){
+    return this.db.transaction(async tx=>{
+      const workspace=await this.workspaceStore.workspaceIn(startupId,tx);
+      const [s]=await tx.query("SELECT s.result FROM ai_steps s JOIN ai_runs r ON r.id=s.run_id WHERE s.id=$1 AND s.run_id=$2 AND r.startup_id=$3 AND s.role='experimenter' AND s.status='completed'",[stepId,runId,startupId]);
+      if(!s)throw notFound();return buildPlanPreview(workspace,s.result as AiResult,selection);
+    });
+  }
+  async remember(startupId:string,runId:string,stepId:string,kind:"hypothesis"|"decision",key:string){
+    return this.db.transaction(async tx=>{
+      const workspace=await this.workspaceStore.workspaceIn(startupId,tx);
+      const [r]=await tx.query("SELECT * FROM ai_runs WHERE id=$1 AND startup_id=$2 FOR UPDATE",[runId,startupId]);if(!r)throw notFound();
+      const [s]=await tx.query("SELECT * FROM ai_steps WHERE id=$1 AND run_id=$2 AND status='completed'",[stepId,runId]);if(!s)throw notFound();
+      const result=s.result as AiResult;
+      const proposal=(kind==="hypothesis"?result.analysis?.hypotheses:result.analysis?.decisions)?.find(p=>p.key===key);
+      if(!proposal?.id)throw new AppError("AI_MEMORY_PROPOSAL","This artifact has no such memory proposal.",422);
+      const [item]=await tx.query("SELECT * FROM ai_memory WHERE id=$1 AND startup_id=$2 FOR UPDATE",[proposal.id,startupId]);if(!item)throw notFound();
+      const desired=kind==="hypothesis"?"active":"accepted";
+      const data={kind,proposal} as MemoryData;
+      if(item.status===desired&&hash(item.data)===hash(data))return (await this.analysis.memory(startupId,tx)).find(m=>m.id===proposal.id)!;
+      const baseline=(r.input_snapshot as AiSnapshot).memory?.find(m=>m.id===proposal.id);
+      if(Number(item.revision)!==(baseline?.revision||1))throw new AppError("AI_MEMORY_CHANGED","This memory record was edited after the proposal's baseline. Keep your edit or start a follow-up; the old proposal cannot overwrite it.",409);
+      if(!["completed","needs_attention"].includes(String(r.status)))throw new AppError("AI_NOT_READY","Wait for the complete review before accepting proposals.",409);
+      const currentMemory=await this.analysis.memory(startupId,tx),evidence=await this.evidence(startupId,tx);
+      if(!sameVector(revisionVector(workspace,evidence,currentMemory),r.expected_vector))throw new AppError("AI_STALE","The business context changed. Start a follow-up before accepting this proposal.",409);
+      const [latest]=await tx.query("SELECT id FROM ai_steps WHERE run_id=$1 AND role=$2 AND status='completed' ORDER BY round DESC LIMIT 1",[runId,s.role]);if(latest?.id!==stepId)throw new AppError("AI_SUPERSEDED","A newer specialist revision exists.",409);
+      const dependencies=s.role==="experimenter"?["intake","researcher","strategist","monetizer","experimenter","critic"]:s.role==="monetizer"?["intake","researcher","strategist","monetizer","critic"]:["intake","researcher","strategist","critic"];
+      const [critic]=await tx.query("SELECT result FROM ai_steps WHERE run_id=$1 AND role='critic' AND status='completed' ORDER BY round DESC LIMIT 1",[runId]);
+      const issues=[...((critic?.result as AiResult|undefined)?.issues||[]),...(await this.analysis.issues(runId,tx)).filter(i=>i.status==="open")];
+      if(issues.some(i=>i.severity==="blocking"&&dependencies.includes(i.target)))throw new AppError("AI_REVIEW_BLOCKED","Resolve blocking issues before accepting this dependent decision.",409);
+      await this.analysis.checkLinks(startupId,data,tx);
+      const targets=kind==="decision"?(data as Extract<MemoryData,{kind:"decision"}>).proposal.hypothesisRefs:[proposal.id];
+      const reviewed=evidence.filter(e=>e.hypothesisIds.some(h=>targets.includes(h))).map(e=>e.id);
+      await tx.query("UPDATE ai_memory SET data=$2::jsonb,status=$3,reason=$4,revision=revision+1,reviewed_evidence=$5::jsonb,updated_at=now() WHERE id=$1",[proposal.id,JSON.stringify(data),desired,"Founder accepted the reviewed specialist proposal.",JSON.stringify(reviewed)]);
+      await this.analysis.history(tx,startupId,proposal.id);
+      await tx.query("UPDATE ai_runs SET expected_vector=$2::jsonb,updated_at=now() WHERE id=$1",[runId,JSON.stringify(revisionVector(workspace,evidence,await this.analysis.memory(startupId,tx)))]);
+      await this.event(tx,runId,"remembered",s.role,`${kind} accepted by the founder; prior revisions remain in memory history.`);
+      return (await this.analysis.memory(startupId,tx)).find(m=>m.id===proposal.id)!;
+    });
+  }
+  async apply(startupId:string,runId:string,stepId:string,target:SectionKey|"roadmap",plan?:{selection:PlanSelection;previewHash:string}) {
     await this.db.transaction(async tx=>{
       const workspace=await this.workspaceStore.workspaceIn(startupId,tx);
       const [r]=await tx.query("SELECT * FROM ai_runs WHERE id=$1 AND startup_id=$2 FOR UPDATE",[runId,startupId]);if(!r)throw notFound();
       const [applied]=await tx.query("SELECT id FROM ai_applications WHERE run_id=$1 AND step_id=$2 AND target=$3",[runId,stepId,target]);if(applied)return;
       if(!["completed","needs_attention"].includes(String(r.status)))throw new AppError("AI_NOT_READY","Wait for the full review before applying proposals.",409);
       const evidence=await this.evidence(startupId,tx);
-      if(!sameVector(revisionVector(workspace,evidence),r.expected_vector))throw new AppError("AI_STALE","Saved strategy, tasks, profile or evidence changed after this brief. Start a follow-up with the latest context before applying.",409);
+      if(!sameVector(revisionVector(workspace,evidence,await this.analysis.memory(startupId,tx)),r.expected_vector))throw new AppError("AI_STALE","Saved strategy, tasks, profile, memory or evidence changed after this brief. Start a follow-up with the latest context before applying.",409);
       const [s]=await tx.query("SELECT * FROM ai_steps WHERE id=$1 AND run_id=$2 AND status='completed'",[stepId,runId]);if(!s)throw notFound();
       const [latest]=await tx.query("SELECT id FROM ai_steps WHERE run_id=$1 AND role=$2 AND status='completed' ORDER BY round DESC LIMIT 1",[runId,s.role]);if(latest?.id!==stepId)throw new AppError("AI_SUPERSEDED","A newer revision of this specialist's proposal is available.",409);
       const [critic]=await tx.query("SELECT result FROM ai_steps WHERE run_id=$1 AND role='critic' AND status='completed' ORDER BY round DESC LIMIT 1",[runId]);
-      const issues=(critic?.result as AiResult|undefined)?.issues || [];
-      const dependencies=s.role==="experimenter"?["intake","researcher","strategist","monetizer","experimenter","critic"]:["intake","researcher",s.role,"critic"];
+      const issues=[...((critic?.result as AiResult|undefined)?.issues || []),...(await this.analysis.issues(runId,tx)).filter(i=>i.status==="open")];
+      const dependencies=s.role==="experimenter"?["intake","researcher","strategist","monetizer","experimenter","critic"]:s.role==="monetizer"?["intake","researcher","strategist","monetizer","critic"]:["intake","researcher",s.role,"critic"];
       if(issues.some(i=>i.severity==="blocking"&&dependencies.includes(i.target)))throw new AppError("AI_REVIEW_BLOCKED","The critic found an unresolved blocking issue in this proposal or its supporting specialist work. Resolve it in a follow-up first.",409);
       const result=s.result as AiResult;let previous:unknown,proposed:unknown,revision:number|null=null;
       if(target==="roadmap") {
         if(s.role!=="experimenter"||result.experiments.length<6||result.experiments.length>10)throw new AppError("AI_PLAN_INVALID","A reviewed plan needs six to ten experiments.",422);
         const tasks=result.experiments.map(e=>({...customTaskSchema.parse({title:e.title,deliverable:e.deliverable,week:e.week,notes:""}),...e}));
         previous=workspace.tasks.filter(t=>t.source==="ai");proposed=tasks;
-        // Completed, custom and edited work stays. Only untouched older AI suggestions retire.
-        await tx.query("UPDATE roadmap_tasks SET archived=true,revision=revision+1,updated_at=now() WHERE startup_id=$1 AND source='ai' AND status='todo' AND NOT edited AND NOT archived",[startupId]);
-        for(let i=0;i<tasks.length;i++) {const t=tasks[i];await tx.query("INSERT INTO roadmap_tasks(id,startup_id,rule_key,title,deliverable,rationale,week,notes,source) VALUES($1,$2,$3,$4,$5,$6,$7,$8,'ai')",[randomUUID(),startupId,`ai:${stepId}:${i}`,t.title,t.deliverable,t.rationale,t.week,`Hypothesis: ${t.hypothesis}\nMethod: ${t.method}\nMetric: ${t.metric}\nDecision threshold: ${t.threshold}\nEffort: ${t.effort}\nDependencies: ${t.dependencies.join(", ") || "None"}`]);}
+        if(result.analysis?.version===2&&!plan)throw new AppError("AI_PLAN_REVIEW","Preview and review the plan, preserved work and resource limits before applying.",422);
+        const preview=buildPlanPreview(workspace,result,plan?.selection);
+        if(plan&&preview.hash!==plan.previewHash)throw new AppError("AI_PLAN_CHANGED","The plan selection or workspace changed. Review a fresh preview.",409);
+        if(result.analysis&&(!preview.ready))throw new AppError("AI_PLAN_CAPACITY",preview.blockers[0]||"Acknowledge unknown estimates before applying this conditional plan.",422);
+        await applyExperimentPlan(tx,startupId,runId,stepId,workspace,result,preview);
       } else {
         const proposal=validatedProposal(target,result);if(!proposal)throw new AppError("AI_PROPOSAL_MISSING","This specialist did not propose that section.",422);
         if(!((s.role==="strategist"&&target!=="pricing")||(s.role==="monetizer"&&target==="pricing")))throw new AppError("AI_SCOPE","This role cannot apply that section.",422);
@@ -243,7 +331,7 @@ export class AiStore {
       }
       await tx.query("INSERT INTO ai_applications(id,run_id,step_id,startup_id,target,section_revision,previous_data,proposed_data) VALUES($1,$2,$3,$4,$5,$6,$7::jsonb,$8::jsonb)",[randomUUID(),runId,stepId,startupId,target,revision,JSON.stringify(previous),JSON.stringify(proposed)]);
       const current=await this.workspaceStore.workspaceIn(startupId,tx);
-      await tx.query("UPDATE ai_runs SET expected_vector=$2::jsonb,updated_at=now() WHERE id=$1",[runId,JSON.stringify(revisionVector(current,evidence))]);
+      await tx.query("UPDATE ai_runs SET expected_vector=$2::jsonb,updated_at=now() WHERE id=$1",[runId,JSON.stringify(revisionVector(current,evidence,await this.analysis.memory(startupId,tx)))]);
       await this.event(tx,runId,"applied",s.role,`${target==="roadmap"?"Experiment plan":target} applied by the founder. Previous values retained in application history.`);
     });
     return this.workspaceStore.workspace(startupId);
@@ -252,7 +340,13 @@ export class AiStore {
     const state=await this.state(id,{all:true});
     const rows=await this.db.query("SELECT m.* FROM ai_messages m JOIN ai_runs r ON r.id=m.run_id WHERE r.startup_id=$1 ORDER BY m.created_at,m.id",[id]);
     const applications=await this.db.query("SELECT * FROM ai_applications WHERE startup_id=$1 ORDER BY created_at",[id]);
-    const executions=await this.db.query("SELECT s.id,s.run_id,s.role,s.round,s.model,s.prompt_version,s.prompt_hash,s.instructions,s.execution_config FROM ai_steps s JOIN ai_runs r ON r.id=s.run_id WHERE r.startup_id=$1 ORDER BY s.created_at,s.id",[id]);
-    return {exportedAt:new Date().toISOString(),state,messages:rows,applications,executions};
+    const executions=await this.db.query("SELECT s.id,s.run_id,s.role,s.round,s.model,s.prompt_version,s.prompt_hash,s.instructions,s.execution_config,s.input_payload FROM ai_steps s JOIN ai_runs r ON r.id=s.run_id WHERE r.startup_id=$1 ORDER BY s.created_at,s.id",[id]);
+    const snapshots=await this.db.query("SELECT id,input_snapshot,input_hash,expected_vector,parent_run_id FROM ai_runs WHERE startup_id=$1 ORDER BY created_at,id",[id]);
+    const memoryHistory=await this.db.query("SELECT * FROM ai_memory_history WHERE startup_id=$1 ORDER BY created_at,id",[id]);
+    const plans=await this.db.query("SELECT * FROM ai_plans WHERE startup_id=$1 ORDER BY created_at,id",[id]);
+    const calls=await this.db.query("SELECT c.* FROM ai_calls c JOIN ai_runs r ON r.id=c.run_id WHERE r.startup_id=$1 ORDER BY c.created_at,c.id",[id]);
+    const intakes=await this.db.query("SELECT * FROM ai_intakes WHERE startup_id=$1 ORDER BY created_at,id",[id]);
+    const intakeCalls=await this.db.query("SELECT c.* FROM ai_intake_calls c JOIN ai_intakes i ON i.id=c.intake_id WHERE i.startup_id=$1 ORDER BY c.id",[id]);
+    return {exportedAt:new Date().toISOString(),state,messages:rows,applications,executions,snapshots,memoryHistory,plans,calls,intakes,intakeCalls,findings:await this.analysis.findings(id)};
   }
 }

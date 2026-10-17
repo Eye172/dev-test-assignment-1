@@ -1,5 +1,7 @@
 import { z } from "zod";
 import { sectionKeys, sectionSchemas, type SectionKey } from "./schemas";
+import { analysisSchema, experimentContractSchema, type AnalysisLayout, type MemoryItem, type QualityIssue, type SourcePage } from "./analysis";
+import { founderMaterialSchema } from "./intake-api";
 
 export const aiRoles = ["intake", "researcher", "strategist", "monetizer", "experimenter", "critic"] as const;
 export type AiRole = typeof aiRoles[number];
@@ -24,18 +26,31 @@ export const aiResultSchema = z.object({
   recommendations: z.array(z.object({ title: text(), detail: text(), section: z.enum(sectionKeys).nullable(), sourceUrls: z.array(text()), tradeoffs: z.array(text()), nextTest: text() })).max(10),
   questions: z.array(z.object({ question: text(), why: text() })).max(3),
   strategy: aiStrategySchema,
-  experiments: z.array(z.object({ title: text(240).min(1), week: z.number().int().min(1).max(4), deliverable: text().min(1), rationale: text(), hypothesis: text(), method: text(), metric: text(), threshold: text(), effort: text(), dependencies: z.array(text()).max(10) })).max(10),
+  experiments: z.array(z.object({ title: text(240).min(1), week: z.number().int().min(1).max(4), deliverable: text().min(1), rationale: text(), hypothesis: text(), method: text(), metric: text(), threshold: text(), effort: text(), dependencies: z.array(text()).max(10), contract: experimentContractSchema.nullable().default(null) })).max(10),
   issues: z.array(z.object({ severity: z.enum(["blocking", "material", "minor"]), target: z.enum(aiRoles), topic: text(), reason: text(), correction: text() })).max(12),
+  analysis: analysisSchema.nullable().default(null),
 });
 export type AiResult = z.infer<typeof aiResultSchema>;
 export const roleSections: Record<AiRole, readonly SectionKey[]> = { intake: [], researcher: [], strategist: ["icp", "value", "channels", "assumptions"], monetizer: ["pricing"], experimenter: [], critic: [] };
 export function outputSchema(role: AiRole) {
   const allowed = roleSections[role];
-  return aiResultSchema.extend({ strategy: z.object({
+  return aiResultSchema.extend({ analysis: analysisSchema.nullable(), experiments: z.array(aiResultSchema.shape.experiments.element.extend({ contract: experimentContractSchema.nullable() })).max(10), strategy: z.object({
     icp: allowed.includes("icp") ? icp.nullable() : z.null(), value: allowed.includes("value") ? value.nullable() : z.null(),
     channels: allowed.includes("channels") ? channels.nullable() : z.null(), pricing: allowed.includes("pricing") ? pricing.nullable() : z.null(),
     assumptions: allowed.includes("assumptions") ? assumptions.nullable() : z.null(),
   }) });
+}
+/** New model calls always use the rich contract; stored v1 artifacts remain readable. */
+export function modelOutputSchema(role:AiRole){
+  return outputSchema(role).extend({experiments:z.array(aiResultSchema.shape.experiments.element.extend({contract:experimentContractSchema.extend({existingTaskIds:z.array(z.string().min(1).max(100)).max(10)}).nullable()})).max(10),analysis:analysisSchema.extend({
+    research:role==="researcher"?analysisSchema.shape.research:z.null(),
+    hypotheses:["strategist","monetizer","experimenter"].includes(role)?analysisSchema.shape.hypotheses:analysisSchema.shape.hypotheses.max(0),
+    decisions:["strategist","monetizer","experimenter"].includes(role)?analysisSchema.shape.decisions:analysisSchema.shape.decisions.max(0),
+    planLimits:role==="experimenter"?analysisSchema.shape.planLimits:z.null(),
+    sourceChecks:role==="critic"?analysisSchema.shape.sourceChecks:analysisSchema.shape.sourceChecks.max(0),
+    // Specialists can propose a resolution; only the independent critic closes persisted issues.
+    resolutions:analysisSchema.shape.resolutions,
+  })});
 }
 export function validatedProposal(key: SectionKey, result: AiResult) {
   const proposal = result.strategy[key];
@@ -44,15 +59,16 @@ export function validatedProposal(key: SectionKey, result: AiResult) {
 }
 export const runModes = ["full", "research", "strategy", "pricing", "experiments"] as const;
 export type RunMode = typeof runModes[number];
-export const createAiRunSchema = z.object({ mode: z.enum(runModes), brief: z.string().trim().max(6000), requestId: z.uuid(), parentRunId: z.uuid().nullable().optional() }).strict();
+export const createAiRunSchema = z.object({ mode: z.enum(runModes), brief: z.string().trim().max(6000), requestId: z.uuid(), parentRunId: z.uuid().nullable().optional(), intakeId:z.uuid().nullable().optional(), material:founderMaterialSchema.optional() }).strict();
 export const evidenceSchema = z.object({
   requestId: z.uuid(),
   taskId: z.uuid().nullable(), kind: z.enum(["interview", "commitment", "payment", "analytics", "other"]),
   observation: z.string().trim().min(10).max(5000), interpretation: z.enum(["supports", "contradicts", "inconclusive"]),
   sampleSize: z.number().int().min(1).max(10000000).nullable(), sourceUrl: z.union([z.literal(""), z.url({ protocol: /^https?$/ })]),
   method: z.string().trim().min(3).max(1000), observedOn: z.iso.date(), limitations: z.string().trim().max(1500),
+  hypothesisIds: z.array(z.uuid()).max(10).default([]),
 }).strict();
-export type AiEvidence = z.infer<typeof evidenceSchema> & { id: string; createdAt: string };
+export type AiEvidence = z.infer<typeof evidenceSchema> & { id: string; createdAt: string; taskSnapshot?: Record<string,unknown> | null };
 export type AiSource = { url: string; title: string; accessedAt: string; method: "search" | "open_page" | "citation" };
 export type AiStep = { id: string; role: AiRole; round: number; status: "queued" | "running" | "completed" | "failed" | "cancelled"; result: AiResult | null; model: string; promptVersion:string; promptHash:string; inputTokens: number; outputTokens: number; estimatedMicros: number; error: string | null; createdAt: string; completedAt: string | null };
 export type AiEvent = { seq: number; kind: string; role: AiRole | null; message: string; createdAt: string };
@@ -61,8 +77,9 @@ export type AiRun = {
   id: string; startupId: string; mode: RunMode; brief: string; status: "queued" | "running" | "completed" | "needs_attention" | "failed" | "cancelled" | "paused";
   inputHash: string; stale: boolean; createdAt: string; updatedAt: string; completedAt: string | null; error: string | null;
   inputTokens: number; outputTokens: number; estimatedMicros: number; maxMicros: number; sources: AiSource[]; steps: AiStep[]; events: AiEvent[]; applications: AiApplication[];
+  pages?: SourcePage[]; qualityIssues?: QualityIssue[];
 };
-export type AiStudioState = { configured: boolean; authorized: boolean; runs: AiRun[]; nextCursor:string|null; evidence: AiEvidence[]; limits: { runBudgetUsd: number; dailyBudgetUsd: number } };
+export type AiStudioState = { configured: boolean; authorized: boolean; runs: AiRun[]; nextCursor:string|null; evidence: AiEvidence[]; memory?: MemoryItem[]; layout?: AnalysisLayout; findings?: (NonNullable<AiResult["analysis"]>["findings"][number]&{support?:string})[]; limits: { runBudgetUsd: number; dailyBudgetUsd: number } };
 export const modeRoles: Record<RunMode, AiRole[]> = {
   full: [...aiRoles], research: ["intake", "researcher", "critic"],
   strategy: ["intake", "researcher", "strategist", "experimenter", "critic"],

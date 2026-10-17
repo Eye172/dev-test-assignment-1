@@ -12,7 +12,7 @@ let db:Database,store:Store,ai:AiStore;
 beforeAll(async()=>{process.env.OPENAI_API_KEY="test-fixture-no-paid-calls";process.env.AI_ACCESS_CODE="test-access-code-only";db=await createDatabase(process.env.TEST_DATABASE_URL||"memory://");store=new Store(db);ai=new AiStore(db);});
 afterAll(async()=>{await db.close();});
 const emptyResult=():AiResult=>aiResultSchema.parse({title:"Synthetic contract fixture",summary:"An untested proposal for a synthetic test, not a live AI result.",claims:[],recommendations:[],questions:[],strategy:{icp:null,value:null,channels:null,pricing:null,assumptions:null},experiments:[],issues:[]});
-const experiment=(i:number)=>({title:`Test hypothesis ${i}`,week:(i%4)+1,deliverable:"A decision log with observed results",rationale:"Test the most uncertain buyer assumption",hypothesis:"A named buyer experiences this pain",method:"Interview five screened buyers",metric:"Recent examples of the pain",threshold:"At least three of five provide a recent example; otherwise revise",effort:"2 founder hours",dependencies:[]});
+const experiment=(i:number)=>({title:`Test hypothesis ${i}`,week:(i%4)+1,deliverable:"A decision log with observed results",rationale:"Test the most uncertain buyer assumption",hypothesis:"A named buyer experiences this pain",method:"Interview five screened buyers",metric:"Recent examples of the pain",threshold:"At least three of five provide a recent example; otherwise revise",effort:"2 founder hours",dependencies:[],contract:null});
 async function ready(mode="full"){
   const startup=await store.createStartup(demoProfile);const created=await ai.create(startup.id,{mode,brief:"Synthetic test brief",requestId:randomUUID()});const run=(await ai.lease(created.id))!;
   for(const step of await ai.steps(run.id)){
@@ -42,7 +42,7 @@ describe("agent contracts and evidence boundaries",()=>{
     expect(calculation({currency:"USD",period:"month",unitPrice:20,units:10,variableCostPerUnit:2,fixedCosts:100})).toMatchObject({revenue:200,contribution:180,operatingResult:80});
   });
   it("accepts internal primary evidence and snapshot records without requiring public URLs",()=>{
-    const id=randomUUID();const evidence={id,requestId:randomUUID(),taskId:null,kind:"interview" as const,observation:"Only one of five buyers uses this workflow",interpretation:"contradicts" as const,sampleSize:5,sourceUrl:"",method:"Screened interviews",observedOn:"2026-10-17",limitations:"Small founder-recorded sample",createdAt:new Date().toISOString()};
+    const id=randomUUID();const evidence={id,requestId:randomUUID(),taskId:null,kind:"interview" as const,observation:"Only one of five buyers uses this workflow",interpretation:"contradicts" as const,sampleSize:5,sourceUrl:"",method:"Screened interviews",observedOn:"2026-10-17",limitations:"Small founder-recorded sample",createdAt:new Date().toISOString(),hypothesisIds:[]};
     const result=emptyResult();result.claims=[{statement:evidence.observation,kind:"founder_statement",sourceUrls:[],evidenceIds:[id],limitation:evidence.limitations},{statement:"Saved tasks are todo",kind:"workspace_record",sourceUrls:[],evidenceIds:[],limitation:"As of the immutable snapshot"}];
     expect(checkCitations(result,[],"intake",[evidence]).issues).toEqual([]);
     result.claims[0].kind="source_reported";expect(checkCitations(result,[],"intake",[evidence]).claims[0].kind).toBe("founder_statement");
@@ -61,7 +61,7 @@ describe("persisted agent orchestration",()=>{
     const page=await ai.state(startup.id);expect(page.runs).toHaveLength(30);expect(page.nextCursor).toBeTruthy();const older=await ai.state(startup.id,{before:page.nextCursor!});expect(older.runs).toHaveLength(1);expect(older.nextCursor).toBeNull();expect((await ai.export(startup.id)).state.runs).toHaveLength(31);
   });
   it("freezes the complete effective prompt and rejects tampered or incompatible replay before paid work",async()=>{
-    const startup=await store.createStartup(demoProfile);const created=await ai.create(startup.id,{mode:"research",brief:"Prompt replay fixture",requestId:randomUUID()});const step=(await ai.steps(created.id))[0];const original=await ai.execution(step);expect(original.instructions).toContain("Keep this artifact focused");expect(original.settings).toMatchObject({store:false,retries:0,maxTurns:4,timeoutMs:110000});expect(step.promptVersion).toBe("orbit-council-1.2.0");
+    const startup=await store.createStartup(demoProfile);const created=await ai.create(startup.id,{mode:"research",brief:"Prompt replay fixture",requestId:randomUUID()});const step=(await ai.steps(created.id))[0];const original=await ai.execution(step);expect(original.instructions).toContain("Return analysis.version=2");expect(original.settings).toMatchObject({store:false,retries:0});expect(original.settings.timeoutMs).toBe(step.role==="intake"?110000:200000);expect(step.promptVersion).toBe("orbit-council-2.0.10");
     await db.query("UPDATE ai_steps SET instructions=instructions || ' tampered' WHERE id=$1",[step.id]);await expect(ai.execution(step)).rejects.toMatchObject({code:"AI_VERSION_CHANGED"});const [count]=await db.query("SELECT count(*) AS count FROM ai_calls WHERE run_id=$1",[created.id]);expect(Number(count.count)).toBe(0);await ai.cancel(startup.id,created.id);
   });
   it("scopes request identifiers to workspace and rejects payload reuse",async()=>{
@@ -143,13 +143,15 @@ describe("reviewed application, versioning and experiment history",()=>{
     const proposal=(await ai.steps(next.id)).find(s=>s.role==="experimenter")!;
     await ai.apply(startup.id,next.id,proposal.id,"roadmap");await ai.apply(startup.id,next.id,proposal.id,"roadmap");
     let ws=await store.workspace(startup.id);expect(ws.tasks.filter(t=>t.source==="ai")).toHaveLength(6);const aiTask=ws.tasks.find(t=>t.source==="ai")!;
-    await store.updateTask(startup.id,aiTask.id,{expectedRevision:1,patch:{status:"done"}});ws=await store.generate(startup.id);
-    expect(ws.tasks.filter(t=>t.source==="ai"&&!t.archived)).toHaveLength(6);expect(ws.tasks.find(t=>t.id===aiTask.id)?.status).toBe("done");expect(ws.tasks.find(t=>t.source==="custom")?.title).toBe("My own task");
+    await store.updateTask(startup.id,aiTask.id,{expectedRevision:1,patch:{status:"done"}});await expect(store.generate(startup.id)).rejects.toMatchObject({code:"AI_PLAN_ACTIVE"});
+    ws=await store.workspace(startup.id);ws=await store.generate(startup.id,{replaceAiPlan:true,expectedPlanId:ws.activePlan!.id});
+    expect(ws.tasks.filter(t=>t.source==="ai"&&!t.archived)).toHaveLength(1);expect(ws.tasks.find(t=>t.id===aiTask.id)?.status).toBe("done");expect(ws.tasks.find(t=>t.source==="custom")?.title).toBe("My own task");
   });
   it("blocks unresolved critical recommendations and prevents cross-workspace application",async()=>{
     const {startup,run,state}=await ready();const c=specialist(state,"critic"),s=specialist(state,"strategist");const result=emptyResult();result.issues=[{severity:"blocking",target:"strategist",topic:"Unsupported promise",reason:"No evidence",correction:"Reframe as a hypothesis"}];
     await db.query("UPDATE ai_steps SET result=$2::jsonb WHERE id=$1",[c.id,JSON.stringify(result)]);
     await expect(ai.apply(startup.id,run.id,s.id,"icp")).rejects.toMatchObject({code:"AI_REVIEW_BLOCKED"});const other=await store.createStartup(demoProfile);await expect(ai.apply(other.id,run.id,s.id,"icp")).rejects.toMatchObject({status:404});
     await expect(ai.apply(startup.id,run.id,specialist(state,"experimenter").id,"roadmap")).rejects.toMatchObject({code:"AI_REVIEW_BLOCKED"});
+    await expect(ai.apply(startup.id,run.id,specialist(state,"monetizer").id,"pricing")).rejects.toMatchObject({code:"AI_REVIEW_BLOCKED"});
   });
 });

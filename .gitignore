@@ -10,3 +10,6 @@ test-results/
 next-env.d.ts
 .vercel/
 .DS_Store
+.pdf-worker-cache/
+public/vendor/pdf.worker.min.mjs
+public/vendor/pdfjs-LICENSE.txt

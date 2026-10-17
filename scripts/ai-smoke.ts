@@ -7,6 +7,7 @@ import assert from "node:assert/strict";
 import type { AiStudioState } from "../src/lib/domain/ai";
 import type { Workspace } from "../src/lib/domain/types";
 import { sectionKeys } from "../src/lib/domain/schemas";
+import type { PlanPreview } from "../src/lib/domain/analysis";
 
 async function main(){
   const base=process.env.AI_SMOKE_BASE_URL||"http://127.0.0.1:3000",startupId=process.env.AI_SMOKE_STARTUP_ID;
@@ -15,17 +16,27 @@ async function main(){
   async function request<T>(url=endpoint,body?:unknown,expected=200):Promise<T>{const response=await fetch(url,{method:body?"POST":"GET",headers:{"Content-Type":"application/json",...(body?{Origin:new URL(base).origin}:{}),...(cookie?{Cookie:cookie}:{})},...(body?{body:JSON.stringify(body)}:{}),signal:AbortSignal.timeout(20000)});assert.equal(response.status,expected,`HTTP status ${response.status}`);if(response.headers.get("set-cookie"))cookie=response.headers.get("set-cookie")!.split(";")[0];return (await response.json()).data as T;}
   assert.equal((await request<AiStudioState>()).authorized,false);
   await request(endpoint,{action:"unlock",payload:{code:process.env.AI_ACCESS_CODE}});
-  let state=await request<AiStudioState>();const run=process.env.AI_SMOKE_PARENT_RUN_ID?state.runs.find(r=>r.id===process.env.AI_SMOKE_PARENT_RUN_ID):state.runs.find(r=>r.status==="completed"&&!r.stale);assert(run,"Use a current completed synthetic run, or explicitly choose a parent for a follow-up-only evaluation.");
+  let state=await request<AiStudioState>();const run=process.env.AI_SMOKE_PARENT_RUN_ID?state.runs.find(r=>r.id===process.env.AI_SMOKE_PARENT_RUN_ID):state.runs.find(r=>["completed","needs_attention"].includes(r.status)&&!r.stale);assert(run,"Use a current reviewed synthetic run, or explicitly choose a parent for a follow-up-only evaluation.");
   const latest=(role:string)=>run.steps.filter(s=>s.role===role&&s.status==="completed").at(-1)!;
   if(process.env.AI_SMOKE_APPLY!=="false"){
+  for(const role of ["strategist","monetizer"]){const s=latest(role);for(const kind of ["hypothesis","decision"] as const)for(const proposal of (kind==="hypothesis"?s.result?.analysis?.hypotheses:s.result?.analysis?.decisions)||[])await request(endpoint,{action:"remember",runId:run.id,stepId:s.id,kind,key:proposal.key});}
   for(const target of sectionKeys)await request<Workspace>(endpoint,{action:"apply",runId:run.id,stepId:latest(target==="pricing"?"monetizer":"strategist").id,target});
-  const plan=await request<Workspace>(endpoint,{action:"apply",runId:run.id,stepId:latest("experimenter").id,target:"roadmap"});
-  const repeat=await request<Workspace>(endpoint,{action:"apply",runId:run.id,stepId:latest("experimenter").id,target:"roadmap"});assert.equal(plan.tasks.length,repeat.tasks.length);assert.equal(plan.completion.percentage,100);assert.equal(plan.tasks.filter(t=>t.source==="ai").length,8);
+  const experimenter=latest("experimenter");let reviewed:PlanPreview|undefined;
+  if(experimenter.result?.analysis){
+    reviewed=await request<PlanPreview>(endpoint,{action:"preview_plan",runId:run.id,stepId:experimenter.id});
+    if(reviewed.unknowns.length&&process.env.AI_SMOKE_ACK_UNKNOWN==="true")reviewed=await request<PlanPreview>(endpoint,{action:"preview_plan",runId:run.id,stepId:experimenter.id,selection:{...reviewed.selection,acknowledgeUnknowns:true}});
+    assert(reviewed.ready,`Plan requires review: ${[...reviewed.blockers,...reviewed.unknowns].join(" ")}`);
+  }
+  const payloadApply={action:"apply",runId:run.id,stepId:experimenter.id,target:"roadmap",...(reviewed?{plan:{selection:reviewed.selection,previewHash:reviewed.hash}}:{})};
+  const plan=await request<Workspace>(endpoint,payloadApply);
+  const repeat=await request<Workspace>(endpoint,payloadApply);assert.equal(plan.tasks.length,repeat.tasks.length);assert.equal(plan.completion.percentage,100);assert.equal(plan.tasks.filter(t=>t.source==="ai"&&!t.archived).length,experimenter.result!.experiments.length);
   const task=plan.tasks.find(t=>t.source==="ai")!;
-  const payload={requestId:randomUUID(),taskId:task.id,kind:"interview",observation:"Synthetic follow-up evidence: only one of five screened courier managers transfers voice notes into a separate dispatch record; four work directly in chat. No one committed to payment.",interpretation:"contradicts",sampleSize:5,sourceUrl:"",method:"Five screened phone interviews; founder-recorded results, not independently verified",observedOn:"2026-10-17",limitations:"Small convenience sample; no measured handling-time comparison or verified payment."};
+  const hypothesisId=latest("strategist").result?.analysis?.hypotheses[0]?.id;
+  const payload={requestId:randomUUID(),taskId:task.id,kind:"interview",observation:"Synthetic follow-up evidence: only one of five screened courier managers transfers voice notes into a separate dispatch record; four work directly in chat. No one committed to payment.",interpretation:"contradicts",sampleSize:5,sourceUrl:"",method:"Five screened phone interviews; founder-recorded results, not independently verified",observedOn:"2026-10-17",limitations:"Small convenience sample; no measured handling-time comparison or verified payment.",hypothesisIds:hypothesisId?[hypothesisId]:[]};
   const first=await request<{id:string}>(endpoint,{action:"evidence",payload},201),second=await request<{id:string}>(endpoint,{action:"evidence",payload},201);assert.equal(first.id,second.id);
   const legacy=await fetch(`${base}/api/startups/${startupId}/export`);assert(!(await legacy.text()).includes(payload.observation));
   state=await request<AiStudioState>();assert(state.runs.find(r=>r.id===run.id)?.stale);assert.equal(state.evidence.filter(e=>e.id===first.id).length,1);
+  if(hypothesisId)assert(state.memory?.find(m=>m.id===hypothesisId)?.reviewNeeded,"New adverse observation must reopen review, not silently change the belief.");
   console.log(JSON.stringify({event:"http_acceptance",startupId,runId:run.id,completion:plan.completion.percentage,aiTasks:plan.tasks.filter(t=>t.source==="ai").length,idempotentApplication:true,idempotentEvidence:true,privateEvidence:true,staleAfterObservation:true}));
   }
   if(process.env.AI_SMOKE_RUN_FOLLOWUP==="true"){

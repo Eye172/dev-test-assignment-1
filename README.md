@@ -8,7 +8,7 @@ Independent developer-test implementation for the AI Startify ecosystem. All dem
 
 ## Run locally
 
-Requires Node.js 24 (Node 22+ supported). No cloud account or paid AI provider is needed for local development.
+Requires Node.js 24 (Node 22.13+ supported). No cloud account or paid AI provider is needed for local development.
 
 ```sh
 npm ci
@@ -34,9 +34,11 @@ The owner's additional AI scope is implemented through six specialists: brief in
 
 Set `OPENAI_API_KEY` and a long random `AI_ACCESS_CODE` server-side to enable paid work. Optional `OPENAI_MODEL`, `OPENAI_CRITIC_MODEL`, `AI_RUN_BUDGET_USD` and `AI_DAILY_BUDGET_USD` are documented in `.env.example`. No key or access code belongs in a browser bundle or shared URL. Public demo profiles and accepted strategy remain shared; AI briefs/observations/history are owner-gated. This is a single-owner gate, not commercial tenant authentication.
 
-See [AI-BACKEND.md](docs/AI-BACKEND.md) for the graph, role prompts, typed messages, endpoint payloads, memory, evidence semantics, model/cost settings, checkpoint recovery and frontend integration requirements. Claude's next design remains independently owned; the backend contract does not prescribe a layout. `npm run test:ai:live` performs an explicitly paid synthetic evaluation and is excluded from CI.
+The integrated studio compares relevant competitors, indirect alternatives and the current workflow on case-specific axes. It retains captured passages and limitations, versioned hypotheses and decisions, counter-evidence and reopening conditions. A plan preview reconciles earlier suggestions with retained human work, weekly capacity, currency budgets and dependencies before applying one active plan. Six private information displays can be reordered, resized, collapsed or hidden independently of the public dashboard.
 
-Font copyright and license notices are retained in [Inter OFL](docs/licenses/Inter-OFL.txt) and [Space Grotesk OFL](docs/licenses/Space-Grotesk-OFL.txt). Black Orbit supplies visual inspiration; the orbit mark and application composition are original.
+See [AI-BACKEND.md](docs/AI-BACKEND.md) for the graph, role prompts, typed messages, endpoint payloads, memory, evidence semantics, model/cost settings and checkpoint recovery. `npm run test:ai:live` performs an explicitly paid synthetic evaluation and is excluded from CI. On Windows with an enterprise certificate store, use Node's `--use-system-ca`; never disable TLS verification.
+
+Font copyright and license notices are retained in [Inter OFL](docs/licenses/Inter-OFL.txt) and [Space Grotesk OFL](docs/licenses/Space-Grotesk-OFL.txt). Reference research and asset provenance are recorded in [the design documents](docs/design/JOURNEY.md). Mozilla PDF.js (Apache-2.0) and fflate (MIT) extract attachment text locally; the PDF worker and its license are copied from the pinned dependency at build time.
 
 ```text
 src/app/             Next.js pages, layouts and API route handlers
@@ -75,8 +77,8 @@ The roadmap uses predefined rules to generate 8–10 current suggestions dependi
 
 The interface is built as "paper and instruments": a light Black Orbit-inspired canvas (dark by preference) with dark instrument objects. Direction and the review of the previous version: [docs/design/REMAKE.md](docs/design/REMAKE.md).
 
-- **Two ways to start** ([journey spec](docs/design/JOURNEY.md)). *Free form*: write in your own words; deterministic rules pick out profile fields and strategy hints (shown live as "Picked up · rules, not AI"), then ask only for what is missing — at most seven questions, none when nothing is missing. *Guided brief*: seven topics with complete option sets (B2B/B2C/B2G plus business type, stage plus signals, market groups, buyer role and size). Both paths accept attached material (plain text is read in the browser; PDF/DOCX/PPTX are kept and labelled as needing AI reading) and end on one confirmation screen that tags where each value came from.
-- **Launch sequence** — a non-blocking transition that lights only on real steps: profile saved, material read, unsaved strategy drafts prepared, 30-day plan generated, and (when the owner has unlocked AI) the specialist run from the server journal. "Open workspace now" is available from the first second; the workspace opens on a *Prepared for you* panel.
+- **Two ways to start** ([journey spec](docs/design/JOURNEY.md)). *Free form*: write in your own words; labelled local rules extract what they can. Optional owner-only AI interpretation reads the actual text before creation. Clarification asks only for required gaps, at most seven questions, and stops once they are filled. *Guided brief*: seven freely revisitable topics. Both paths read text from PDF/DOCX/PPTX/TXT/MD/CSV on the device (3 files, 5 MB each, up to 20,000 extracted characters each). PDF reading is capped at 30 pages; scans, images/charts and slide notes are not interpreted. The UI retains coverage, truncation and errors. All fields are confirmed before creation; saved profile edits supersede earlier extraction.
+- **Launch sequence** — real completion states for profile, material, unsaved drafts, rule plan and optional AI work. Paid specialists require an explicit choice; an unlocked cookie alone does not start them. Creation and AI attempts retain idempotency keys across network failures and reloads. The full guided answers and extracted material enter the private frozen AI input. "Open workspace now" remains available; a saved launch can resume or start another startup.
 - **AI specialists** (`/startups/:id/ai`) — owner-gated studio over the [AI backend](docs/AI-BACKEND.md): live progress by role, the critic's review, proposals compared side by side with the saved section and applied one section at a time, experiment plan added to the roadmap on request. Nothing is applied or called validated automatically.
 - **Orbit dial** — inner ring: the five strategy sections (filled when complete, dotted when drafted); outer ring: the 30 plan days lit by finished work; satellite: today's plan day, counted from when the plan was generated. Each ring segment on Overview links to its section.
 - **Strategy** is a writing surface: autosave after a pause in typing (switchable per device; conflicts stop it and ask), a live list of missing inputs that jumps to the field, and optional clearly-labelled synthetic examples with a one-click "Use".
@@ -95,6 +97,9 @@ The interface is built as "paper and instruments": a light Black Orbit-inspired 
 | `/startups/:id/strategy` | Five independently saved sections in any order |
 | `/startups/:id/dashboard` | Saved decisions, real progress, gaps and next actions |
 | `/startups/:id/roadmap` | Editable 30-day tasks, statuses and retained history |
+| `/startups/:id/ai` | Owner-only research, hypothesis/decision memory, evidence and reviewed proposals |
+| `/startups/:id/agents` | Redirect to the canonical AI studio |
+| `/api/intake` | Owner unlock and optional pre-creation AI interpretation; extracted text only |
 | `/api/health` | Database readiness without credentials |
 | `/api/demo` | Seeded example / create a separate demo working copy |
 | `/api/startups/:id/export` | Downloadable JSON workspace backup |
@@ -113,7 +118,7 @@ npm run test:e2e
 
 `verify` runs ESLint, strict type checking, domain/SQL/API tests and a production build. The browser suite runs the production build at desktop and mobile sizes. GitHub Actions additionally runs the SQL/API suite against PostgreSQL 17. Tests require an isolated database and use in-memory PGlite locally; an on-disk test also closes and reopens the engine to verify durability.
 
-The full browser suite starts its own loopback server on port 3000; stop a development server using that port first. Its API, desktop and phone projects model separate clients behind a trusted proxy, retaining the real 60-creations/hour limit for each. This test-only configuration is not applied to an existing deployment. Repeated runs share the local `.data/e2e` database and its hourly quotas; use a fresh isolated test database or wait for the next hour if running the complete suite repeatedly.
+The full browser suite starts its own loopback server on port 3000; stop a development server using that port first. Its API, desktop and phone projects model separate clients behind a trusted proxy, retaining the real 60-creations/hour limit for each. Every local run uses a fresh `.data/e2e/<timestamp>` database unless `E2E_PGLITE_DATA_DIR` is explicitly set. Synthetic AI acceptance fixtures exercise actual SQL and HTTP application without a provider call. Preflight UI provider responses are explicitly mocked; real API evaluation is separate.
 
 `build` also packages public/static assets with Next's standalone server. `npm start` runs that exact entry point, as does the container. Set runtime environment variables when starting it; local embedded storage in a production build is allowed only for isolated tests. Set `E2E_BASE_URL` to test an already-running synthetic demo instead of starting the local test server. The acceptance suite creates synthetic workspaces and changes their data, so use it only on a demo/test deployment.
 
