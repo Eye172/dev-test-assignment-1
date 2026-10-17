@@ -817,6 +817,17 @@ Object.assign(analysisLabels,{
   'The specialist could not return a complete, valid result. Completed work is preserved. If a provider call was interrupted, its reservation remains until the owner reviews usage.':['Специалист не вернул полный корректный результат. Материалы и завершённая работа сохранены. Прерванные вызовы требуют проверки расхода.','Маман толық дұрыс нәтиже қайтармады. Материалдар мен аяқталған жұмыс сақталды. Үзілген шақыру шығынын тексеру қажет.'],
 });
 Object.assign(analysisLabels,{
+
+  'Record hypothesis':['Записать гипотезу','Болжам жазу'], 'Record decision':['Записать решение','Шешім жазу'],
+  'Edit hypothesis':['Изменить гипотезу','Болжамды өзгерту'], 'Edit decision':['Изменить решение','Шешімді өзгерту'],
+  'Accept hypothesis':['Принять гипотезу','Болжамды қабылдау'], 'Accept decision':['Принять решение','Шешімді қабылдау'], 'Accept revision':['Принять изменение','Өзгерісті қабылдау'],
+  'Earlier, rejected and deferred hypotheses':['Предыдущие, отклонённые и отложенные гипотезы','Алдыңғы, қабылданбаған және кейінге қалдырылған болжамдар'],
+  'Earlier, rejected and deferred decisions':['Предыдущие, отклонённые и отложенные решения','Алдыңғы, қабылданбаған және кейінге қалдырылған шешімдер'],
+  'Brief saved. The specialist team is ready to begin.':['Бриф сохранён. Команда готова начать.','Бриф сақталды. Команда бастауға дайын.'],
+  'The critic requested one focused correction round. Original proposals stay in history.':['Критик запросил исправления. Исходные предложения сохранены в истории.','Сыншы түзету сұрады. Бастапқы ұсыныстар тарихта сақталған.'],
+  'Review complete. Unresolved concerns are shown beside the proposals.':['Проверка завершена. Открытые замечания показаны рядом с предложениями.','Тексеру аяқталды. Ашық ескертулер ұсыныстар жанында көрсетілген.'],
+  'An interrupted provider call needs owner review; it was not retried automatically.':['Прерванный вызов провайдера требует проверки владельца; автоматического повтора не было.','Үзілген провайдер шақыруын иесі тексеруі қажет; автоматты қайталау болған жоқ.'],
+  'Run cancelled. Completed artifacts remain; an in-flight provider call may still incur cost.':['Запуск отменён. Готовые результаты сохранены; уже отправленный вызов может расходовать бюджет.','Іске қосу тоқтатылды. Дайын нәтижелер сақталды; жіберілген шақыру шығын тудыруы мүмкін.'],
   'Stated allocation':['Подтверждённое распределение','Расталған бөлініс'], 'Provisional allocation':['Предварительное распределение','Алдын ала бөлініс'],
   'No cash outlay proposed':['Денежные расходы не предусмотрены','Ақшалай шығын көзделмеген'], 'None in this plan':['В этом плане нет','Бұл жоспарда жоқ'],
   'Confirm no remaining cash outlay':['Подтвердить отсутствие оставшихся расходов','Қалған шығынның жоқтығын растау'], 'Add remaining cash costs':['Добавить оставшиеся расходы','Қалған шығынды қосу'],
@@ -828,6 +839,8 @@ export function analysisCopy(text:string,locale:Locale):string {
   if(locale==='en')return text;
   const index=locale==='ru'?0:1;
   const formats: [RegExp,(m:RegExpMatchArray)=>string][] = [
+    [/^(Experiment plan|icp|value|channels|pricing|assumptions) applied by the founder\. Previous values retained in application history\.$/,m=>{const ru:Record<string,string>={'Experiment plan':'План экспериментов',icp:'Портрет клиента',value:'Ценностное предложение',channels:'Каналы',pricing:'Монетизация',assumptions:'Гипотезы'};const kk:Record<string,string>={'Experiment plan':'Тәжірибе жоспары',icp:'Клиент бейіні',value:'Құндылық ұсынысы',channels:'Арналар',pricing:'Монетизация',assumptions:'Болжамдар'};return locale==='ru'?`${ru[m[1]]}: основатель применил предложение. Предыдущая версия сохранена в истории.`:`${kk[m[1]]}: негізін қалаушы ұсынысты қолданды. Алдыңғы нұсқа тарихта сақталған.`;}],
+    [/^(hypothesis|decision) accepted by the founder; prior revisions remain in memory history\.$/,m=>locale==='ru'?`${m[1]==='hypothesis'?'Гипотеза принята':'Решение принято'}. Предыдущие версии сохранены.`:`${m[1]==='hypothesis'?'Болжам':'Шешім'} қабылданды. Алдыңғы нұсқалар сақталған.`],
     [/^Remaining minutes for (.+)$/,m=>locale==='ru'?`Оставшееся время: ${m[1]}`:`Қалған уақыт: ${m[1]}`],
     [/^Cash currency for (.+)$/,m=>locale==='ru'?`Валюта расходов: ${m[1]}`:`Шығын валютасы: ${m[1]}`],
     [/^Remaining ([A-Z]{3}|unknown currency) cash for (.+)$/,m=>locale==='ru'?`Оставшиеся расходы (${m[1]==='unknown currency'?'валюта неизвестна':m[1]}): ${m[2]}`:`Қалған шығын (${m[1]==='unknown currency'?'валюта белгісіз':m[1]}): ${m[2]}`],

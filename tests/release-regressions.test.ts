@@ -19,6 +19,7 @@ describe("release presentation regressions",()=>{
     expect(analysisCopy("Оплата пилота: KZT spending is unknown.","ru")).toBe("Оплата пилота: расходы в KZT неизвестны.");
     expect(analysisCopy("Remaining KZT cash for Founder visit","ru")).toBe("Оставшиеся расходы (KZT): Founder visit");
     expect(analysisCopy("Remaining minutes for Founder visit","kk")).toBe("Қалған уақыт: Founder visit");
+    expect(analysisCopy("Experiment plan applied by the founder. Previous values retained in application history.","ru")).toContain("План экспериментов: основатель применил предложение");
     expect(analysisCopy("Capacity check","ru")).toBe("Проверка нагрузки");
     expect(analysisCopy("Week 2 needs 810 minutes; capacity is 720.","ru")).toContain("810");
     expect(analysisCopy("Founder explicitly said: $49/month, unknown retention.","kk")).toBe("Founder explicitly said: $49/month, unknown retention.");
