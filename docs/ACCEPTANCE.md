@@ -4,6 +4,8 @@ Final assembly, 17 October 2026. The original assignment and the owner's AI expa
 
 Local release checks: lint, strict types, 65 domain/SQL regressions and standalone production build pass. The integrated browser suite passes 87 HTTP/desktop/phone scenarios with no retries and one intentional mobile pointer-drag skip; phones use separately tested move controls. PostgreSQL 17 CI and hosted release evidence are recorded in [SUBMISSION.md](SUBMISSION.md). Browser tests use Chromium desktop/phone emulation, not physical-device certification.
 
+The release candidate passed [PostgreSQL 17 CI](https://github.com/Eye172/dev-test-assignment-1/actions/runs/38989111639) before PR #12 was merged. Production deployment `7132849269` succeeded on merged `f5faa8a`; all 24 selected signed-out hosted HTTP/desktop/phone checks passed without retries, including the full founder flow on both viewports. A separate real production OpenAI interpretation `262d272f-f2ea-4b31-a910-5706600d3a97` passed the idempotency, confirmed-stage, channel-exclusion and budget/price checks (590 input / 283 output tokens; estimated USD0.004010). Public health is ready/PostgreSQL/demo and unauthorized private AI export returns 401.
+
 | Required behavior | Implementation boundary | Evidence |
 | --- | --- | --- |
 | Welcome page with Create Startup and demo entry | Claude frontend + demo API | Creation browser journey and manual demo entry pass |
@@ -28,7 +30,7 @@ Local release checks: lint, strict types, 65 domain/SQL regressions and standalo
 | Modular schema/routes/integration documentation | src/lib/domain, src/server, docs | Schema, HTTP contract, revision/mutation paths and delivery setup reviewed; integration tests pass |
 | Optional auth omitted with clear demo labeling | Public synthetic demo | All six routes reviewed; demo label and shared-link disclosure present |
 | No private systems or paid AI required | Independent rule engine and DB | Local tests/migrations/seed work without providers |
-| GitHub source, meaningful commits, sample env | Repository and history | Published implementation branch |
+| GitHub source, meaningful commits, sample env | Repository and history | PR #12 merged to main; committed source ZIP supplied |
 | Public working demo and seeded direct profile | Vercel + dedicated Neon PostgreSQL | Public alias and fixed seed live; signed-out health confirms ready/postgres/demo; hosted full journeys pass |
 | README and one-page handover | README, docs/HANDOVER.md, output/pdf | Live links, setup and evidence recorded; PDF rendered and visually checked as one page |
 
