@@ -23,13 +23,17 @@ const recoverySchema = z.object({
   custom: z.array(z.tuple([z.string(),z.string()])),revision: z.number().int().nonnegative(),baseline: z.string(),
 });
 
-export function ProfileForm({ initial, onSaved, onCancel, onReloaded }: { initial?: Startup; onSaved?: (startup: Startup) => void | Promise<void>; onCancel?: () => void; onReloaded?: (workspace: Workspace) => void }) {
+export type ProfileSeed = Partial<Draft> & { customFields?: Record<string, string> };
+export function ProfileForm({ initial, seed, origins, onSaved, onCancel, onReloaded, submitLabel }: { initial?: Startup; seed?: ProfileSeed; origins?: Partial<Record<string, string>>; onSaved?: (startup: Startup) => void | Promise<void>; onCancel?: () => void; onReloaded?: (workspace: Workspace) => void; submitLabel?: string }) {
   const router = useRouter();
   const hydrated = useHydrated();
-  const [data, setData] = useState<Draft>(() => initial ? fromStartup(initial) : blank);
-  const [custom, setCustom] = useState<[string, string][]>(() => Object.entries(initial?.customFields ?? {}));
+  const start = initial ? fromStartup(initial) : { ...blank, ...Object.fromEntries(Object.entries(seed ?? {}).filter(([k, v]) => k !== "customFields" && v)) } as Draft;
+  const startCustom = Object.entries(initial?.customFields ?? seed?.customFields ?? {});
+  const [data, setData] = useState<Draft>(start);
+  const [custom, setCustom] = useState<[string, string][]>(startCustom);
   const [revision, setRevision] = useState(initial?.revision ?? 0);
-  const [baseline, setBaseline] = useState(() => JSON.stringify({ data: initial ? fromStartup(initial) : blank, custom: Object.entries(initial?.customFields ?? {}) }));
+  // A seeded form starts clean: the seed is the founder's own input from the previous step.
+  const [baseline, setBaseline] = useState(() => JSON.stringify({ data: start, custom: startCustom }));
   const [fields, setFields] = useState<Record<string, string>>({});
   const [error, setError] = useState<Error | null>(null);
   const [saving, setSaving] = useState(false);
@@ -100,6 +104,9 @@ export function ProfileForm({ initial, onSaved, onCancel, onReloaded }: { initia
   }, []);
 
   const conflict = error instanceof ClientError && error.status === 409;
+  const originText: Record<string, string> = { text: "From your text", file: "From your file", answer: "Your answer", choice: "Your choice" };
+  // Shows where a pre-filled value came from until the founder edits it.
+  const tag = (k: keyof Draft) => origins?.[k] && data[k] === start[k] ? <span className="origin-tag">{originText[origins[k]!] ?? origins[k]}</span> : null;
   const invalid = fieldOrder.filter(k => fields[k]);
   return <form onSubmit={save} ref={form} noValidate className="profile-form">
     {error && <div ref={summary} tabIndex={-1} className="error-summary" role="alert">
@@ -109,15 +116,15 @@ export function ProfileForm({ initial, onSaved, onCancel, onReloaded }: { initia
       {invalid.length > 0 && <ul>{invalid.map(k => <li key={k}><a href={`#field-${k}`} onClick={e => { e.preventDefault(); document.getElementById(`field-${k}`)?.focus(); }}>{fieldNames[k]}: {fields[k]}</a></li>)}</ul>}
     </div>}
     <fieldset disabled={saving || !hydrated}>
-      {!initial && <button type="button" className="sample-fill" onClick={() => { setData(sample); setFields({}); setError(null); }}><Sparkles size={15} aria-hidden/>Fill with a synthetic example</button>}
-      <Field name="name" label="Startup name" value={data.name} onChange={v => update("name", v)} error={fields.name} required maxLength={120} autoComplete="organization"/>
-      <Field name="description" label="Description" value={data.description} onChange={v => update("description", v)} error={fields.description} textarea required maxLength={2000} help="What you build, for whom, and why it matters. Two or three sentences."/>
+      {!initial && !seed && <button type="button" className="sample-fill" onClick={() => { setData(sample); setFields({}); setError(null); }}><Sparkles size={15} aria-hidden/>Fill with a synthetic example</button>}
+      <Field name="name" label="Startup name" value={data.name} onChange={v => update("name", v)} error={fields.name} required maxLength={120} autoComplete="organization">{tag("name")}</Field>
+      <Field name="description" label="Description" value={data.description} onChange={v => update("description", v)} error={fields.description} textarea required maxLength={2000} help="What you build, for whom, and why it matters. Two or three sentences.">{tag("description")}</Field>
       <div className="form-columns">
         <Choice name="businessModel" label="Business model" value={data.businessModel} options={["B2B", "B2C", "B2G"] as const} onChange={v => update("businessModel", v)}/>
         <Choice name="stage" label="Stage" value={data.stage} options={["Idea", "MVP", "Early Traction"] as const} onChange={v => update("stage", v)}/>
       </div>
-      <Field name="targetMarket" label="Target country or market" value={data.targetMarket} onChange={v => update("targetMarket", v)} error={fields.targetMarket} required maxLength={200} help="A country, region or focused market, e.g. Kazakhstan, DACH, US mid-market."/>
-      <Field name="customerSegment" label="Primary customer segment" value={data.customerSegment} onChange={v => update("customerSegment", v)} error={fields.customerSegment} required maxLength={500} help="Be specific, e.g. operations managers at logistics companies with 20–200 employees."/>
+      <Field name="targetMarket" label="Target country or market" value={data.targetMarket} onChange={v => update("targetMarket", v)} error={fields.targetMarket} required maxLength={200} help="A country, region or focused market, e.g. Kazakhstan, DACH, US mid-market.">{tag("targetMarket")}</Field>
+      <Field name="customerSegment" label="Primary customer segment" value={data.customerSegment} onChange={v => update("customerSegment", v)} error={fields.customerSegment} required maxLength={500} help="Be specific, e.g. operations managers at logistics companies with 20–200 employees.">{tag("customerSegment")}</Field>
       <Field name="websiteUrl" label="Website (optional)" value={data.websiteUrl} onChange={v => update("websiteUrl", v)} error={fields.websiteUrl} type="url" inputMode="url" maxLength={2000} placeholder="https://"
         onBlur={() => { const v = data.websiteUrl.trim(); if (v && !/^[a-z]+:/i.test(v)) update("websiteUrl", `https://${v}`); }}/>
       <details className="context-disclosure" open={initial && (data.context || custom.length) ? true : undefined}>
@@ -135,7 +142,7 @@ export function ProfileForm({ initial, onSaved, onCancel, onReloaded }: { initia
         </div>
       </details>
       <div className="form-footer">
-        <button className="button primary" aria-busy={saving}>{saving ? <><Spinner/>Saving…</> : initial ? "Save profile" : <>Create startup<ArrowRight size={17} aria-hidden/></>}</button>
+        <button className="button primary" aria-busy={saving}>{saving ? <><Spinner/>Saving…</> : initial ? "Save profile" : <>{submitLabel ?? "Create startup"}<ArrowRight size={17} aria-hidden/></>}</button>
         {onCancel && <button type="button" className="button ghost" onClick={() => { if (!dirty || window.confirm("Discard your unsaved profile edits?")) { clearDraft(draftKey); onCancel(); } }}>Cancel</button>}
       </div>
     </fieldset>

@@ -1,3 +1,2 @@
-import { AiStudio } from "@/components/ai-studio";
-export const metadata={title:"AI studio"};
-export default function AgentsPage(){return <AiStudio/>;}
+import { redirect } from "next/navigation";
+export default async function AgentsAlias({params}:{params:Promise<{id:string}>}) { const {id}=await params;redirect(`/startups/${id}/ai`); }

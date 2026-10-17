@@ -18,6 +18,13 @@ export function readDraft(key: string): unknown | null {
     return record.value;
   } catch { return null; }
 }
+/** Seed a draft (e.g. from onboarding) that an editor will open as unsaved changes. Never saved without the founder. */
+export function writeDraft(key: string, value: unknown) {
+  const raw = JSON.stringify({ updatedAt: Date.now(), value });
+  memory.set(key, raw);
+  try { sessionStorage.setItem(prefix + key, raw); } catch { /* Memory copy keeps this tab's draft. */ }
+  announce();
+}
 export function clearDraft(key: string) {
   memory.delete(key);
   try { sessionStorage.removeItem(prefix + key); } catch { /* In-memory recovery still works if browser storage is unavailable. */ }

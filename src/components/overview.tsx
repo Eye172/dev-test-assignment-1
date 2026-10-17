@@ -1,6 +1,8 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { PreparedPanel } from "./prepared";
 import { motion } from "motion/react";
 import { ArrowRight, ArrowUpRight, ExternalLink, Pencil } from "lucide-react";
 import { sectionSchemas } from "@/lib/domain/schemas";
@@ -38,7 +40,9 @@ export function Overview() {
   const open = editing || recovered;
   const closeEditor = () => { if (confirmLeave()) { clearDraft(`profile:${startup.id}`); setEditing(false); } };
 
+  const fromOnboarding = useSearchParams().get("from") === "onboarding";
   return <div className="overview">
+    {fromOnboarding && <PreparedPanel/>}
     <section className="ov-hero" aria-labelledby="startup-name">
       <motion.div className="ov-identity" {...enter(0)}>
         <p className="eyebrow">{`${startup.businessModel} · ${startup.stage} · ${startup.targetMarket}`}</p>

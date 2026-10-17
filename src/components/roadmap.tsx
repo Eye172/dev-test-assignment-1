@@ -131,10 +131,11 @@ export function Roadmap() {
               <span className="week-meter" aria-hidden><span style={{ transform: `scaleX(${actionable ? done / actionable : 0})` }}/></span>
             </header>
             <ul className="task-list">
-              <AnimatePresence initial={false}>{tasks.map((t, i) => <motion.li layout layoutId={`task-${t.id}`} transition={spring} key={t.id} id={`task-${t.id}`}
-                initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0, transition: { ...spring, delay: Math.min(i, 4) * 0.03 } }} exit={{ opacity: 0, scale: 0.96, transition: { duration: 0.14 } }}>
+              {/* No exit animation: a leaving card must never stay clickable with a stale revision. */}
+              {tasks.map((t, i) => <motion.li layout="position" transition={spring} key={t.id} id={`task-${t.id}`}
+                initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1, transition: { duration: 0.22, ease: [0.23, 1, 0.32, 1], delay: Math.min(i, 4) * 0.02 } }}>
                 <TaskCard task={t} compact={!board} draggable={canDrag} onDropWeek={week => void moveToWeek(t, week)} onHoverWeek={setDropWeek}/>
-              </motion.li>)}</AnimatePresence>
+              </motion.li>)}
               {!tasks.length && <li className="week-empty">{canDrag ? "Drop a task here" : "No tasks this week."}</li>}
             </ul>
           </section>;

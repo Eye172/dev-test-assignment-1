@@ -151,7 +151,7 @@
 .repeat-num { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--ink); color: var(--bg); font-family: var(--font-display); font-weight: 700; font-size: 0.75rem; }
 .add-btn { justify-self: start; }
 .chip-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
-.chip { min-height: 32px; padding: 0 12px; border-radius: var(--r-pill); border: 1px solid var(--line); background: var(--surface); font-size: 0.8125rem; font-weight: 600; color: var(--muted); transition: all var(--d-fast) var(--ease-out); }
+.chip { min-height: 32px; padding: 0 12px; border-radius: var(--r-pill); border: 1px solid var(--line); background: var(--surface); font-size: 0.8125rem; font-weight: 600; color: var(--muted); transition: color var(--d-fast) var(--ease-out), border-color var(--d-fast) var(--ease-out), background-color var(--d-fast) var(--ease-out), transform var(--d-fast) var(--ease-out); }
 @media (pointer: coarse) { .chip { min-height: 44px; } }
 .chip:hover { color: var(--ink); border-color: var(--ink); transform: translateY(-1px); }
 .editor-footer {
