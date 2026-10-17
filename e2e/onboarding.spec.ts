@@ -46,7 +46,7 @@ test("explicit preflight retries use a new ID and preserve unknowns over outdate
   });
   await page.goto("/startups/new");await page.getByRole("button",{name:/^Free form/}).click();await page.getByLabel("Your startup in your own words").fill(brief);
   await page.locator('input[type="file"]').setInputFiles({name:"old.txt",mimeType:"text/plain",buffer:Buffer.from("Old deck: we have revenue and paying customers.")});await expect(page.getByText(/Text read ·/)).toBeVisible();
-  await page.getByRole("button",{name:"Interpret with AI",exact:true}).click();await page.getByLabel("Owner access code",{exact:true}).fill("ci-studio-code-no-production-access");await page.getByRole("button",{name:"Unlock AI",exact:true}).click();
+  await page.getByRole("button",{name:"Interpret with AI",exact:true}).click();await expect(page.getByLabel("Owner access code",{exact:true})).toBeVisible();expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await page.getByLabel("Owner access code",{exact:true}).fill("ci-studio-code-no-production-access");await page.getByRole("button",{name:"Unlock AI",exact:true}).click();
   await page.getByRole("button",{name:"Interpret with AI",exact:true}).click();await expect(page.getByRole("alert").filter({hasText:"Synthetic provider failure"})).toBeVisible();
   await page.getByRole("button",{name:"Start a new paid interpretation",exact:true}).click();await expect(page.getByText(/Interpretation ready/)).toBeVisible();expect(ids).toHaveLength(2);expect(ids[0]).not.toBe(ids[1]);
   await page.getByRole("button",{name:"Continue",exact:true}).click();await expect(page.getByRole("heading",{name:"Where are you today?",exact:true})).toBeVisible();

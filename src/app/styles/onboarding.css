@@ -177,6 +177,9 @@
 .studio-head svg { color: var(--accent-ink); }
 .studio-budget { margin-left: auto; font-size: 0.8125rem; }
 .unlock { display: flex; gap: 8px; max-width: 420px; }
+.flow .unlock { flex-wrap: wrap; }
+.flow .unlock label:not(.sr-only) { flex-basis: 100%; }
+.flow .unlock .input { min-width: 0; }
 .unlock .input { flex: 1; min-height: 40px; padding: 0 14px; border-radius: var(--r-sm); border: 1px solid var(--line); background: var(--surface); }
 .new-run { display: grid; gap: 10px; padding: 18px; border-radius: var(--r-lg); border: 1px solid var(--line); background: var(--surface); }
 .new-run textarea { width: 100%; padding: 12px 14px; border-radius: var(--r-sm); border: 1px solid var(--line); background: var(--bg-raise); font: inherit; resize: vertical; }

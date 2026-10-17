@@ -1,7 +1,7 @@
 import { agentCatalog, type AiRole } from "@/lib/domain/ai";
 
-export const PROMPT_VERSION = "orbit-council-2.0.9";
-export const ARTIFACT_VERSION = "orbit-artifact-2.0.2";
+export const PROMPT_VERSION = "orbit-council-2.0.10";
+export const ARTIFACT_VERSION = "orbit-artifact-2.0.3";
 export const TOOL_VERSION = "orbit-tools-2.0.0";
 export const sharedInstructions = `You are a specialist in Orbit GTM Studio. Help a founder move from a hypothesis to an experiment, observed evidence, a decision and the next step.
 Use the immutable workspace snapshot, founder brief, accepted decisions, recorded observations and preceding specialist artifacts supplied in the task.

@@ -58,6 +58,7 @@ describe("decision memory and one feasible active plan",()=>{
     await ai.analysis.saveMemory(c.startup.id,{requestId:randomUUID(),id:d.id,expectedRevision:d.revision,status:"accepted",data:accepted,reason:"Founder chooses an experiment, without accepting its market hypothesis"});
     const created=await ai.create(c.startup.id,{mode:"experiments",brief:"Fresh continuation from accepted memory only",requestId:randomUUID()}),run=(await ai.lease(created.id))!,step=(await ai.steps(run.id))[0];
     expect(run.snapshot.findings?.map(f=>f.id)).toEqual(expect.arrayContaining([finding.id,optionFinding.id]));
+    expect(run.snapshot.findings?.every(f=>!!f.snapshotAt)).toBe(true);
     const view=await executionInput(ai,run,step,[]);expect(view.snapshot.pendingDecisions.some(m=>m.id===h.id)).toBe(true);expect(view.findings.map(f=>f.id)).toEqual(expect.arrayContaining([finding.id,optionFinding.id]));expect(view.capturedPages.some(p=>p.id===c.captured.id&&p.passages.length>0)).toBe(true);
     await ai.cancel(c.startup.id,run.id);
   });

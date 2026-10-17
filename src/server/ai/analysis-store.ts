@@ -9,7 +9,7 @@ import { Store } from "../store";
 import { artifactId, fingerprint } from "./identity";
 
 const iso=(v:unknown)=>v instanceof Date?v.toISOString():String(v);
-export type StoredFinding=NonNullable<AiResult["analysis"]>["findings"][number] & {support:string;stepId:string;runId:string;active?:boolean};
+export type StoredFinding=NonNullable<AiResult["analysis"]>["findings"][number] & {support:string;stepId:string;runId:string;active?:boolean;snapshotAt?:string};
 export class AnalysisStore {
   constructor(public db:Database) {}
   async memory(startupId:string,tx:SqlExecutor=this.db):Promise<MemoryItem[]> {
@@ -67,7 +67,7 @@ export class AnalysisStore {
   async savePage(startupId:string,step:AiStep,page:SourcePage,tx:SqlExecutor){
     await tx.query("INSERT INTO ai_source_pages(id,startup_id,run_id,step_id,url,title,accessed_at,content_hash,status,limitation,passages) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::jsonb) ON CONFLICT(run_id,url) DO NOTHING",[page.id,startupId,page.runId,step.id,page.url,page.title,page.accessedAt,page.contentHash,page.status,page.limitation,JSON.stringify(page.passages)]);
   }
-  async findings(startupId:string,tx:SqlExecutor=this.db):Promise<StoredFinding[]>{return (await tx.query("SELECT * FROM ai_findings WHERE startup_id=$1 ORDER BY id",[startupId])).map(r=>({...r.data as StoredFinding,support:String(r.support),stepId:String(r.step_id),runId:String(r.run_id),active:Boolean(r.active)}));}
+  async findings(startupId:string,tx:SqlExecutor=this.db):Promise<StoredFinding[]>{return (await tx.query("SELECT f.*,r.created_at AS snapshot_at FROM ai_findings f JOIN ai_runs r ON r.id=f.run_id WHERE f.startup_id=$1 ORDER BY f.id",[startupId])).map(r=>({...r.data as StoredFinding,support:String(r.support),stepId:String(r.step_id),runId:String(r.run_id),active:Boolean(r.active),snapshotAt:iso(r.snapshot_at)}));}
   async issues(runId:string|string[],tx:SqlExecutor=this.db):Promise<(QualityIssue & {runId:string})[]>{return (await tx.query("SELECT * FROM ai_quality_issues WHERE run_id=ANY($1::uuid[]) ORDER BY created_at,id",[`{${(Array.isArray(runId)?runId:[runId]).join(",")}}`])).map(r=>({id:String(r.id),runId:String(r.run_id),stepId:String(r.step_id),severity:r.severity as QualityIssue["severity"],target:String(r.target),topic:String(r.topic),reason:String(r.reason),correction:String(r.correction),deterministic:Boolean(r.deterministic),status:r.status as QualityIssue["status"],resolution:r.resolution?String(r.resolution):null}));}
   async registerIssues(runId:string,step:AiStep,result:AiResult,tx:SqlExecutor){
     const machine=result.issues.filter(i=>i.topic.startsWith("Contract:"));

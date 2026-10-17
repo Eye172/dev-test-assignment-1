@@ -8,7 +8,7 @@ Independent developer-test implementation for the AI Startify ecosystem. All dem
 
 ## Run locally
 
-Requires Node.js 24 (Node 22+ supported). No cloud account or paid AI provider is needed for local development.
+Requires Node.js 24 (Node 22.13+ supported). No cloud account or paid AI provider is needed for local development.
 
 ```sh
 npm ci
