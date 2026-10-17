@@ -9,3 +9,9 @@
 @import "./styles/onboarding.css";
 @import "./styles/ai.css";
 @import "./styles/analysis.css";
+/* v4 — three interface versions over one product. docs/design/CRAFT-PLAYBOOK.md */
+@import "./styles/v4/tokens.css";
+@import "./styles/v4/kit.css";
+@import "./styles/v4/viz.css";
+@import "./styles/v4/versions.css";
+@import "./styles/v4/landing.css";

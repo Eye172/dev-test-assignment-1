@@ -1,12 +1,12 @@
 import Link from "next/link";
-import { Brand } from "@/components/ui";
-export default function NotFound() {
-  return <div className="app-surface">
-    <header className="site-header"><Brand/></header>
-    <main id="content" className="recovery">
-      <h1 tabIndex={-1}>This workspace isn’t here.</h1>
-      <p className="muted">Check the link. If it was a demo copy, the demo database may have been reset.</p>
-      <div className="actions"><Link href="/startups/new" className="button primary">Create startup</Link><Link href="/" className="button ghost">Go home</Link></div>
+import { getServerT } from "@/ui/server-prefs";
+export default async function NotFound() {
+  const { t } = await getServerT();
+  return <div className="v4-app">
+    <main id="content" className="recovery v4-recovery">
+      <h1 tabIndex={-1}>{t("err.notFound")}</h1>
+      <p className="v4-lede">{t("err.notFoundBody")}</p>
+      <div className="land-actions"><Link href="/startups/new" className="v4-button is-primary">{t("land.cta.create")}</Link><Link href="/" className="v4-button">{t("common.backHome")}</Link></div>
     </main>
   </div>;
 }

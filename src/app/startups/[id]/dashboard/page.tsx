@@ -1,4 +1,4 @@
 import { Suspense } from "react";
-import { Dashboard } from "@/components/dashboard";
+import { DashboardScreen } from "@/ui/screens/dashboard";
 export const metadata = { title: "Dashboard" };
-export default function DashboardPage() { return <Suspense><Dashboard/></Suspense>; }
+export default function DashboardPage() { return <Suspense><DashboardScreen/></Suspense>; }

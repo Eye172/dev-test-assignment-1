@@ -1,0 +1,114 @@
+/* v4 landing — one authored moment per version: the lensed black hole (V1), the engraved plate (V2), the live loop (V3). */
+.v4-land { overflow-x: clip; }
+.land-header { position: absolute; inset: 0 0 auto 0; z-index: 30; display: flex; align-items: center; gap: 20px; padding: 18px var(--gutter); }
+.land-nav { display: none; gap: 22px; margin-left: 18px; }
+@media (min-width: 980px) { .land-nav { display: flex; } }
+.land-nav a { color: var(--muted); text-decoration: none; font-size: 13.5px; font-weight: 500; transition: color var(--dur-fast) var(--ease-out); }
+.land-nav a:hover { color: var(--ink); }
+.land-header-actions { margin-left: auto; display: flex; gap: 10px; align-items: center; }
+
+.land-hero { position: relative; min-height: 100dvh; display: grid; align-items: center; padding: 120px var(--gutter) 80px; isolation: isolate; }
+.land-scene { position: absolute; inset: 0; z-index: -1; }
+.v4-blackhole { position: absolute; inset: 0; opacity: 0; transition: opacity 1.4s var(--ease-out); }
+.v4-blackhole.is-ready { opacity: 1; }
+.v4-blackhole canvas { width: 100%; height: 100%; display: block; }
+.land-copy { max-width: 640px; position: relative; }
+.land-copy h1 { font-size: clamp(2.6rem, 1.4rem + 4.6vw, 5.4rem); line-height: 0.98; letter-spacing: -0.045em; }
+:lang(ru) .land-copy h1, :lang(kk) .land-copy h1 { font-size: clamp(2.3rem, 1.3rem + 3.6vw, 4.4rem); letter-spacing: -0.03em; line-height: 1.02; }
+.land-word { display: inline-block; overflow: hidden; vertical-align: top; padding-bottom: 0.08em; margin-bottom: -0.08em; }
+.land-word > span { display: inline-block; animation: land-word 0.9s var(--ease-out) both; }
+@keyframes land-word { from { transform: translateY(105%); } to { transform: none; } }
+.land-lede { margin-top: 22px; font-size: clamp(16px, 0.5vw + 14px, 19px); line-height: 1.6; color: var(--muted); max-width: 52ch; animation: land-fade 0.9s var(--ease-out) 0.5s both; }
+.land-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 30px; animation: land-fade 0.9s var(--ease-out) 0.65s both; }
+.land-note { margin-top: 16px; color: var(--faint); font-size: 11.5px; animation: land-fade 0.9s var(--ease-out) 0.8s both; }
+@keyframes land-fade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.land-scroll { position: absolute; left: 50%; bottom: 28px; translate: -50% 0; width: 24px; height: 38px; border: 1.5px solid var(--line-strong); border-radius: 12px; }
+.land-scroll span { position: absolute; left: 50%; top: 8px; width: 2px; height: 7px; margin-left: -1px; border-radius: 1px; background: var(--ink); animation: land-scroll 1.8s var(--ease-in-out) infinite; }
+@keyframes land-scroll { 0% { transform: translateY(0); opacity: 1; } 70% { transform: translateY(12px); opacity: 0; } 100% { opacity: 0; } }
+
+/* V1 hero is always night sky, whatever the page theme. */
+.obs-hero-land { background: #050606; color: #f4f7f5; --muted: #aab6af; --faint: #8b968f; --line-strong: #46554c; --ink: #f4f7f5; }
+.obs-hero-land .land-scene::after, .flow-hero-land .land-scene::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, rgb(5 6 6 / 0.88) 0%, rgb(5 6 6 / 0.55) 34%, transparent 58%); pointer-events: none; }
+@media (max-width: 1040px) { .obs-hero-land .land-scene::after, .flow-hero-land .land-scene::after { background: linear-gradient(180deg, rgb(5 6 6 / 0.9) 0%, rgb(5 6 6 / 0.5) 45%, transparent 70%); } }
+.obs-hero-land::after { content: ""; position: absolute; inset: auto 0 0 0; height: 160px; background: linear-gradient(transparent, var(--bg)); z-index: -1; pointer-events: none; }
+.is-observatory .land-header { color: #f4f7f5; --muted: #aab6af; --ink: #f4f7f5; --line: #232d28; --line-strong: #46554c; --surface-2: #151b18; --brand-logo-image: url('/brand/blackorbit-logo-light.png'); }
+@media (max-width: 1040px) { .obs-hero-land { align-items: start; padding-top: 130px; } .obs-hero-land .land-copy { max-width: 560px; } }
+
+/* V2 paper hero */
+.led-hero-land { grid-template-columns: minmax(0, 1fr); gap: 32px; border-bottom: 2px solid var(--ink); }
+@media (min-width: 1060px) { .led-hero-land { grid-template-columns: minmax(0, 1fr) minmax(380px, 520px); } }
+.led-plate { margin: 0; justify-self: center; width: min(100%, 520px); }
+.led-plate svg { width: 100%; height: auto; overflow: visible; }
+.led-plate-orbit { fill: none; stroke: var(--ink); stroke-width: 1; stroke-dasharray: 1; stroke-dashoffset: 1; animation: led-draw 1.6s var(--ease-in-out) both; }
+.led-plate-orbit:nth-child(2) { stroke-dasharray: 0.004 0.008; animation: none; stroke-dashoffset: 0; opacity: 0.7; }
+.led-plate-core { fill: var(--ink); }
+.led-plate-halo { fill: none; stroke: var(--accent); stroke-width: 3; stroke-dasharray: 1; stroke-dashoffset: 1; animation: led-draw 1.4s var(--ease-out) 0.7s both; }
+.led-plate-mark { opacity: 0; animation: land-fade 0.6s var(--ease-out) both; }
+.led-plate-mark circle { fill: var(--bg); stroke: var(--ink); stroke-width: 1.5; }
+.led-plate-mark:first-of-type circle { fill: var(--accent); }
+.led-plate-mark text { font: 500 13px var(--font-mono); fill: var(--ink); }
+.led-plate figcaption { margin-top: 10px; font-size: 11.5px; color: var(--faint); text-align: center; }
+@keyframes led-draw { to { stroke-dashoffset: 0; } }
+
+/* V3 hero */
+.flow-hero-land { background: #070909; color: #f4f7f5; --muted: #aab6af; --faint: #8b968f; --line-strong: #46554c; --ink: #f4f7f5; --line: #232d28; --surface: #101413; --bg-local: #070909; align-content: center; gap: 48px; }
+.is-flow .land-header { color: #f4f7f5; --muted: #aab6af; --ink: #f4f7f5; --line: #232d28; --line-strong: #46554c; --surface-2: #151b18; --brand-logo-image: url('/brand/blackorbit-logo-light.png'); }
+.flow-hero-chain { display: flex; flex-wrap: wrap; gap: 10px 0; align-items: center; position: relative; max-width: 900px; }
+.flow-hero-chain li { display: flex; align-items: center; }
+.flow-hero-node { display: inline-flex; align-items: center; gap: 10px; padding: 10px 16px; border: 1px solid #46554c; border-radius: 10px; background: rgb(16 20 19 / 0.8); backdrop-filter: blur(8px); font-weight: 600; font-size: 14px; transition: border-color 300ms var(--ease-out), background-color 300ms var(--ease-out), color 300ms var(--ease-out); }
+.flow-hero-node .mono { color: #8b968f; }
+.flow-hero-chain li.is-done .flow-hero-node { border-color: rgb(32 250 128 / 0.45); }
+.flow-hero-chain li.is-active .flow-hero-node { border-color: #00ff5a; background: #00ff5a; color: #04140c; }
+.flow-hero-chain li.is-active .flow-hero-node .mono { color: #04140c; }
+.flow-hero-edge { position: relative; width: 34px; height: 1px; background: #46554c; overflow: hidden; }
+.flow-hero-edge span { position: absolute; inset: 0; background: #00ff5a; transform: scaleX(0); transform-origin: left; transition: transform 500ms var(--ease-out); }
+.flow-hero-chain li.is-active .flow-hero-edge span, .flow-hero-chain li.is-done .flow-hero-edge span { transform: scaleX(1); }
+
+/* Sections */
+.land-section { max-width: 1240px; margin: 0 auto; padding: 96px var(--gutter); }
+.land-section-head { display: grid; gap: 12px; margin-bottom: 40px; max-width: 760px; }
+.land-section-head h2 { font-size: clamp(1.9rem, 1.2rem + 2.2vw, 3rem); line-height: 1.04; letter-spacing: -0.035em; }
+.land-section-head p { color: var(--muted); font-size: 16px; line-height: 1.6; }
+.land-steps { display: grid; gap: 0; grid-template-columns: minmax(0, 1fr); counter-reset: s; }
+@media (min-width: 900px) { .land-steps { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+.land-steps li { position: relative; padding: 22px 22px 22px 0; border-top: 1px solid var(--line-strong); }
+@media (min-width: 900px) { .land-steps li { padding-right: 26px; } }
+.land-steps li::before { content: ""; position: absolute; top: -4px; left: 0; width: 7px; height: 7px; border-radius: 50%; background: var(--bg); border: 1.5px solid var(--ink); }
+.land-steps li:first-child::before { background: var(--accent-signal); border-color: var(--accent-ink); }
+.land-step-n { font-size: 11.5px; color: var(--faint); }
+.land-steps h3 { font-size: 20px; margin: 10px 0 8px; letter-spacing: -0.02em; }
+.land-steps p { color: var(--muted); font-size: 14px; line-height: 1.55; }
+.land-model-grid { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 960px) { .land-model-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .land-model.is-wide { grid-column: 1 / -1; } }
+.land-model { margin: 0; padding: 22px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); min-width: 0; }
+.land-model figcaption { font: 600 15px var(--font-display); margin-bottom: 14px; }
+.land-model.is-wide .v4-bull { grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 900px) { .land-model.is-wide .v4-bull { grid-template-columns: minmax(260px, 340px) minmax(0, 1fr); } }
+.land-agents { display: grid; gap: 1px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); background: var(--line); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.land-agents li { position: relative; padding: 24px; background: var(--bg); min-height: 150px; }
+.land-agents h3 { font-size: 17px; letter-spacing: -0.01em; margin: 26px 0 8px; }
+.land-agents p { color: var(--muted); font-size: 14px; line-height: 1.5; }
+.land-agent-orbit { position: absolute; top: 24px; left: 24px; width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid var(--line-strong); }
+.land-agent-orbit::after { content: ""; position: absolute; width: 6px; height: 6px; border-radius: 50%; background: var(--accent-signal); top: -3px; left: 50%; margin-left: -3px; transform-origin: 3px 13px; transform: rotate(calc(var(--i) * 60deg)); }
+.land-honest { display: grid; gap: 32px; grid-template-columns: minmax(0, 1fr); padding-top: 40px; }
+@media (min-width: 820px) { .land-honest { grid-template-columns: 1fr 1fr; } }
+.land-honest h2 { font-size: 20px; margin-bottom: 14px; }
+.land-honest ul { display: grid; gap: 0; }
+.land-honest li { padding: 12px 0 12px 26px; border-top: 1px solid var(--line); position: relative; font-size: 15px; }
+.land-honest li::before { content: ""; position: absolute; left: 2px; top: 19px; width: 10px; height: 6px; border-left: 2px solid var(--accent-ink); border-bottom: 2px solid var(--accent-ink); transform: rotate(-45deg); }
+.land-honest ul.is-not li { color: var(--muted); }
+.land-honest ul.is-not li::before { width: 12px; height: 2px; border: 0; background: var(--faint); transform: none; top: 23px; }
+.land-footer { border-top: 1px solid var(--line); padding: 72px var(--gutter) 40px; }
+.land-footer-cta { max-width: 1240px; margin: 0 auto; display: grid; gap: 8px; }
+.land-footer-title { font: 700 clamp(1.8rem, 1.2rem + 2.2vw, 3rem)/1.05 var(--font-display); letter-spacing: -0.035em; max-width: 22ch; }
+.land-footer-note { max-width: 1240px; margin: 56px auto 0; color: var(--faint); font-size: 11.5px; }
+
+/* Version accents on shared sections */
+.is-ledger .land-model, .is-ledger .land-agents { border-radius: 0; }
+.is-ledger .land-steps li { border-top-width: 2px; border-top-color: var(--ink); }
+.is-flow .land-steps li { border-top-style: dashed; }
+.is-flow .land-model { border-radius: 12px; background: radial-gradient(circle at 1px 1px, var(--line) 1px, transparent 1.5px) 0 0 / 22px 22px, var(--surface); }
+
+@media (prefers-reduced-motion: reduce) {
+  .land-word > span, .land-lede, .land-actions, .land-note, .led-plate-orbit, .led-plate-halo, .led-plate-mark, .land-scroll span { animation: none !important; opacity: 1; stroke-dashoffset: 0; }
+}

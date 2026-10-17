@@ -1,4 +1,4 @@
 import { Suspense } from "react";
-import { Overview } from "@/components/overview";
+import { OverviewScreen } from "@/ui/screens/overview";
 export const metadata = { title: "Overview" };
-export default function OverviewPage() { return <Suspense><Overview/></Suspense>; }
+export default function OverviewPage() { return <Suspense><OverviewScreen/></Suspense>; }

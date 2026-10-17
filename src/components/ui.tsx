@@ -2,6 +2,7 @@
 import { useEffect, useId, useRef, useSyncExternalStore, type ReactNode } from "react";
 import { AlertCircle, ArrowUpRight, Check, Circle, CircleDashed, FlaskConical, X } from "lucide-react";
 import Link from "next/link";
+import { rt } from "@/ui/i18n/runtime";
 
 export function Brand() {
   return <Link href="/" className="brand" aria-label="Black Orbit GTM Studio, home"><span className="brand-logo" aria-hidden="true"/><span className="brand-sub" aria-hidden="true">GTM Studio</span></Link>;
@@ -16,14 +17,14 @@ const badgeText: Record<BadgeStatus, string> = {
 };
 export function Badge({ status, label }: { status: BadgeStatus; label?: string }) {
   const Icon = status === "complete" || status === "done" ? Check : status === "draft" || status === "in_progress" ? CircleDashed : status === "untested" ? FlaskConical : Circle;
-  return <span className={`badge ${status}`}><Icon size={12} aria-hidden/>{label ?? badgeText[status]}</span>;
+  return <span className={`badge ${status}`}><Icon size={12} aria-hidden/>{label ?? (status === "complete" ? rt("common.complete") : status === "draft" ? rt("st.draft") : status === "empty" ? rt("st.state.empty") : status === "untested" ? rt("st.untested") : status === "custom" ? rt("rm.custom") : status === "low" || status === "medium" || status === "high" ? rt(`risk.${status}`) : status === "todo" || status === "in_progress" || status === "done" || status === "skipped" ? rt(`status.${status}`) : badgeText[status])}</span>;
 }
 export function ErrorNotice({ error, onReload, onCopy, onRetry }: { error: Error | string | null; onReload?: () => void; onCopy?: () => void; onRetry?: () => void }) {
   if (!error) return null;
   return <div className="error-notice" role="alert" tabIndex={-1}><p>{typeof error === "string" ? error : error.message}</p>
-    {onRetry && <button type="button" className="button small" onClick={onRetry}>Retry</button>}
-    {onReload && <button type="button" className="button small" onClick={onReload}>Load latest</button>}
-    {onCopy && <button type="button" className="button small ghost" onClick={onCopy}>Copy my draft</button>}</div>;
+    {onRetry && <button type="button" className="button small" onClick={onRetry}>{rt("common.retry")}</button>}
+    {onReload && <button type="button" className="button small" onClick={onReload}>{rt("ui.loadLatest")}</button>}
+    {onCopy && <button type="button" className="button small ghost" onClick={onCopy}>{rt("ui.copyDraft")}</button>}</div>;
 }
 export function Field({ name, label, value, onChange, help, error, required = false, textarea = false, type = "text", placeholder = "", maxLength = 3000, onBlur, autoComplete, list, inputMode, className = "", children, minRows = 96 }: {
   name: string; label: string; value: string; onChange: (value: string) => void; help?: string; error?: string; required?: boolean; textarea?: boolean;
@@ -37,7 +38,7 @@ export function Field({ name, label, value, onChange, help, error, required = fa
   const shared = { id, name, value, placeholder, maxLength, "aria-required": required || undefined, "aria-invalid": !!error || undefined, "aria-describedby": describedBy, onBlur, autoComplete,
     onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => onChange(e.target.value) };
   return <div className={`field ${className}`}>
-    <label htmlFor={id}>{label}{required && <span className="field-required">Required</span>}</label>
+    <label htmlFor={id}>{label}{required && <span className="field-required">{rt("ui.required")}</span>}</label>
     {textarea ? <textarea {...shared} ref={ref} rows={minRows < 96 ? 1 : 3}/> : <input {...shared} type={type} list={list} inputMode={inputMode}/>}
     {help && <p className="field-help" id={`${id}-help`}>{help}</p>}
     {error && <p className="field-error" id={`${id}-error`}><AlertCircle size={14} aria-hidden/>{error}</p>}
@@ -62,7 +63,7 @@ export function Dialog({ open, onClose, title, children, locked = false, classNa
   const request = () => { if (!locked) onClose(); };
   return <dialog ref={ref} className={`dialog ${className}`} onCancel={event => { event.preventDefault(); request(); }} aria-labelledby={titleId} aria-busy={locked || undefined}
     onClick={e => { if (e.target === ref.current) request(); }}>
-    <div className="dialog-head"><h2 id={titleId}>{title}</h2><button type="button" className="icon-button" onClick={request} disabled={locked} aria-label="Close"><X size={20}/></button></div>
+    <div className="dialog-head"><h2 id={titleId}>{title}</h2><button type="button" className="icon-button" onClick={request} disabled={locked} aria-label={rt("chrome.close")}><X size={20}/></button></div>
     {children}
   </dialog>;
 }
@@ -70,7 +71,7 @@ export function Spinner() { return <span className="spinner" aria-hidden/>; }
 /* One draft-protection mechanism shared by in-app links, keyboard shortcuts and page unload. */
 const dirtySources = new Set<symbol>();
 export function hasUnsavedChanges() { return dirtySources.size > 0; }
-export function confirmLeave() { return !hasUnsavedChanges() || window.confirm("You have unsaved changes. Leave without saving?"); }
+export function confirmLeave() { return !hasUnsavedChanges() || window.confirm(rt("ui.leave")); }
 export function useDirtyGuard(dirty: boolean) {
   useEffect(() => {
     if (!dirty) return;
@@ -81,7 +82,7 @@ export function useDirtyGuard(dirty: boolean) {
       const link = (event.target as Element).closest("a[href]") as HTMLAnchorElement | null;
       if (!link || link.target === "_blank" || link.hasAttribute("download") || link.origin !== location.origin) return;
       if (link.pathname === location.pathname && link.search === location.search) return;
-      if (!window.confirm("You have unsaved changes. Leave without saving?")) { event.preventDefault(); event.stopPropagation(); }
+      if (!window.confirm(rt("ui.leave"))) { event.preventDefault(); event.stopPropagation(); }
     };
     window.addEventListener("beforeunload", beforeUnload); document.addEventListener("click", click, true);
     return () => { dirtySources.delete(token); window.removeEventListener("beforeunload", beforeUnload); document.removeEventListener("click", click, true); };
@@ -94,9 +95,9 @@ export function formatTime(iso: string | null) {
   return `${new Date(iso).toISOString().slice(11,16)} UTC`;
 }
 export function SaveState({ saving, dirty, savedAt, failed }: { saving: boolean; dirty: boolean; savedAt: string | null; failed?: boolean }) {
-  const text = saving ? "Saving…" : failed ? "Couldn't save" : dirty ? "Unsaved changes" : savedAt ? `Saved · ${formatTime(savedAt)}` : "Not saved yet";
+  const text = saving ? rt("chrome.saving") : failed ? rt("ui.saveFailed") : dirty ? rt("ui.unsaved") : savedAt ? `${rt("chrome.saved")} · ${formatTime(savedAt)}` : rt("ui.notSaved");
   const tone = saving ? "" : failed ? "danger" : dirty ? "warn" : savedAt ? "ok" : "";
-  return <span className={`save-state ${tone}`} aria-live="polite" title={text}>{tone === "ok" && <Check size={14} aria-hidden/>}{tone === "ok" && savedAt ? <span>Saved<span className="save-time"> · {formatTime(savedAt)}</span></span> : text}</span>;
+  return <span className={`save-state ${tone}`} aria-live="polite" title={text}>{tone === "ok" && <Check size={14} aria-hidden/>}{tone === "ok" && savedAt ? <span>{rt("chrome.saved")}<span className="save-time"> · {formatTime(savedAt)}</span></span> : text}</span>;
 }
 
 

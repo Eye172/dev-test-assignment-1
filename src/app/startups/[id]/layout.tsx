@@ -14,5 +14,5 @@ export default async function StartupLayout({ children, params }: { children: Re
   const { id } = await params;
   if (!uuidSchema.safeParse(id).success) notFound();
   const initial = await load(id);
-  return <WorkspaceShell initial={initial}>{children}</WorkspaceShell>;
+  return <WorkspaceShell initial={initial} serverNow={new Date().toISOString()}>{children}</WorkspaceShell>;
 }

@@ -91,7 +91,7 @@ export class Store {
       return { key, data: parsed, notes: String(row.notes), revision: Number(row.revision), updatedAt: iso(row.updated_at) };
     });
   }
-  async generate(id: string, options:{replaceAiPlan?:boolean;expectedPlanId?:string}={}) {
+  async generate(id: string, options:{replaceAiPlan?:boolean;expectedPlanId?:string;locale?:"en"|"ru"|"kk"}={}) {
     await this.db.transaction(async tx => {
       const startup = await this.findStartup(id, tx, true);
       const [plan]=await tx.query("SELECT id FROM ai_plans WHERE startup_id=$1 AND status='active' FOR UPDATE",[id]);
@@ -102,7 +102,7 @@ export class Store {
         await tx.query("UPDATE roadmap_tasks SET superseded_by_plan=NULL WHERE startup_id=$1 AND source='generated'",[id]);
       }
       const sections = await this.sections(id, tx);
-      const suggestions = generateRoadmap(startup, sections);
+      const suggestions = generateRoadmap(startup, sections, options.locale ?? "en");
       const previous = (await tx.query("SELECT * FROM roadmap_tasks WHERE startup_id=$1 AND source='generated'", [id]))
         .map(row => ({ ...taskFromRow(row),manuallyArchived: Boolean(row.manually_archived) }));
       const keys = suggestions.map(s => s.ruleKey);
