@@ -61,7 +61,7 @@ assert len(reader.pages) == 1, "Handover must be one page"
 links = [a.get_object().get("/A", {}).get("/URI") for a in reader.pages[0].get("/Annots", [])]
 assert len([x for x in links if x]) >= 3, "Handover links are missing"
 (OUT / "SOURCE-REVISION.txt").write_text(revision + "\n", encoding="utf-8")
-(OUT / "SUBMISSION.txt").write_text((f"Review candidate from {branch}. Production URLs below serve the earlier release until deployment is approved.\n\n" if branch != "main" else "") + """Orbit GTM Studio — independent synthetic-data developer assignment
+(OUT / "SUBMISSION.txt").write_text(f"Source snapshot: {branch} at {revision}. See docs/RELEASE-2026-10-17.md for verified deployment state.\n\n" + """Orbit GTM Studio — independent synthetic-data developer assignment
 
 Live: https://orbit-gtm-studio.vercel.app/
 Demo: https://orbit-gtm-studio.vercel.app/startups/11111111-1111-4111-8111-111111111111

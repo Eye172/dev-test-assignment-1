@@ -816,10 +816,22 @@ Object.assign(analysisLabels,{
   'Inherited or supplied material; no fresh research claimed':['Использованы ранее собранные материалы','Бұрын жиналған материалдар қолданылды'],
   'The specialist could not return a complete, valid result. Completed work is preserved. If a provider call was interrupted, its reservation remains until the owner reviews usage.':['Специалист не вернул полный корректный результат. Материалы и завершённая работа сохранены. Прерванные вызовы требуют проверки расхода.','Маман толық дұрыс нәтиже қайтармады. Материалдар мен аяқталған жұмыс сақталды. Үзілген шақыру шығынын тексеру қажет.'],
 });
+Object.assign(analysisLabels,{
+  'Stated allocation':['Подтверждённое распределение','Расталған бөлініс'], 'Provisional allocation':['Предварительное распределение','Алдын ала бөлініс'],
+  'No cash outlay proposed':['Денежные расходы не предусмотрены','Ақшалай шығын көзделмеген'], 'None in this plan':['В этом плане нет','Бұл жоспарда жоқ'],
+  'Confirm no remaining cash outlay':['Подтвердить отсутствие оставшихся расходов','Қалған шығынның жоқтығын растау'], 'Add remaining cash costs':['Добавить оставшиеся расходы','Қалған шығынды қосу'],
+  'custom':['своя задача','өз міндеті'], 'generated':['по правилам','ережелер бойынша'], 'ai':['AI-предложение','AI ұсынысы'], 'todo':['к выполнению','орындау керек'], 'in_progress':['в работе','орындалуда'], 'done':['сделано','аяқталды'], 'skipped':['пропущено','өткізілді'], 'edited':['изменено','өзгертілген'], 'preserved':['сохранено','сақталған'],
+  'idea':['наш продукт','біздің өнім'], 'direct':['прямой конкурент','тікелей бәсекелес'], 'indirect':['заменитель','балама'], 'manual':['ручной процесс','қолмен орындалатын үдеріс'], 'do_nothing':['оставить как есть','өзгеріссіз қалдыру'],
+  'This role starts after its dependencies are ready.':['Специалист начнёт после подготовки исходных результатов.','Маман бастапқы нәтижелер дайын болғанда бастайды.'], 'This specialist is outside the selected scope.':['Этот специалист не входит в выбранную задачу.','Бұл маман таңдалған тапсырмаға кірмейді.'],
+});
 export function analysisCopy(text:string,locale:Locale):string {
   if(locale==='en')return text;
   const index=locale==='ru'?0:1;
   const formats: [RegExp,(m:RegExpMatchArray)=>string][] = [
+    [/^Remaining minutes for (.+)$/,m=>locale==='ru'?`Оставшееся время: ${m[1]}`:`Қалған уақыт: ${m[1]}`],
+    [/^Cash currency for (.+)$/,m=>locale==='ru'?`Валюта расходов: ${m[1]}`:`Шығын валютасы: ${m[1]}`],
+    [/^Remaining ([A-Z]{3}|unknown currency) cash for (.+)$/,m=>locale==='ru'?`Оставшиеся расходы (${m[1]==='unknown currency'?'валюта неизвестна':m[1]}): ${m[2]}`:`Қалған шығын (${m[1]==='unknown currency'?'валюта белгісіз':m[1]}): ${m[2]}`],
+    [/^Estimated ([A-Z]{3}) cost$/,m=>locale==='ru'?`Расходы в ${m[1]} (оценка)`:`${m[1]} шығыны (бағалау)`],
     [/^(.+): ([A-Z]{3}) spending is unknown\.$/,m=>locale==='ru'?`${m[1]}: расходы в ${m[2]} неизвестны.`:`${m[1]}: ${m[2]} шығындары белгісіз.`],
     [/^Week (\d+) needs (\d+) minutes; capacity is (\d+)\.$/,m=>locale==='ru'?`Неделя ${m[1]}: требуется ${m[2]} мин, доступно ${m[3]}.`:`${m[1]}-апта: ${m[2]} мин қажет, ${m[3]} қолжетімді.`],
     [/^Week (\d+): (\d+) tasks have no effort estimate\.$/,m=>locale==='ru'?`Неделя ${m[1]}: у ${m[2]} задач нет оценки времени.`:`${m[1]}-апта: ${m[2]} міндеттің уақыт бағасы жоқ.`],

@@ -10,7 +10,7 @@
     "id": "02",
     "scenario": "Guided B2B MVP ShiftBuddy; seven steps and draft recovery",
     "status": "passed",
-    "evidence": "Reload restored step and answers; real contextual preflight; two markets manually corrected before create; source comma fix awaiting final browser retest Final-build guided B2C MVP SpeakWeekRelease also created: d13315bb-93ca-41c4-80d5-57ff1e90333b. Reload restored step4 selections. Confirmed markets exactly Казахстан, Узбекистан without English separator.",
+    "evidence": "Reload restored step and answers; real contextual preflight; two markets manually corrected before create; source comma fix confirmed on final-build guided B2C MVP SpeakWeekRelease also created: d13315bb-93ca-41c4-80d5-57ff1e90333b. Reload restored step4 selections. Confirmed markets exactly Казахстан, Узбекистан without English separator.",
     "screenshot": "02-guided-confirm.jpg;02-guided-two-markets-final.jpg"
   },
   {
