@@ -1,3 +1,4 @@
+import { en6 } from "./en6";
 import { en2 } from "./en2";
 import { en3 } from "./en3";
 import { en4 } from "./en4";
@@ -384,5 +385,5 @@ const en1 = {
   "err.demo": "The demo could not be opened. Please retry.",
 } as const;
 
-export const en = { ...en1, ...en2, ...en3, ...en4, ...en5 } as const;
+export const en = { ...en1, ...en2, ...en3, ...en4, ...en5, ...en6 } as const;
 export type MessageKey = keyof typeof en;

@@ -1,13 +1,13 @@
 "use client";
-import { Fragment, useEffect, useRef, useState, type CSSProperties } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { motion, useScroll, useTransform } from "motion/react";
-import { ArrowRight, ArrowUpRight } from "lucide-react";
+import { motion, useReducedMotion, useScroll, useTransform } from "motion/react";
+import { ArrowRight, ArrowUpRight, Pause, Play } from "lucide-react";
 import type { Insights } from "@/lib/domain/insights";
-import { aiRoles } from "@/lib/domain/ai";
 import { useDisplay } from "../display";
-import { Brand, DemoLink, DisplayMenu, ease } from "../kit";
+import { Brand, DemoLink, DisplayMenu } from "../kit";
 import { AssumptionMap, ChannelBullseye, ReadinessRadar } from "../viz";
+import { SignalFlow } from "./signal-flow";
 import { BlackHole } from "./black-hole";
 
 export type LandingData = { insights: Insights; name: string; segment: string; model: string; stage: string; demoId: string };
@@ -15,13 +15,14 @@ const steps = ["describe", "decide", "model", "plan", "learn"] as const;
 
 export function Landing({ data }: { data: LandingData }) {
   const { version } = useDisplay();
-  return <div className={`v4-app v4-land is-${version}`}>
+  const root = useRef<HTMLDivElement>(null);
+  useSlideEntries(root, version);
+  return <div ref={root} className={`v4-app v4-land is-${version}`}>
     <LandingHeader/>
     {version === "observatory" ? <ObservatoryHero/> : version === "ledger" ? <LedgerHero/> : <FlowHero/>}
     <main id="content">
       <Chain/>
       <Models data={data}/>
-      <Team/>
       <Honest/>
     </main>
     <LandingFooter demoId={data.demoId}/>
@@ -33,7 +34,7 @@ function LandingHeader() {
   return <header className="land-header">
     <Brand/>
     <nav aria-label="Primary" className="land-nav">
-      <a href="#chain">{t("land.chain.title")}</a><a href="#models">{t("dash.models")}</a><a href="#team">{t("nav.ai")}</a>
+      <a href="#chain">{t("land.chain.title")}</a><a href="#models">{t("dash.models")}</a><a href="#principles">{t("land.honest.is")}</a>
     </nav>
     <div className="land-header-actions"><DisplayMenu/><Link href="/startups/new" className="v4-button is-primary is-small">{t("land.cta.create")}</Link></div>
   </header>;
@@ -58,10 +59,11 @@ function ObservatoryHero() {
   const { t } = useDisplay();
   const ref = useRef<HTMLElement>(null);
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end start"] });
-  const y = useTransform(scrollYProgress, [0, 1], [0, 120]);
+  const reduce = useReducedMotion();
+  const y = useTransform(scrollYProgress, [0, 1], [0, reduce ? 0 : 60]);
   const fade = useTransform(scrollYProgress, [0, 0.8], [1, 0]);
   return <section className="land-hero obs-hero-land" ref={ref} aria-labelledby="hero-title">
-    <motion.div className="land-scene" style={{ y, opacity: fade }}><BlackHole variant="cinematic"/></motion.div>
+    <HeroScene variant="cinematic" y={y} opacity={fade}/>
     <HeroCopy title={t("land.obs.title")} lede={t("land.obs.lede")}/>
     <a className="land-scroll" href="#chain" aria-label={t("land.scroll")}><span/></a>
   </section>;
@@ -96,12 +98,18 @@ function FlowHero() {
   const { t } = useDisplay();
   const [active, setActive] = useState(0);
   useEffect(() => {
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    const id = setInterval(() => setActive(a => (a + 1) % steps.length), 1600);
-    return () => clearInterval(id);
+    const reduce=matchMedia("(prefers-reduced-motion: reduce)");
+    let timer: ReturnType<typeof setInterval> | undefined;
+    let visible=true;
+    const sync=()=>{clearInterval(timer);if(!reduce.matches&&!document.hidden&&visible)timer=setInterval(()=>setActive(a=>(a+1)%steps.length),1600);};
+    const hero=document.querySelector(".flow-hero-land");
+    const observer=new IntersectionObserver(([entry])=>{visible=entry.isIntersecting;sync();});
+    if(hero)observer.observe(hero);sync();
+    reduce.addEventListener("change",sync);document.addEventListener("visibilitychange",sync);
+    return()=>{clearInterval(timer);observer.disconnect();reduce.removeEventListener("change",sync);document.removeEventListener("visibilitychange",sync);};
   }, []);
   return <section className="land-hero flow-hero-land" aria-labelledby="hero-title">
-    <div className="land-scene"><BlackHole variant="high"/></div>
+    <HeroScene variant="high"/>
     <HeroCopy title={t("land.flow.title")} lede={t("land.flow.lede")}/>
     <ol className="flow-hero-chain" aria-label={t("land.chain.title")}>{steps.map((s, i) => <li key={s} className={i === active ? "is-active" : i < active ? "is-done" : ""}>
       {i > 0 && <span className="flow-hero-edge" aria-hidden><span/></span>}
@@ -112,42 +120,40 @@ function FlowHero() {
 
 function Chain() {
   const { t } = useDisplay();
-  return <section className="land-section land-chain" id="chain" aria-labelledby="chain-title">
-    <div className="land-section-head"><h2 id="chain-title">{t("land.chain.title")}</h2><p>{t("land.chain.lede")}</p></div>
-    <ol className="land-steps">{steps.map((s, i) => <motion.li key={s} initial={false} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-60px" }} transition={{ duration: 0.24, delay: i * 0.04, ease }}>
+  return <section data-slide className="land-section land-chain" id="chain" aria-labelledby="chain-title">
+    <div className="land-chain-head"><div className="land-section-head"><h2 id="chain-title">{t("land.chain.title")}</h2><p>{t("land.chain.lede")}</p></div><SignalFlow/></div>
+    <ol className="land-steps">{steps.map((s, i) => <li key={s}>
       <span className="land-step-n mono">{String(i + 1).padStart(2, "0")}</span>
       <h3>{t(`land.step.${s}`)}</h3>
       <p>{t(`land.step.${s}.t`)}</p>
-    </motion.li>)}</ol>
+    </li>)}</ol>
   </section>;
 }
 
 function Models({ data }: { data: LandingData }) {
   const { t } = useDisplay();
   return <section className="land-section land-models" id="models" aria-labelledby="models-title">
-    <div className="land-section-head"><h2 id="models-title">{t("land.models.title")}</h2><p>{t("land.models.lede")} <span className="mono">{t("land.demoName", { name: data.name })}</span></p></div>
+    <div data-slide className="land-section-head"><h2 id="models-title">{t("land.models.title")}</h2><p>{t("land.models.lede")} <span className="mono">{t("land.demoName", { name: data.name })}</span></p></div>
     <div className="land-model-grid">
-      <figure className="land-model"><figcaption>{t("readiness.overall")} · <span className="num">{data.insights.readiness.overall}</span></figcaption><ReadinessRadar axes={data.insights.readiness.axes} size={260} compact/></figure>
-      <figure className="land-model"><figcaption>{t("amap.title")}</figcaption><AssumptionMap items={data.insights.assumptions} list={false}/></figure>
-      <figure className="land-model is-wide"><figcaption>{t("bull.title")}</figcaption><ChannelBullseye channels={data.insights.channels} model={data.model} stage={data.stage}/></figure>
+      <figure data-slide className="land-model">
+        <figcaption><h3>{t("model.readiness")}</h3><p>{t("model.readiness.detail")}</p><span className="land-model-value"><strong className="num">{data.insights.readiness.overall}</strong><span>/100<br/>{t("readiness.overall")}</span></span></figcaption>
+        <div className="land-model-art"><ReadinessRadar axes={data.insights.readiness.axes} size={320}/></div>
+      </figure>
+      <figure data-slide className="land-model">
+        <figcaption><h3>{t("model.assumptions")}</h3><p>{t("model.assumptions.detail")}</p></figcaption>
+        <div className="land-model-art"><AssumptionMap items={data.insights.assumptions} list={false}/></div>
+      </figure>
+      <figure data-slide className="land-model">
+        <figcaption><h3>{t("model.channels")}</h3><p>{t("model.channels.detail")}</p></figcaption>
+        <div className="land-model-art"><ChannelBullseye channels={data.insights.channels} model={data.model} stage={data.stage}/></div>
+      </figure>
     </div>
-  </section>;
-}
-
-function Team() {
-  const { t } = useDisplay();
-  return <section className="land-section land-team" id="team" aria-labelledby="team-title">
-    <div className="land-section-head"><h2 id="team-title">{t("land.ai.title")}</h2><p>{t("land.ai.lede")}</p></div>
-    <ol className="land-agents">{aiRoles.map((role, i) => <motion.li key={role} initial={false} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ duration: 0.24, delay: i * 0.04 }} style={{ "--i": i } as CSSProperties}>
-      <span className="land-agent-orbit" aria-hidden/>
-      <h3>{t(`agent.${role}.name`)}</h3><p>{t(`agent.${role}.desc`)}</p>
-    </motion.li>)}</ol>
   </section>;
 }
 
 function Honest() {
   const { t } = useDisplay();
-  return <section className="land-section land-honest" aria-label={t("land.honest.is")}>
+  return <section data-slide id="principles" className="land-section land-honest" aria-label={t("land.honest.is")}>
     <div><h2>{t("land.honest.is")}</h2><ul>{(["is1", "is2", "is3"] as const).map(k => <li key={k}>{t(`land.honest.${k}`)}</li>)}</ul></div>
     <div><h2>{t("land.honest.isnt")}</h2><ul className="is-not">{(["isnt1", "isnt2", "isnt3"] as const).map(k => <li key={k}>{t(`land.honest.${k}`)}</li>)}</ul></div>
   </section>;
@@ -163,4 +169,44 @@ function LandingFooter({ demoId }: { demoId: string }) {
     </div>
     <p className="land-footer-note mono">{t("land.footer")}</p>
   </footer>;
+}
+
+// Start only once a block approaches the viewport. SSR and no-JS remain visible;
+// transforms do not change document flow, and quick scrolling never queues work.
+function useSlideEntries(root: React.RefObject<HTMLDivElement | null>, version: string) {
+  useEffect(() => {
+    const reduce = matchMedia("(prefers-reduced-motion: reduce)");
+    const nodes = [...(root.current?.querySelectorAll<HTMLElement>("[data-slide]") ?? [])];
+    const running = new Set<Animation>();
+    const observer = new IntersectionObserver(entries => entries.forEach(entry => {
+      if (!entry.isIntersecting) return;
+      observer.unobserve(entry.target);
+      const node = entry.target as HTMLElement;
+      node.dataset.revealed = "true";
+      if (reduce.matches || node.getBoundingClientRect().top < 0) return;
+      const index = nodes.indexOf(node);
+      const animation = node.animate([
+        { transform: `translate3d(${index % 2 ? 64 : -64}px,0,0)`, opacity: 0.15 },
+        { transform: "translate3d(0,0,0)", opacity: 1 },
+      ], { duration: 650, easing: "cubic-bezier(0.23,1,0.32,1)" });
+      running.add(animation); animation.onfinish = () => running.delete(animation);
+    }), { rootMargin: "0px 0px -32px 0px", threshold: 0.08 });
+    nodes.forEach(n => observer.observe(n));
+    const stop = () => { if (reduce.matches) { running.forEach(a => a.cancel()); running.clear(); } };
+    reduce.addEventListener("change", stop);
+    return () => { observer.disconnect(); running.forEach(a => a.cancel()); reduce.removeEventListener("change",stop); };
+  }, [root, version]);
+}
+
+function HeroScene({ variant, y, opacity }: { variant: "cinematic" | "high"; y?: import("motion/react").MotionValue<number>; opacity?: import("motion/react").MotionValue<number> }) {
+  const { t } = useDisplay();
+  const [mode, setMode] = useState<"light" | "ascii">("light");
+  const [paused, setPaused] = useState(false);
+  return <>
+    <motion.div className="land-scene" style={{ y, opacity }}><BlackHole variant={variant} mode={mode} paused={paused}/></motion.div>
+    <div className="land-scene-controls" role="group" aria-label={t("scene.mode")}>
+      {(["light", "ascii"] as const).map(m => <button key={m} type="button" aria-pressed={mode === m} onClick={() => setMode(m)}>{t(m === "light" ? "scene.cinema" : "scene.ascii")}</button>)}
+      <button type="button" className="land-scene-pause" aria-label={t(paused ? "scene.play" : "scene.pause")} onClick={() => setPaused(p => !p)}>{paused ? <Play size={14} aria-hidden/> : <Pause size={14} aria-hidden/>}</button>
+    </div>
+  </>;
 }

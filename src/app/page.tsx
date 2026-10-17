@@ -1,3 +1,5 @@
+import { getDisplayPrefs } from "@/ui/server-prefs";
+import { localizeDemoValue, localizeWorkspace } from "@/lib/domain/localize-workspace";
 import { emptySection, calculateCompletion, calculateRoadmapProgress } from "@/lib/domain/completion";
 import { computeInsights } from "@/lib/domain/insights";
 import { generateRoadmap } from "@/lib/domain/roadmap";
@@ -14,7 +16,9 @@ function demoWorkspace(): Workspace {
   return { startup: { ...demoProfile, id: DEMO_ID, revision: 1, createdAt: now, updatedAt: now }, sections, completion: calculateCompletion(sections), tasks, roadmapProgress: calculateRoadmapProgress(tasks), mode: "demo" };
 }
 
-export default function Welcome() {
-  const workspace = demoWorkspace();
-  return <Landing data={{ insights: computeInsights(workspace), name: demoProfile.name, segment: demoProfile.customerSegment, model: demoProfile.businessModel, stage: demoProfile.stage, demoId: DEMO_ID }}/>;
+export default async function Welcome() {
+  const { locale } = await getDisplayPrefs();
+  const raw = demoWorkspace();
+  const workspace = localizeWorkspace(raw, locale);
+  return <Landing data={{ insights: localizeDemoValue(raw, computeInsights(raw), locale), name: workspace.startup.name, segment: workspace.startup.customerSegment, model: workspace.startup.businessModel, stage: workspace.startup.stage, demoId: DEMO_ID }}/>;
 }

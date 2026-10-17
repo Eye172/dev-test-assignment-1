@@ -1,4 +1,5 @@
 "use client";
+import { translateDemoContent } from "@/lib/domain/localize-workspace";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Plus, Sparkles, X } from "lucide-react";
@@ -27,7 +28,7 @@ export type ProfileSeed = Partial<Draft> & { customFields?: Record<string, strin
 export function ProfileForm({ initial, seed, origins, onSaved, onCancel, onReloaded, submitLabel, recoveryScope, creationRequestId }: { initial?: Startup; seed?: ProfileSeed; origins?: Partial<Record<string, string>>; onSaved?: (startup: Startup) => void | Promise<void>; onCancel?: () => void; onReloaded?: (workspace: Workspace) => void; submitLabel?: string; recoveryScope?:string;creationRequestId?:string }) {
   const router = useRouter();
   const hydrated = useHydrated();
-  const { t, tk } = useDisplay();
+  const { t, tk, locale } = useDisplay();
   const start = initial ? fromStartup(initial) : { ...blank, ...Object.fromEntries(Object.entries(seed ?? {}).filter(([k, v]) => k !== "customFields" && v)) } as Draft;
   const startCustom = Object.entries(initial?.customFields ?? seed?.customFields ?? {});
   const [data, setData] = useState<Draft>(start);
@@ -124,7 +125,7 @@ export function ProfileForm({ initial, seed, origins, onSaved, onCancel, onReloa
       {invalid.length > 0 && <ul>{invalid.map(k => <li key={k}><a href={`#field-${k}`} onClick={e => { e.preventDefault(); document.getElementById(`field-${k}`)?.focus(); }}>{tk(`profile.${k}`)}: {fields[k]}</a></li>)}</ul>}
     </div>}
     <fieldset disabled={saving || !hydrated}>
-      {!initial && !seed && <button type="button" className="sample-fill" onClick={() => { setData(sample); setFields({}); setError(null); }}><Sparkles size={15} aria-hidden/>{t("pf.sample")}</button>}
+      {!initial && !seed && <button type="button" className="sample-fill" onClick={() => { setData(translateDemoContent(sample,locale)); setFields({}); setError(null); }}><Sparkles size={15} aria-hidden/>{t("pf.sample")}</button>}
       <Field name="name" label={t("profile.name")} value={data.name} onChange={v => update("name", v)} error={fields.name} required maxLength={120} autoComplete="organization">{tag("name")}</Field>
       <Field name="description" label={t("profile.description")} value={data.description} onChange={v => update("description", v)} error={fields.description} textarea required maxLength={2000} help={t("pf.descHelp")}>{tag("description")}</Field>
       <div className="form-columns">

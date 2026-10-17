@@ -183,11 +183,18 @@ function SectionEditor({ section, index, onDirtyChange, onLive, onNext, onPrev, 
   const savingRef = useRef(false);
   /* eslint-disable react-hooks/set-state-in-effect -- Follow an advancing server revision only while the editor is clean; preserve dirty draft baselines. */
   useEffect(() => {
-    if (section.revision <= revision || savingRef.current) return;
+    if (section.revision < revision || savingRef.current) return;
+    // A locale projection may change a synthetic example at the same revision.
+    // Follow it only while clean; never discard a founder's draft on language switch.
+    if (section.revision === revision) {
+      const incoming = JSON.stringify({data:section.data,notes:section.notes});
+      if (!dirty && incoming !== baseline) { setData(section.data); setNotes(section.notes); setBaseline(incoming); }
+      return;
+    }
     if (dirty) { setError(new ClientError(t("st.conflict"),409,"REVISION_CONFLICT")); return; }
     setData(section.data); setNotes(section.notes); setRevision(section.revision);
     setBaseline(JSON.stringify({ data: section.data, notes: section.notes })); setSavedAt(section.updatedAt);
-  }, [section, revision, dirty, t]);
+  }, [section, revision, dirty, baseline, t]);
   /* eslint-enable react-hooks/set-state-in-effect */
   async function save(silent: boolean) {
     if (savingRef.current) return;

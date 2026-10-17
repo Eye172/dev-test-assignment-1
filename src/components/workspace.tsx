@@ -7,6 +7,7 @@ import { ArrowDownToLine, Check, Compass, LayoutGrid, Link2, Orbit, Route, Searc
 import { api } from "@/lib/client-api";
 import { mergeWorkspace } from "@/lib/client-workspace";
 import { computeInsights, type Insights } from "@/lib/domain/insights";
+import { localizeDemoValue, localizeWorkspace } from "@/lib/domain/localize-workspace";
 import type { Preferences, Startup, Workspace } from "@/lib/domain/types";
 import { confirmLeave, useHydrated } from "./ui";
 import { OrbitDial, useOrbitModel } from "./orbit";
@@ -17,6 +18,7 @@ import type { MessageKey } from "@/ui/i18n/en";
 
 type WorkspaceContext = {
   workspace: Workspace;
+  rawWorkspace: Workspace;
   setWorkspace: Dispatch<SetStateAction<Workspace>>;
   refresh: () => Promise<void>;
   notify: (message: string) => void;
@@ -37,8 +39,9 @@ export const easeOut = ease;
 export type NavItem = { key: "overview" | "strategy" | "dashboard" | "roadmap" | "ai"; label: MessageKey; href: string; Icon: typeof Orbit; shortcut: string };
 
 export function WorkspaceShell({ initial, serverNow, children }: { initial: Workspace; serverNow: string; children: ReactNode }) {
-  const { t, version } = useDisplay();
-  const [workspace, setWorkspaceState] = useState(initial);
+  const { t, version, locale } = useDisplay();
+  const [rawWorkspace, setWorkspaceState] = useState(initial);
+  const workspace = useMemo(() => localizeWorkspace(rawWorkspace, locale), [rawWorkspace, locale]);
   const setWorkspace: Dispatch<SetStateAction<Workspace>> = useCallback(action => {
     setWorkspaceState(current => mergeWorkspace(current, typeof action === "function" ? action(current) : action));
   }, []);
@@ -51,7 +54,7 @@ export function WorkspaceShell({ initial, serverNow, children }: { initial: Work
   const base = `/startups/${workspace.startup.id}`;
   // Server render and hydration use the server clock; afterwards the device clock (plan day can differ across midnight).
   const hydrated = useHydrated();
-  const insights = useMemo(() => computeInsights(workspace, hydrated ? new Date() : new Date(serverNow)), [workspace, hydrated, serverNow]);
+  const insights = useMemo(() => localizeDemoValue(rawWorkspace, computeInsights(rawWorkspace, hydrated ? new Date() : new Date(serverNow)), locale), [rawWorkspace, hydrated, serverNow, locale]);
 
   const refresh = useCallback(async () => {
     const latest = await api<Workspace>(`/api/startups/${initial.startup.id}`);
@@ -118,7 +121,7 @@ export function WorkspaceShell({ initial, serverNow, children }: { initial: Work
   </>;
   const shellProps = { workspace, insights, nav, isActive, header, base };
 
-  return <Context.Provider value={{ workspace, setWorkspace, refresh, notify, savePreferences, track, openPalette: () => setPaletteOpen(true), insights, base }}>
+  return <Context.Provider value={{ workspace, rawWorkspace, setWorkspace, refresh, notify, savePreferences, track, openPalette: () => setPaletteOpen(true), insights, base }}>
     <MotionConfig reducedMotion={workspace.startup.preferences.motion === "reduced" ? "always" : "user"} transition={spring}>
       <div className={`v4-app v4-ws is-${version}`} data-motion={workspace.startup.preferences.motion}>
         {version === "observatory" ? <ObservatoryChrome {...shellProps}/> : version === "ledger" ? <LedgerChrome {...shellProps}/> : <FlowChrome {...shellProps}/>}

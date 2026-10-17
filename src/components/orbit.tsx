@@ -50,8 +50,8 @@ function arc(r: number, from: number, to: number) {
   return `M ${x1} ${y1} A ${r} ${r} 0 ${to - from > 180 ? 1 : 0} 1 ${x2} ${y2}`;
 }
 // Day ticks: weeks 1–3 have seven days, week 4 has nine (days 22–30).
-const weekOfDay = (day: number) => Math.min(4, Math.floor((day - 1) / 7) + 1);
-const daysInWeek = (w: number) => w === 4 ? 9 : 7;
+
+
 
 /** Counts toward a value when it changes. Server and first client render show the final value. */
 export function Counter({ value, from, duration = 0.9, className }: { value: number; from?: number; duration?: number; className?: string }) {
@@ -80,19 +80,14 @@ export function OrbitDial({ model, size = 280, base, interactive = false, countF
   const { t } = useDisplay();
   const id = useId().replace(/:/g, "");
   const [hover, setHover] = useState<OrbitSection | null>(null);
-  const reduce = useReducedMotion();
   const gap = 7; const span = 72;
-  const ticks = Array.from({ length: 30 }, (_, i) => {
-    const day = i + 1; const w = weekOfDay(day);
-    const firstDay = (w - 1) * 7 + 1; const lit = Math.round(model.weeks[w - 1] * daysInWeek(w));
-    return { day, lit: day - firstDay < lit, major: day === 1 || day === 8 || day === 15 || day === 22, angle: i * 12 + 6 };
-  });
+  const ticks = Array.from({ length: 30 }, (_,i) => ({day:i+1, major:[0,7,14,21].includes(i), angle:i*12+6}));
   const satellite = model.planDay ? (model.planDay - 1) * 12 + 6 : null;
   const summary = label ?? `${t("dash.completion")} ${model.completion}% · ${t("ov.sectionsDone", { n: model.sections.filter(s => s.state === "complete").length })}. ${model.hasPlan ? t("dial.planDone", { n: model.plan }) : t("ov.noTasks")}`;
   const segment = (s: OrbitSection, i: number) => {
     const from = i * span + gap / 2; const to = (i + 1) * span - gap / 2;
     const d = arc(60, from, to);
-    const stroke = s.state === "complete" ? "var(--inst-accent)" : s.state === "draft" ? "var(--inst-mint)" : "var(--inst-line-strong)";
+    const stroke = s.state === "complete" ? `var(--data-${i+1})` : s.state === "draft" ? "var(--inst-muted)" : "var(--inst-line-strong)";
     // CSS-drawn (not JS) so the saved state is visible on first paint and without JavaScript.
     const path = <>
       <path d={d} className="dial-track" />
@@ -118,17 +113,18 @@ export function OrbitDial({ model, size = 280, base, interactive = false, countF
       </defs>
       <circle cx={C} cy={C} r={99} fill={`url(#${id}-glow)`} />
       <circle cx={C} cy={C} r={99} className="dial-rim" />
-      <circle cx={C} cy={C} r={74} className="dial-guide" />
+      <circle cx={C} cy={C} r={83} className="dial-plan-track"/>
+      {model.plan > 0 && <path d={arc(83,0,Math.min(model.plan,99.999)*3.6)} className="dial-plan-value"/>}
       <circle cx={C} cy={C} r={46} className="dial-guide" />
       <g className="dial-ticks">{ticks.map(t => {
-        const [x1, y1] = polar(t.major ? 82 : 85, t.angle); const [x2, y2] = polar(92, t.angle);
-        return <line key={t.day} x1={x1} y1={y1} x2={x2} y2={y2} className={t.lit ? "lit" : t.major ? "major" : ""} style={{ animationDelay: `${380 + t.day * 14}ms` }} />;
+        const [x1, y1] = polar(t.major ? 93 : 95, t.angle); const [x2, y2] = polar(98, t.angle);
+        return <line key={t.day} x1={x1} y1={y1} x2={x2} y2={y2} className={t.major ? "major" : ""} style={{ animationDelay: `${380 + t.day * 14}ms` }} />;
       })}</g>
       <g aria-hidden={interactive ? undefined : true}>{model.sections.map(segment)}</g>
-      {satellite !== null && <motion.g initial={reduce ? false : { rotate: -150 }} animate={{ rotate: satellite }} style={{ originX: "100px", originY: "100px" }}
-        transition={{ type: "spring", stiffness: 40, damping: 14, delay: 0.5 }}>
-        <circle cx={C} cy={C - 74} r={7} fill="var(--inst-accent)" opacity={0.35} filter={`url(#${id}-blur)`} />
-        <circle cx={C} cy={C - 74} r={3.6} fill="var(--inst-accent)" />
+      {satellite !== null && <motion.g initial={false} animate={{ rotate: satellite }} style={{ originX: "100px", originY: "100px" }}
+        transition={{ duration: 0.22, ease: [0.23,1,0.32,1] }}>
+        <circle cx={C} cy={C - 83} r={7} fill="var(--data-day)" opacity={0.2} filter={`url(#${id}-blur)`} />
+        <circle cx={C} cy={C - 83} r={3.6} fill="var(--data-day)" />
       </motion.g>}
     </svg>
     <div className="dial-center" aria-hidden="true">
@@ -143,12 +139,17 @@ export function OrbitDial({ model, size = 280, base, interactive = false, countF
   </div>;
 }
 
-/** Compact legend that names what the rings mean. */
+/** The legend mirrors the visual encodings, with section names and honest ratios. */
 export function DialLegend({ model }: { model: OrbitModel }) {
   const { t } = useDisplay();
-  return <dl className="dial-legend">
-    <div><dt><span className="lg-swatch inner"/>{t("dial.inner")}</dt><dd>{t("ov.sectionsDone", { n: model.sections.filter(s => s.state === "complete").length })}</dd></div>
-    <div><dt><span className="lg-swatch outer"/>{t("dial.outer")}</dt><dd>{model.hasPlan ? t("dial.planDone", { n: model.plan }) : t("ov.noTasks")}</dd></div>
-    <div><dt><span className="lg-swatch sat"/>{t("dial.sat")}</dt><dd>{model.planDay ? t("load.today", { n: model.planDay }) : t("dial.startsWithPlan")}</dd></div>
-  </dl>;
+  return <div className="dial-explainer">
+    <div className="dial-sections-key"><p>{t("dial.strategy")} <strong className="num">{model.sections.filter(s=>s.state==="complete").length}/5</strong></p>
+      <ul>{model.sections.map((s,i) => <li key={s.key}><i style={{background:s.state === "complete" ? `var(--data-${i+1})` : "var(--line-strong)"}}/><span>{t(`section.short.${s.key}`)}</span><span>{s.state === "complete" ? t("common.complete") : s.state === "draft" ? t("band.draft") : t("st.state.empty")}</span></li>)}</ul>
+    </div>
+    <dl className="dial-legend">
+      <div><dt><span className="lg-swatch outer"/>{t("dial.execution")}</dt><dd className="num">{model.hasPlan ? `${model.plan}%` : "—"}</dd></div>
+      <div><dt><span className="lg-swatch sat"/>{t("dial.clock")}</dt><dd className="num">{model.planDay ? `${model.planDay}/30` : "—"}</dd></div>
+    </dl>
+    <p className="dial-note">{t("dial.caption")}</p>
+  </div>;
 }

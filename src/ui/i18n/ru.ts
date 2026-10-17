@@ -1,3 +1,4 @@
+import { ru6 } from "./ru6";
 import { ru2 } from "./ru2";
 import { ru3 } from "./ru3";
 import { ru4 } from "./ru4";
@@ -369,4 +370,4 @@ const ru1: Partial<Record<MessageKey, string>> = {
   "err.demo": "Не удалось открыть демо. Повторите попытку.",
 };
 
-export const ru: Partial<Record<MessageKey, string>> = { ...ru1, ...ru2, ...ru3, ...ru4, ...ru5 };
+export const ru: Partial<Record<MessageKey, string>> = { ...ru1, ...ru2, ...ru3, ...ru4, ...ru5, ...ru6 };

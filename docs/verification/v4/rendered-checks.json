@@ -11,6 +11,17 @@
   {
     "device": "desktop",
     "ui": "observatory",
+    "screen": "ascii",
+    "lang": "ru",
+    "renderer": "ascii",
+    "cellPx": 5,
+    "width": 1440,
+    "height": 1000,
+    "errors": []
+  },
+  {
+    "device": "desktop",
+    "ui": "observatory",
     "screen": "dashboard",
     "lang": "ru",
     "width": 1440,
@@ -51,6 +62,50 @@
     "lang": "ru",
     "width": 1440,
     "documentWidth": 1440,
+    "errors": []
+  },
+  {
+    "device": "desktop",
+    "screen": "orbit",
+    "lang": "ru",
+    "labels": [
+      {
+        "label": "1Ясность клиента80/100",
+        "width": 322.96875,
+        "height": 46
+      },
+      {
+        "label": "2Ясность ценности80/100",
+        "width": 322.96875,
+        "height": 46
+      },
+      {
+        "label": "3Фокус каналов100/100",
+        "width": 322.96875,
+        "height": 46
+      },
+      {
+        "label": "4Определённость цены100/100",
+        "width": 322.96875,
+        "height": 46
+      },
+      {
+        "label": "5Понимание рисков80/100",
+        "width": 322.96875,
+        "height": 46
+      },
+      {
+        "label": "6Исполнение35/100",
+        "width": 322.96875,
+        "height": 46
+      }
+    ],
+    "skipLink": {
+      "x": 16,
+      "y": -60,
+      "width": 234.640625,
+      "height": 44
+    },
     "errors": []
   },
   {
@@ -65,6 +120,17 @@
   {
     "device": "phone",
     "ui": "observatory",
+    "screen": "ascii",
+    "lang": "kk",
+    "renderer": "ascii",
+    "cellPx": 5,
+    "width": 390,
+    "height": 844,
+    "errors": []
+  },
+  {
+    "device": "phone",
+    "ui": "observatory",
     "screen": "dashboard",
     "lang": "kk",
     "width": 390,
@@ -105,6 +171,50 @@
     "lang": "kk",
     "width": 390,
     "documentWidth": 390,
+    "errors": []
+  },
+  {
+    "device": "phone",
+    "screen": "orbit",
+    "lang": "kk",
+    "labels": [
+      {
+        "label": "1Клиент айқындығы80/100",
+        "width": 157,
+        "height": 50.78125
+      },
+      {
+        "label": "2Құндылық айқындығы80/100",
+        "width": 157,
+        "height": 50.78125
+      },
+      {
+        "label": "3Арналар фокусы100/100",
+        "width": 157,
+        "height": 46
+      },
+      {
+        "label": "4Баға анықтығы100/100",
+        "width": 157,
+        "height": 46
+      },
+      {
+        "label": "5Тәуекелді түсіну80/100",
+        "width": 157,
+        "height": 46
+      },
+      {
+        "label": "6Орындау35/100",
+        "width": 157,
+        "height": 46
+      }
+    ],
+    "skipLink": {
+      "x": 16,
+      "y": -60,
+      "width": 142.34375,
+      "height": 44
+    },
     "errors": []
   }
 ]

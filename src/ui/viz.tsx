@@ -13,34 +13,36 @@ const polar = (cx: number, cy: number, r: number, deg: number) => { const a = (d
 export function ReadinessRadar({ axes, size = 300, compact = false }: { axes: AxisScore[]; size?: number; compact?: boolean }) {
   const { t } = useDisplay();
   const [selected, setSelected] = useState<AxisKey | null>(null);
-  const c = size / 2, R = size * 0.34, step = 360 / axes.length;
-  const point = (i: number, v: number) => polar(c, c, R * v / 100, i * step);
-  const shape = axes.map((a, i) => point(i, Math.max(6, a.score)).join(",")).join(" ");
-  const ring = (v: number) => axes.map((_, i) => point(i, v).join(",")).join(" ");
+  const c = size/2, R = size*0.34, step = 360/axes.length;
+  const point = (i: number, v: number) => polar(c,c,R*v/100,i*step);
+  const ring = (v: number) => axes.map((_,i) => point(i,v).join(",")).join(" ");
+  const shape = axes.map((a,i) => point(i,a.score).join(",")).join(" ");
   const active = axes.find(a => a.key === selected);
   return <div className={`v4-radar ${compact ? "is-compact" : ""}`}>
     <div className="v4-radar-plot" style={{ "--size": `${size}px` } as CSSProperties}>
-      <svg viewBox={`0 0 ${size} ${size}`} role="img" aria-label={axes.map(a => `${t(`axis.${a.key}`)} ${a.score}`).join(", ")}>
-        {[25, 50, 75, 100].map(v => <polygon key={v} points={ring(v)} className={`v4-radar-ring ${v === 100 ? "is-outer" : ""}`}/>)}
-        {axes.map((_, i) => { const [x, y] = point(i, 100); return <line key={i} x1={c} y1={c} x2={x} y2={y} className="v4-radar-spoke"/>; })}
-        <motion.g style={{ transformOrigin: `${c}px ${c}px` }} initial={{ scale: 0.35, opacity: 0 }} whileInView={{ scale: 1, opacity: 1 }} viewport={{ once: true }} transition={{ duration: 0.9, ease }}>
-          <polygon points={shape} className="v4-radar-shape"/>
-          {axes.map((a, i) => { const [x, y] = point(i, Math.max(6, a.score)); return <circle key={a.key} cx={x} cy={y} r={selected === a.key ? 5 : 3.5} className="v4-radar-dot"/>; })}
-        </motion.g>
+      <svg viewBox={`0 0 ${size} ${size}`} role="img" aria-label={axes.map(a => `${t(`axis.${a.key}`)} ${a.score}/100`).join(", ")}>
+        {[100,75,50,25].map(v => <polygon key={v} points={ring(v)} className={`v4-radar-ring is-level-${v}`}/>)}
+        {axes.map((_,i) => {const [x,y]=point(i,100); return <line key={i} x1={c} y1={c} x2={x} y2={y} className="v4-radar-spoke"/>;})}
+        <polygon points={shape} className="v4-radar-shape"/>
+        {axes.map((a,i) => {
+          const [x,y]=point(i,a.score), [lx,ly]=polar(c,c,R+22,i*step);
+          return <g key={a.key} className={selected === a.key ? "is-selected" : ""}>
+            <circle cx={x} cy={y} r={5} className="v4-radar-dot"/>
+            <circle cx={lx} cy={ly} r={13} className="v4-radar-index-bg"/>
+            <text x={lx} y={ly+4} textAnchor="middle" className="v4-radar-index">{i+1}</text>
+          </g>;
+        })}
       </svg>
-      {axes.map((a, i) => {
-        const [x, y] = polar(c, c, R + (compact ? 26 : 34), i * step);
-        const side = x < c - 4 ? "left" : x > c + 4 ? "right" : "mid";
-        return <button key={a.key} type="button" className={`v4-radar-label is-${side} ${selected === a.key ? "is-active" : ""}`} aria-pressed={selected === a.key}
-          style={{ left: `${x / size * 100}%`, top: `${y / size * 100}%` }} onClick={() => setSelected(s => s === a.key ? null : a.key)}>
-          <span className="num">{a.score}</span><span>{t(`axis.${a.key}`)}</span>
-        </button>;
-      })}
     </div>
+    <div className="v4-radar-content"><ol className="v4-radar-scores">{axes.map((a,i) => <li key={a.key}>
+      <button type="button" aria-pressed={selected === a.key} onClick={() => setSelected(s => s === a.key ? null : a.key)}>
+        <span className="v4-radar-order num">{i+1}</span><span>{t(`axis.${a.key}`)}</span><strong className="num">{a.score}<small>/100</small></strong>
+        <span className="v4-radar-meter" aria-hidden><span style={{transform:`scaleX(${a.score/100})`}}/></span>
+      </button>
+    </li>)}</ol>
     {!compact && <div className="v4-radar-why" aria-live="polite">
-      {active ? <><h4>{t(`axis.${active.key}`)} <span className="num mono">{active.score}/100</span></h4><Reasons reasons={active.reasons}/></>
-        : <p className="v4-muted">{t("common.why")}: {t("readiness.explain")}</p>}
-    </div>}
+      {active ? <><h4>{t(`axis.${active.key}`)}</h4><Reasons reasons={active.reasons}/></> : <p className="v4-muted">{t("readiness.explain")}</p>}
+    </div>}</div>
   </div>;
 }
 
@@ -51,31 +53,45 @@ const lensShape = (lens: MappedAssumption["lens"], x: number, y: number, r: numb
 export function AssumptionMap({ items, list = true }: { items: MappedAssumption[]; list?: boolean }) {
   const { t, tk } = useDisplay();
   const [hover, setHover] = useState<string | null>(null);
-  const W = 420, H = 300, L = 34, B = 30, T = 12, Rm = 12;
+  const W = 440, H = 340, L = 38, B = 36, T = 36, Rm = 10;
   const px = (e: number) => round(L + e * (W - L - Rm)), py = (i: number) => round(T + (1 - i) * (H - T - B));
+  const positions: {x:number;y:number}[] = [];
+  items.forEach(a => {
+    const bounds = { left: a.evidence < 0.5 ? px(0)+18 : px(0.5)+18, right: a.evidence < 0.5 ? px(0.5)-18 : px(1)-18,
+      top: a.importance >= 0.5 ? py(1)+46 : py(0.5)+22, bottom: a.importance >= 0.5 ? py(0.5)-18 : py(0)-38 };
+    let best = {x: Math.max(bounds.left,Math.min(bounds.right,px(a.evidence))), y: Math.max(bounds.top,Math.min(bounds.bottom,py(a.importance)))};
+    let distance = Infinity;
+    for(let y=bounds.top; y<=bounds.bottom; y+=3) for(let x=bounds.left; x<=bounds.right; x+=3) {
+      if(positions.some(p => Math.hypot(p.x-x,p.y-y)<35)) continue;
+      const d=Math.hypot(x-px(a.evidence),y-py(a.importance));
+      if(d<distance) {best={x,y}; distance=d;}
+    }
+    positions.push(best);
+  });
   if (!items.length) return <p className="v4-empty">{t("amap.empty")}</p>;
   const label = (a: MappedAssumption) => a.source === "implied" ? (a.id === "implied-pain" ? t("amap.impliedPain") : a.id === "implied-price" ? t("amap.impliedPrice") : t("amap.impliedChannel")) : a.statement;
   return <div className="v4-amap">
     <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={t("amap.title")}>
-      <rect x={px(0)} y={py(1)} width={px(0.5) - px(0)} height={py(0.5) - py(1)} className="v4-amap-hot"/>
-      <line x1={px(0.5)} x2={px(0.5)} y1={py(1)} y2={py(0)} className="v4-amap-mid"/>
-      <line x1={px(0)} x2={px(1)} y1={py(0.5)} y2={py(0.5)} className="v4-amap-mid"/>
-      <line x1={px(0)} x2={px(1)} y1={py(0)} y2={py(0)} className="v4-amap-axis"/>
-      <line x1={px(0)} x2={px(0)} y1={py(1)} y2={py(0)} className="v4-amap-axis"/>
-      <text x={px(0) + 8} y={py(1) + 16} className="v4-amap-q is-hot">{t("amap.test_first")}</text>
-      <text x={px(1) - 8} y={py(1) + 16} className="v4-amap-q" textAnchor="end">{t("amap.proceed")}</text>
-      <text x={px(0) + 8} y={py(0) - 8} className="v4-amap-q">{t("amap.park")}</text>
-      <text x={px(1) - 8} y={py(0) - 8} className="v4-amap-q" textAnchor="end">{t("amap.monitor")}</text>
+      <rect x={px(0)} y={py(1)} width={px(0.5)-px(0)-3} height={py(0.5)-py(1)-3} rx="14" className="v4-amap-zone is-priority"/>
+      <rect x={px(0.5)+3} y={py(1)} width={px(1)-px(0.5)-3} height={py(0.5)-py(1)-3} rx="14" className="v4-amap-zone is-proceed"/>
+      <rect x={px(0)} y={py(0.5)+3} width={px(0.5)-px(0)-3} height={py(0)-py(0.5)-3} rx="14" className="v4-amap-zone"/>
+      <rect x={px(0.5)+3} y={py(0.5)+3} width={px(1)-px(0.5)-3} height={py(0)-py(0.5)-3} rx="14" className="v4-amap-zone"/>
+      <text x={px(0) + 8} y={py(1) + 24} className="v4-amap-q is-hot">{t("amap.test_first")}</text>
+      <text x={px(1) - 8} y={py(1) + 24} className="v4-amap-q" textAnchor="end">{t("amap.proceedShort")}</text>
+      <text x={px(0) + 8} y={py(0) - 14} className="v4-amap-q">{t("amap.park")}</text>
+      <text x={px(1) - 8} y={py(0) - 14} className="v4-amap-q" textAnchor="end">{t("amap.monitor")}</text>
       <text x={px(1)} y={H - 6} className="v4-amap-axis-label" textAnchor="end">{t("amap.evidence")} →</text>
       <text x={12} y={py(1)} className="v4-amap-axis-label" transform={`rotate(-90 12 ${py(1)})`} textAnchor="end">{t("amap.importance")} →</text>
       {items.map((a, i) => <motion.g key={a.id} className={`v4-amap-dot is-${a.quadrant} ${hover === a.id ? "is-hover" : ""}`}
-        initial={{ opacity: 0, scale: 0.6 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} transition={{ delay: 0.2 + i * 0.06, duration: 0.4, ease }}
+        initial={false}
         style={{ transformOrigin: `${px(a.evidence)}px ${py(a.importance)}px` }} onMouseEnter={() => setHover(a.id)} onMouseLeave={() => setHover(null)}>
-        {lensShape(a.lens, px(a.evidence), py(a.importance), 7)}
-        <text x={px(a.evidence) + 12} y={py(a.importance) + 4} className="v4-amap-n">{i + 1}</text>
+        <title>{`${i+1}. ${label(a)} · ${t(`amap.${a.quadrant}`)}`}</title>
+        {lensShape(a.lens, positions[i].x, positions[i].y, 13)}
+        <text x={positions[i].x} y={positions[i].y+4} textAnchor="middle" className="v4-amap-n">{i+1}</text>
       </motion.g>)}
     </svg>
     <div className="v4-amap-legend">{(["desirability", "viability", "feasibility"] as const).map(l => <span key={l}><svg viewBox="0 0 16 16" aria-hidden>{lensShape(l, 8, 8, 5)}</svg>{t(`lens.${l}`)} <em>{t(`lens.${l}.q`)}</em></span>)}</div>
+    {!list && <ol className="v4-amap-key" aria-label={t("amap.points")}>{items.map((a,i) => <li key={a.id}><span className={`v4-amap-num is-${a.quadrant}`}>{i+1}</span><span>{label(a)}</span></li>)}</ol>}
     {list && <ol className="v4-amap-list">{items.map((a, i) => <li key={a.id} className={hover === a.id ? "is-hover" : ""} onMouseEnter={() => setHover(a.id)} onMouseLeave={() => setHover(null)}>
       <span className="v4-amap-num mono">{i + 1}</span>
       <div><p>{label(a)}{a.source === "implied" && <span className="v4-amap-quote"> — “{a.statement}”</span>}</p>
@@ -93,25 +109,25 @@ export function ChannelBullseye({ channels, model, stage, table = true }: { chan
   const inner = channels.filter(ch => ch.ring === "inner"), middle = channels.filter(ch => ch.ring === "middle"), outer = channels.filter(ch => ch.ring === "outer");
   const name = (ch: ChannelEntry) => ch.custom ? ch.label : ch.chosen ? ch.label : tk(`channel.${ch.key}`);
   const place = (list: ChannelEntry[], r: number, offset: number) => list.map((ch, i) => ({ ch, xy: polar(c, c, r, offset + i * 360 / Math.max(1, list.length)) }));
-  const marks = [...place(inner, inner.length > 1 ? 30 : 0, -30), ...place(middle, 88, 20), ...place(outer, 146, 8)];
+  const marks = [...place(inner, inner.length > 1 ? 30 : 0, -30), ...place(middle, 90, 55), ...place(outer, 147, 18)];
   const numbered = [...inner, ...middle];
   return <div className="v4-bull">
     <div className="v4-bull-plot">
       <svg viewBox={`0 0 ${S} ${S}`} role="img" aria-label={t("bull.title")}>
-        {[166, 116, 60].map((r, i) => <motion.circle key={r} cx={c} cy={c} r={r} className={`v4-bull-ring is-${["outer", "middle", "inner"][i]}`}
-          initial={{ pathLength: 0, opacity: 0 }} whileInView={{ pathLength: 1, opacity: 1 }} viewport={{ once: true }} transition={{ duration: 1, delay: i * 0.12, ease }}/>)}
-        <text x={c} y={c - 166 + 14} textAnchor="middle" className="v4-bull-ring-label">{t("bull.outer")}</text>
-        <text x={c} y={c - 116 + 14} textAnchor="middle" className="v4-bull-ring-label">{t("bull.middle")}</text>
+        {[166, 116, 60].map((r, i) => <circle key={r} cx={c} cy={c} r={r} className={`v4-bull-ring is-${["outer", "middle", "inner"][i]}`}
+          />)}
+
         {marks.map(({ ch, xy: [x, y] }) => {
           const n = numbered.indexOf(ch);
           return <g key={ch.key + ch.label} className={`v4-bull-mark is-${ch.ring} ${focus === ch.key ? "is-focus" : ""}`} onMouseEnter={() => setFocus(ch.key)} onMouseLeave={() => setFocus(null)}>
             <title>{`${name(ch)} · ICE ${ch.ice}`}</title>
-            <circle cx={x} cy={y} r={ch.ring === "inner" ? 13 : ch.ring === "middle" ? 10 : 3.5}/>
+            <circle cx={x} cy={y} r={ch.ring === "inner" ? 17 : ch.ring === "middle" ? 14 : 5}/>
             {n >= 0 && <text x={x} y={y + 4} textAnchor="middle">{n + 1}</text>}
           </g>;
         })}
         {!inner.length && <text x={c} y={c + 4} textAnchor="middle" className="v4-bull-ring-label">—</text>}
       </svg>
+      <div className="v4-bull-key">{(["inner","middle","outer"] as const).map(r => <span key={r} className={`is-${r}`}><i/>{t(`bull.${r}`)}</span>)}</div>
     </div>
     {table && <div className="v4-bull-side">
       {!inner.length && <p className="v4-muted">{t("bull.empty")}</p>}
@@ -120,6 +136,7 @@ export function ChannelBullseye({ channels, model, stage, table = true }: { chan
         <tbody>{numbered.map((ch, i) => <tr key={ch.key + ch.label} className={`is-${ch.ring} ${focus === ch.key ? "is-focus" : ""}`} onMouseEnter={() => setFocus(ch.key)} onMouseLeave={() => setFocus(null)}>
           <td className="mono">{i + 1}</td>
           <td><strong>{name(ch)}</strong><small>{ch.ring === "inner" ? t("bull.inner") : t("bull.middle")}{ch.custom ? ` · ${t("bull.custom")}` : ""} · {t("bull.signal", { n: ch.signalDays })}</small>
+            <small className="v4-ice-components" aria-label={`${t("bull.impact")} ${ch.impact}, ${t("bull.confidence")} ${ch.confidence}, ${t("bull.ease")} ${ch.ease}`}>I {ch.impact} · C {ch.confidence} · E {ch.ease}</small>
             {ch.localNote && <small className="v4-local">{tk(`local.${ch.localNote}`)}</small>}</td>
           <td className="num">{ch.impact}</td><td className="num">{ch.confidence}</td><td className="num">{ch.ease}</td>
           <td><span className="v4-ice-bar" style={{ "--v": ch.ice / 10 } as CSSProperties}><span className="num">{ch.ice}</span></span></td>
@@ -135,7 +152,7 @@ export function EvidenceLadder({ ladder }: { ladder: Insights["ladder"] }) {
   const { t } = useDisplay();
   return <div className="v4-ladder">
     <ol className="v4-ladder-steps">{ladder.rungs.map((r, i) => <li key={r.rung} className={r.reached ? "is-reached" : ""} style={{ "--h": `${22 + i * 11}%` } as CSSProperties}>
-      <motion.span className="v4-ladder-bar" initial={{ scaleY: 0 }} whileInView={{ scaleY: 1 }} viewport={{ once: true }} transition={{ delay: i * 0.05, duration: 0.5, ease }}/>
+      <motion.span className="v4-ladder-bar" initial={false} whileInView={{ scaleY: 1 }} viewport={{ once: true }} transition={{ delay: i * 0.05, duration: 0.5, ease }}/>
       <span className="v4-ladder-label">{t(`rung.${r.rung}`)}</span>
     </li>)}</ol>
     <p className="v4-ladder-caption">{ladder.reached ? t("ladder.reached", { rung: t(`rung.${ladder.reached}`) }) : t("ladder.none")}</p>

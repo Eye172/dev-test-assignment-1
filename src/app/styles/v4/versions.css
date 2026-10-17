@@ -221,3 +221,31 @@ a.flow-node:hover { border-color: var(--ink); transform: translateY(-2px); }
   .led-figure .num { font-size: 48px; }
   .v4-panel, .obs-panel, .flow-panel { padding: 16px; }
 }
+
+/* The orbit is a reading instrument: section colours, blue execution, gold day. */
+.is-observatory .obs-dial { background: none; border-radius: 0; }
+.obs-dial { justify-self: center; width: min(100%,380px); }
+.orbit-dial .dial-seg.complete { filter: none; }
+.orbit-dial .dial-seg { stroke-width: 9; animation: none; transition: stroke var(--dur-fast) var(--ease-out); }
+.orbit-dial .dial-ticks line { animation: none; stroke-width: 1; }
+.orbit-dial .dial-plan-track { fill: none; stroke: var(--inst-line); stroke-width: 5; }
+.orbit-dial .dial-plan-value { fill: none; stroke: var(--data-plan); stroke-width: 5; stroke-linecap: round; }
+.orbit-dial .dial-link:hover .dial-seg, .orbit-dial .dial-link:focus-visible .dial-seg { stroke-width: 11; }
+.dial-k { font: 500 10px/1.4 var(--font-sans); letter-spacing: 0; text-transform: none; }
+.dial-value { letter-spacing: -0.035em; }
+.dial-explainer { width: 100%; display: grid; gap: 14px; }
+.dial-sections-key > p { display: flex; justify-content: space-between; gap: 12px; font-size: 12px; color: var(--muted); margin-bottom: 10px; }
+.dial-sections-key > p strong { color: var(--ink); }
+.dial-sections-key ul { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 6px 14px; }
+.dial-sections-key li { display: grid; grid-template-columns: 8px minmax(0,1fr); gap: 6px; align-items: baseline; font-size: 11px; line-height: 1.4; color: var(--ink); }
+.dial-sections-key li i { width: 7px; height: 7px; border-radius: 2px; }
+.dial-sections-key li > span:last-child { grid-column: 2; color: var(--muted); font-size: 10px; margin-top: -6px; }
+.dial-legend { gap: 8px; padding-top: 12px; border-top: 1px solid var(--line); }
+.dial-legend > div { grid-template-columns: minmax(0,1fr) auto; align-items: center; gap: 12px; }
+.dial-legend dt { font: 500 11px/1.4 var(--font-sans); letter-spacing: 0; text-transform: none; color: var(--muted); }
+.dial-legend dd { font: 600 16px var(--font-display); }
+.dial-legend .lg-swatch.outer { width: 14px; height: 4px; background: var(--data-plan); }
+.dial-legend .lg-swatch.sat { background: var(--data-day); }
+.dial-note { font-size: 10px; line-height: 1.6; color: var(--muted); }
+@media (max-width: 979px) { .obs-dial { width: min(100%,600px); grid-template-columns: minmax(180px,1fr) minmax(160px,1fr); align-items: center; gap: 24px; } .obs-dial .orbit-dial { width: 100% !important; height: auto !important; aspect-ratio: 1; } .obs-dial .orbit-dial svg { width: 100%; height: 100%; max-width: none; } }
+@media (max-width: 520px) { .obs-dial { grid-template-columns: minmax(0,1fr); max-width: 340px; } .obs-dial .orbit-dial { max-width: 260px; } }
