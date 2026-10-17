@@ -15,6 +15,19 @@ function sample(): Workspace {
   return {startup,sections,tasks,completion:calculateCompletion(sections),roadmapProgress:calculateRoadmapProgress(tasks),mode:"demo"};
 }
 describe("language projections", () => {
+  it("localizes seed quotations after a plan was regenerated in another language", () => {
+    const raw=sample();
+    const regenerated=generateRoadmap(raw.startup,raw.sections,"ru");
+    raw.tasks=raw.tasks.map((task,i)=>({...task,...regenerated[i]}));
+    expect(raw.tasks[0].deliverable).toContain(demoStrategy.icp.painPoint);
+    const view=localizeWorkspace(raw,"ru");
+    expect(view.tasks[0].deliverable).not.toContain(demoStrategy.icp.painPoint);
+    expect(view.tasks[0].deliverable).toContain("Данные клиентских интервью");
+    const kk=localizeWorkspace(raw,"kk");
+    expect(kk.tasks[0].title).toContain("сұхбат");
+    expect(kk.tasks[0].deliverable).not.toContain(demoStrategy.icp.painPoint);
+    expect(view.tasks.map(t=>[t.id,t.ruleKey,t.revision])).toEqual(raw.tasks.map(t=>[t.id,t.ruleKey,t.revision]));
+  });
   it("localizes existing English demo copies and their generated tasks without writing or changing scores", () => {
     const raw=sample(), before=JSON.stringify(raw), original=computeInsights(raw);
     for (const locale of ["ru","kk"] as const) {

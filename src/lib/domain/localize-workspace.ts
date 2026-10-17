@@ -87,9 +87,13 @@ export function localizeWorkspace(raw: Workspace, locale: PlanLocale): Workspace
   const target = generateRoadmap(view.startup, view.sections, locale);
   // Match the actual saved template, not merely its rule key. An older task with
   // changed inputs, a manual edit, custom work or an AI proposal stays verbatim.
-  const plans = (["en", "ru", "kk"] as const).map(l => {
-    const source = synthetic ? demoView(raw, l) : raw;
-    return generateRoadmap(source.startup, source.sections, l);
+  const plans = (["en", "ru", "kk"] as const).flatMap(l => {
+    const savedInputs = generateRoadmap(raw.startup, raw.sections, l);
+    // Regenerating in RU/KK may have stored a localized system template with
+    // quotations from the original English seed. Recognize that safe form too.
+    if (!synthetic) return [savedInputs];
+    const source = demoView(raw, l);
+    return [savedInputs, generateRoadmap(source.startup, source.sections, l)];
   });
   const candidates = plans.flatMap(plan => plan.map((task,index)=>({task,index})));
   return { ...view, tasks: raw.tasks.map(task => {

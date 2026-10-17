@@ -26,7 +26,7 @@ Market, readiness, completion and pricing calculations continue to use raw saved
 
 ## Verification record
 
-`npm run verify`: lint, strict types, 88 domain/SQL tests and production build. Browser results and final captures are recorded in [V4-COMPLETION.md](../V4-COMPLETION.md) and `docs/verification/v4/`.
+`npm run verify`: lint, strict types, 89 domain/SQL tests and production build. Browser results and final captures are recorded in [V4-COMPLETION.md](../V4-COMPLETION.md) and `docs/verification/v4/`.
 
 The independent read-only critic found an untranslated derived category, a narrow pause target and a Flow reduced-motion timer issue; all three were corrected in the implementation batch. The manual design detector also flagged existing neutral Ledger selection marks, a CSS triangle arrow and the ICE bar endpoint as card stripes. They encode navigation/geometry/data rather than decorative card borders. Its stroke-width-transition warning was addressed by retaining only a stroke-colour transition. These warnings are not reported as a clean detector run.
 

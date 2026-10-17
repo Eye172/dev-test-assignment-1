@@ -15,6 +15,15 @@ test("old demo copy switches language without rewriting saved work", async ({pag
   expect(after.startup).toEqual(ws.startup);
   expect(after.sections).toEqual(ws.sections);
   expect(after.tasks).toEqual(ws.tasks);
+  // Explicit regeneration writes RU instructions quoting the saved English
+  // seed. The KK display still localizes those untouched example quotations.
+  const regenerated=await page.request.post(`/api/startups/${ws.startup.id}/roadmap`,{data:{locale:"ru"}});
+  expect(regenerated.ok()).toBe(true);
+  const generated=(await regenerated.json()).data;
+  expect(generated.tasks.some((task:{deliverable:string})=>task.deliverable.includes("Customer interview evidence"))).toBe(true);
+  await page.reload();
+  await expect(page.locator(".obs-desc")).toContainText("Клиенттерді зерттеу");
+  await expect(page.locator(".obs-next-detail")).not.toContainText(/Customer interview|A clear customer|Invite 20 SaaS/);
 });
 
 test("black hole runs autonomously and ASCII keeps five-pixel cells and scene bounds", async ({page}) => {
