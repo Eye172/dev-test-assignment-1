@@ -59,6 +59,12 @@ test("light black hole keeps native resolution, runs autonomously and respects p
   await page.getByRole("button",{name:"Play animation",exact:true}).click();
   const still=Number(await canvas.getAttribute("data-frame"));
   expect(still).toBeLessThan(4);
+  // Real interaction under active full motion remains covered at the bounded CI viewport.
+  await page.emulateMedia({reducedMotion:"no-preference"});
+  await expect.poll(async()=>Number(await canvas.getAttribute("data-frame")),{timeout:30000}).toBeGreaterThan(still+2);
+  await page.locator(".land-copy .land-actions").getByRole("link",{name:"Create startup",exact:true}).click();
+  await expect(page).toHaveURL(/\/startups\/new$/);
+  await expect(page.getByRole("button",{name:/^Free form/})).toBeVisible();
 });
 
 test("landing example spreads hypotheses across the map and uses concrete plan labels",async({page})=>{

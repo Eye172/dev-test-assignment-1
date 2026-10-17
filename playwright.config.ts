@@ -10,7 +10,9 @@ export default defineConfig({
   testDir: "./e2e",fullyParallel: false,workers: 1,timeout: 60000,
   expect: { timeout: 10000 },retries: process.env.CI ? 1 : 0,
   reporter: [["list"],["html",{ open: "never" }]],
-  use: { baseURL: remoteBaseURL || "http://127.0.0.1:3000",trace: "retain-on-failure",screenshot: "only-on-failure",video: "retain-on-failure" },
+  // Functional acceptance should not benchmark the CI software GPU at full-screen resolution.
+  // design.spec.ts explicitly enables full motion, native pixels, pause/resume and CTA interaction.
+  use: { reducedMotion: "reduce",baseURL: remoteBaseURL || "http://127.0.0.1:3000",trace: "retain-on-failure",screenshot: "only-on-failure",video: "retain-on-failure" },
   projects: [
     { name: "api",testMatch: "api.spec.ts",use: { extraHTTPHeaders: clientHeaders(1) } },
     { name: "desktop",testIgnore: "api.spec.ts",use: { ...devices["Desktop Chrome"],viewport: { width: 1440,height: 1000 },extraHTTPHeaders: clientHeaders(2) } },
