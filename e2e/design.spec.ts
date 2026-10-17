@@ -31,11 +31,15 @@ test("old demo copy switches language without rewriting saved work", async ({pag
   await expect(page.locator(".obs-next-detail:visible")).not.toContainText(/Customer interview|A clear customer|Invite 20 SaaS/);
 });
 
+test.describe("bounded native-pixel motion smoke",()=>{
+  // Software-GPU CI checks behavior at one physical pixel per CSS pixel.
+  // Regular responsive tests retain the full iPhone device profile and DPR.
+  test.use({deviceScaleFactor:1});
 test("light black hole keeps native resolution, runs autonomously and respects pause", async ({page,isMobile}) => {
   // CI uses a software GPU. Bound this live-render smoke test's pixel budget;
   // the full-size layouts are covered by the responsive and accessibility suite.
   test.setTimeout(120000);
-  if (!isMobile) await page.setViewportSize({width:960,height:740});
+  if (!isMobile) await page.setViewportSize({width:800,height:600});
   await page.emulateMedia({reducedMotion:"no-preference"});
   await page.goto("/?lang=en&ui=observatory");
   const hole=page.locator(".v4-blackhole"), canvas=hole.locator("canvas");
@@ -44,7 +48,8 @@ test("light black hole keeps native resolution, runs autonomously and respects p
   await expect.poll(async()=>Number(await canvas.getAttribute("data-frame")),{timeout:30000}).toBeGreaterThan(first+2);
   await expect(hole).toHaveAttribute("data-renderer","light");
   await expect(page.getByRole("button",{name:/ASCII/})).toHaveCount(0);
-  const resolution=await canvas.evaluate(el=>{const c=el as HTMLCanvasElement;return {width:c.width,height:c.height,cssWidth:c.clientWidth,cssHeight:c.clientHeight};});
+  const resolution=await canvas.evaluate(el=>{const c=el as HTMLCanvasElement;return {width:c.width,height:c.height,cssWidth:c.clientWidth,cssHeight:c.clientHeight,devicePixelRatio:window.devicePixelRatio};});
+  await test.info().attach("native-canvas-resolution",{body:JSON.stringify(resolution),contentType:"application/json"});
   expect(resolution.width).toBeGreaterThanOrEqual(resolution.cssWidth);
   expect(resolution.height).toBeGreaterThanOrEqual(resolution.cssHeight);
   await page.getByRole("button",{name:"Pause animation",exact:true}).click();
@@ -59,12 +64,18 @@ test("light black hole keeps native resolution, runs autonomously and respects p
   await page.getByRole("button",{name:"Play animation",exact:true}).click();
   const still=Number(await canvas.getAttribute("data-frame"));
   expect(still).toBeLessThan(4);
+  const reducedStable=await canvas.evaluate(async el=>{
+    await new Promise(r=>setTimeout(r,150)); const frame=el.dataset.frame;
+    await new Promise(r=>setTimeout(r,350)); return frame===el.dataset.frame;
+  });
+  expect(reducedStable).toBe(true);
   // Real interaction under active full motion remains covered at the bounded CI viewport.
   await page.emulateMedia({reducedMotion:"no-preference"});
   await expect.poll(async()=>Number(await canvas.getAttribute("data-frame")),{timeout:30000}).toBeGreaterThan(still+2);
   await page.locator(".land-copy .land-actions").getByRole("link",{name:"Create startup",exact:true}).click();
   await expect(page).toHaveURL(/\/startups\/new$/);
   await expect(page.getByRole("button",{name:/^Free form/})).toBeVisible();
+});
 });
 
 test("landing example spreads hypotheses across the map and uses concrete plan labels",async({page})=>{
