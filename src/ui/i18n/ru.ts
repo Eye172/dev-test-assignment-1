@@ -19,6 +19,7 @@ const ru1: Partial<Record<MessageKey, string>> = {
   "chrome.theme.light": "Светлая",
   "chrome.theme.dark": "Тёмная",
   "chrome.share": "Скопировать ссылку",
+  "chrome.shareMenu": "Поделиться и экспорт",
   "chrome.shareDone": "Ссылка на рабочее пространство скопирована",
   "chrome.export": "Скачать JSON-копию",
   "chrome.search": "Перейти к…",

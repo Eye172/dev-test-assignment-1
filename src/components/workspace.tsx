@@ -239,7 +239,7 @@ function ShareMenu({ startupId, onCopy }: { startupId: string; onCopy: () => voi
   const [open, setOpen] = useState(false);
   const ref = useDismiss<HTMLDivElement>(open, () => setOpen(false));
   return <div className="v4-share" ref={ref}>
-    <button type="button" className="v4-icon-button" aria-label={t("chrome.share")} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(o => !o)}><Share2 size={16}/></button>
+    <button type="button" className="v4-icon-button" aria-label={t("chrome.shareMenu")} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(o => !o)}><Share2 size={16}/></button>
     <AnimatePresence>{open && <motion.div role="menu" className="v4-popover v4-menu" initial={{ opacity: 0, y: -4, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, transition: { duration: 0.1 } }} transition={{ duration: 0.18, ease }}>
       <button type="button" role="menuitem" onClick={() => { setOpen(false); onCopy(); }}><Link2 size={15} aria-hidden/>{t("chrome.share")}</button>
       <a role="menuitem" href={`/api/startups/${startupId}/export`} download onClick={() => setOpen(false)}><ArrowDownToLine size={15} aria-hidden/>{t("chrome.export")}</a>

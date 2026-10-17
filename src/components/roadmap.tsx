@@ -152,7 +152,7 @@ function ProgressTrack({ progress: p, tasks, activePlanCreatedAt }: { progress: 
   const { t } = useDisplay();
   const weeks = weekDone(tasks);
   const day = hydrated ? planDay(tasks.filter(t => !t.archived),activePlanCreatedAt) : null;
-  return <section className="roadmap-readout instrument" aria-label={t("ov.planProgress")}>
+  return <section className="roadmap-readout instrument" aria-label={t("rm.progress")}>
     <div className="readout-main">
       <p className="readout xl"><Counter value={p.percentage}/><small>%</small></p>
       <p className="inst-caption">{t("rm.ofActionable")}</p>
@@ -233,8 +233,8 @@ function TaskCard({ task, compact, draggable, onDropWeek, onHoverWeek }: { task:
           {task.source === "ai" && <span className="badge">{t("rm.aiReviewed")}</span>}
           {rule && task.rationale && !compact && <details className="why"><summary>{t("rm.whyTask")}</summary><p>{task.rationale}</p><p className="faint rule-label">{t("rm.rule")}: {rule}</p></details>}
           <span className="task-buttons">
-            <button type="button" className="icon-button small" aria-label={`${t("common.edit")}: ${task.title}`} disabled={busy || !hydrated} onClick={() => setEditing(true)}><Pencil size={15}/></button>
-            <button type="button" className="icon-button small" aria-label={`${t("rm.archive")}: ${task.title}`} disabled={busy || !hydrated} onClick={() => void run({ archived: true }, t("rm.archivedDone"))}><Archive size={15}/></button>
+            <button type="button" className="icon-button small" aria-label={`${t("common.edit")} ${task.title}`} disabled={busy || !hydrated} onClick={() => setEditing(true)}><Pencil size={15}/></button>
+            <button type="button" className="icon-button small" aria-label={`${t("rm.archive")} ${task.title}`} disabled={busy || !hydrated} onClick={() => void run({ archived: true }, t("rm.archivedDone"))}><Archive size={15}/></button>
           </span>
         </div>
       </motion.div>}

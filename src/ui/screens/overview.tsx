@@ -97,7 +97,7 @@ function ObservatoryOverview() {
     </div>
 
     <motion.section className="obs-panel obs-profile" aria-labelledby="profile-title" {...enter(6)}>
-      <div className="obs-section-head"><h2 id="profile-title">{t("ov.profile")}</h2><button type="button" className="v4-link" onClick={() => setEditing(true)}>{t("ov.editProfile")}</button></div>
+      <div className="obs-section-head"><h2 id="profile-title">{t("ov.profile")}</h2><button type="button" className="v4-link" onClick={() => setEditing(true)}>{t("common.edit")}</button></div>
       <ProfileFacts startup={startup}/>
       {startup.context && <p className="obs-context">{startup.context}</p>}
     </motion.section>

@@ -207,3 +207,17 @@ a.flow-node:hover { border-color: var(--ink); transform: translateY(-2px); }
 .flow-inspector .v4-sizing { grid-template-columns: minmax(0, 1fr); }
 .flow-inspector .v4-sizing-op { padding: 0; text-align: left; }
 .flow-inspector .v4-positioning { font-size: 15px; }
+
+/* Phone fixes */
+.v4-app { overflow-x: clip; }
+.led-dashboard { grid-template-columns: minmax(0, 1fr); }
+.led-doc, .led-chapter-body, .flow-board-main, .flow-inspector, .v4-grid > * { min-width: 0; }
+@media (min-width: 1080px) { .led-dashboard { grid-template-columns: 220px minmax(0, 1fr); } }
+@media (max-width: 959px) { .v4-ws.is-observatory .v4-main { padding-bottom: 120px; } }
+@media (max-width: 560px) {
+  .v4-crumb-sep, .v4-ws .v4-crumb { display: none; }
+  .v4-search { width: 36px; padding: 0; justify-content: center; }
+  .obs-dial .orbit-dial, .obs-dial svg { max-width: 260px; }
+  .led-figure .num { font-size: 48px; }
+  .v4-panel, .obs-panel, .flow-panel { padding: 16px; }
+}

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { motion, useScroll, useTransform } from "motion/react";
 import { ArrowRight, ArrowUpRight } from "lucide-react";
 import type { Insights } from "@/lib/domain/insights";
-import { agentCatalog, aiRoles } from "@/lib/domain/ai";
+import { aiRoles } from "@/lib/domain/ai";
 import { useDisplay } from "../display";
 import { Brand, DemoLink, DisplayMenu, ease } from "../kit";
 import { AssumptionMap, ChannelBullseye, ReadinessRadar } from "../viz";
@@ -139,7 +139,7 @@ function Team() {
     <div className="land-section-head"><h2 id="team-title">{t("land.ai.title")}</h2><p>{t("land.ai.lede")}</p></div>
     <ol className="land-agents">{aiRoles.map((role, i) => <motion.li key={role} initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ duration: 0.4, delay: i * 0.05 }} style={{ "--i": i } as CSSProperties}>
       <span className="land-agent-orbit" aria-hidden/>
-      <h3>{agentCatalog[role].name}</h3><p>{agentCatalog[role].description}</p>
+      <h3>{t(`agent.${role}.name`)}</h3><p>{t(`agent.${role}.desc`)}</p>
     </motion.li>)}</ol>
   </section>;
 }

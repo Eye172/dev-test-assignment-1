@@ -7,6 +7,7 @@ export const en4 = {
   "ai.opening": "Opening your studio…",
   "ai.meet": "Meet your GTM team.",
   "ai.meetLede": "Brief interpreter, researcher, strategist, monetisation specialist, experiment designer and an independent evidence critic.",
+  "ai.code": "Studio access code",
   "ai.unlock": "Unlock studio",
   "ai.notConfigured": "The owner needs to add the OpenAI API key and an access code to the server environment.",
   "ai.keyNote": "The server keeps the API key. AI briefs and observations require owner access. Profile and strategy remain part of the shared demo.",

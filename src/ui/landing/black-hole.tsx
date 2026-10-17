@@ -87,8 +87,8 @@ void main(){
 
 type Variant = "cinematic" | "high";
 const settings: Record<Variant, { incl: number; dist: number; center: [number, number]; scale: number; phone: { center: [number, number]; scale: number } }> = {
-  cinematic: { incl: 0.16, dist: 24, center: [0.75, 0.5], scale: 0.66, phone: { center: [0.5, 0.78], scale: 0.48 } },
-  high: { incl: 0.58, dist: 26, center: [0.78, 0.56], scale: 0.56, phone: { center: [0.5, 0.82], scale: 0.42 } },
+  cinematic: { incl: 0.16, dist: 24, center: [0.75, 0.5], scale: 0.66, phone: { center: [0.62, 0.16], scale: 0.5 } },
+  high: { incl: 0.58, dist: 26, center: [0.78, 0.56], scale: 0.56, phone: { center: [0.6, 0.14], scale: 0.44 } },
 };
 
 export function BlackHole({ variant = "cinematic", className = "" }: { variant?: Variant; className?: string }) {

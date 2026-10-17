@@ -19,6 +19,7 @@ const kk1: Partial<Record<MessageKey, string>> = {
   "chrome.theme.light": "Ашық",
   "chrome.theme.dark": "Қараңғы",
   "chrome.share": "Сілтемені көшіру",
+  "chrome.shareMenu": "Бөлісу және экспорт",
   "chrome.shareDone": "Жұмыс кеңістігінің сілтемесі көшірілді",
   "chrome.export": "JSON көшірмесін жүктеу",
   "chrome.search": "Өту…",
