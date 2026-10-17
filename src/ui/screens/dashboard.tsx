@@ -97,7 +97,7 @@ function ObservatoryDashboard() {
       <Panel id="decisions" title={t("dash.saved")} prov="founder"><Decisions data={data}/></Panel>
       <Panel id="gaps" title={t("ov.gaps")}><Gaps data={data}/></Panel>
       <Panel id="next" title={t("dash.nextActions")} wide><SuggestedSteps data={data}/></Panel>
-      <Panel id="readiness" title={t("readiness.overall")} explain={t("readiness.explain")}><ReadinessRadar axes={insights.readiness.axes} size={300}/></Panel>
+      <Panel id="readiness" title={t("readiness.overall")}><ReadinessRadar axes={insights.readiness.axes} size={300}/></Panel>
       <Panel id="assumptions" title={t("amap.title")} explain={t("amap.explain")}><AssumptionMap items={insights.assumptions}/></Panel>
       <Panel id="channels" title={t("bull.title")} explain={t("bull.explain")} wide><ChannelBullseye channels={insights.channels} model={workspace.startup.businessModel} stage={workspace.startup.stage}/></Panel>
       <Panel id="evidence" title={t("ladder.title")} explain={t("ladder.explain")}><EvidenceLadder ladder={insights.ladder}/></Panel>
@@ -105,7 +105,6 @@ function ObservatoryDashboard() {
       <Panel id="sizing" title={t("size.title")} explain={t("size.explain")} prov="founder" wide><SizingCalculator price={insights.price} market={workspace.startup.targetMarket} initial={savedAccounts(workspace.startup)} onSave={saveSizing}/></Panel>
       <Panel id="load" title={t("load.title")} explain={t("load.explain")} wide><LoadStrip load={insights.load}/></Panel>
     </div>
-    <p className="v4-honest">{t("ov.honest")}</p>
   </div>;
 }
 
@@ -144,7 +143,7 @@ function LedgerDashboard() {
       <Chapter id="decisions" n={2} title={t("dash.saved")} prov="founder"><Decisions data={data} rich/></Chapter>
       <Chapter id="gaps" n={3} title={t("ov.gaps")}><Gaps data={data}/></Chapter>
       <Chapter id="next" n={4} title={t("dash.nextActions")}><SuggestedSteps data={data}/></Chapter>
-      <Chapter id="readiness" n={5} title={t("readiness.overall")} explain={t("readiness.explain")}>
+      <Chapter id="readiness" n={5} title={t("readiness.overall")}>
         <div className="led-multiples">{insights.readiness.axes.map(a => <div key={a.key} className="led-multiple">
           <div className="led-multiple-head"><span>{t(`axis.${a.key}`)}</span><span className="num mono">{a.score}</span></div>
           <span className="led-bar" style={{ "--v": a.score / 100 } as React.CSSProperties}/>
@@ -157,7 +156,6 @@ function LedgerDashboard() {
       <Chapter id="positioning" n={9} title={t("pos.title")} explain={t("pos.explain")}><PositioningStatement slots={insights.positioning.slots} name={workspace.startup.name}/><p className="v4-footnote">{t("pos.filled", { n: insights.positioning.filled })}</p></Chapter>
       <Chapter id="sizing" n={10} title={t("size.title")} explain={t("size.explain")} prov="founder"><SizingCalculator price={insights.price} market={workspace.startup.targetMarket} initial={savedAccounts(workspace.startup)} onSave={saveSizing}/></Chapter>
       <Chapter id="load" n={11} title={t("load.title")} explain={t("load.explain")}><LoadStrip load={insights.load}/></Chapter>
-      <p className="v4-honest">{t("ov.honest")}</p>
     </article>
   </div>;
 }
@@ -203,6 +201,5 @@ function FlowDashboard() {
         <GoLink href={`${base}/roadmap`}>{t("ov.openRoadmap")}</GoLink>
       </aside>
     </div>
-    <p className="v4-honest">{t("ov.honest")}</p>
   </div>;
 }

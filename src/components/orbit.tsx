@@ -150,6 +150,5 @@ export function DialLegend({ model }: { model: OrbitModel }) {
       <div><dt><span className="lg-swatch outer"/>{t("dial.execution")}</dt><dd className="num">{model.hasPlan ? `${model.plan}%` : "—"}</dd></div>
       <div><dt><span className="lg-swatch sat"/>{t("dial.clock")}</dt><dd className="num">{model.planDay ? `${model.planDay}/30` : "—"}</dd></div>
     </dl>
-    <p className="dial-note">{t("dial.caption")}</p>
   </div>;
 }

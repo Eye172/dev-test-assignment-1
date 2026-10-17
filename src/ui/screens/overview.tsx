@@ -102,7 +102,6 @@ function ObservatoryOverview() {
       <ProfileFacts startup={startup}/>
       {startup.context && <p className="obs-context">{startup.context}</p>}
     </motion.section>
-    <p className="v4-honest">{t("ov.honest")}</p>
     <ProfileEditor open={editing} onClose={() => setEditing(false)}/>
   </div>;
 }
@@ -156,7 +155,6 @@ function LedgerOverview() {
       {active.length > 0 && <RoadmapBar progress={workspace.roadmapProgress}/>}
       <p className="led-more"><GoLink href={`${base}/dashboard`}>{t("ov.openDashboard")}</GoLink></p>
     </section>
-    <p className="v4-honest">{t("ov.honest")}</p>
     <ProfileEditor open={editing} onClose={() => setEditing(false)}/>
   </article>;
 }
@@ -246,7 +244,6 @@ function FlowOverview() {
         <ReadinessRadar axes={insights.readiness.axes} size={240} compact/>
       </section>
     </div>
-    <p className="v4-honest">{t("ov.honest")}</p>
     <ProfileEditor open={editing} onClose={() => setEditing(false)}/>
   </div>;
 }

@@ -31,7 +31,7 @@ test("old demo copy switches language without rewriting saved work", async ({pag
   await expect(page.locator(".obs-next-detail:visible")).not.toContainText(/Customer interview|A clear customer|Invite 20 SaaS/);
 });
 
-test("black hole runs autonomously and ASCII keeps five-pixel cells and scene bounds", async ({page,isMobile}) => {
+test("light black hole keeps native resolution, runs autonomously and respects pause", async ({page,isMobile}) => {
   // CI uses a software GPU. Bound this live-render smoke test's pixel budget;
   // the full-size layouts are covered by the responsive and accessibility suite.
   test.setTimeout(120000);
@@ -42,13 +42,11 @@ test("black hole runs autonomously and ASCII keeps five-pixel cells and scene bo
   await expect(hole).toHaveClass(/is-ready/,{timeout:30000});
   const first=Number(await canvas.getAttribute("data-frame"));
   await expect.poll(async()=>Number(await canvas.getAttribute("data-frame")),{timeout:30000}).toBeGreaterThan(first+2);
-  const bounds=await canvas.evaluate(el=>({width:el.clientWidth,height:el.clientHeight}));
-  await page.getByRole("button",{name:"ASCII · 5 px",exact:true}).click();
-  await expect(hole).toHaveAttribute("data-renderer","ascii");
-  await expect(hole).toHaveAttribute("data-cell-px","5");
-  expect(await canvas.evaluate(el=>({width:el.clientWidth,height:el.clientHeight}))).toEqual(bounds);
-  const asciiFirst=Number(await canvas.getAttribute("data-frame"));
-  await expect.poll(async()=>Number(await canvas.getAttribute("data-frame")),{timeout:30000}).toBeGreaterThan(asciiFirst+2);
+  await expect(hole).toHaveAttribute("data-renderer","light");
+  await expect(page.getByRole("button",{name:/ASCII/})).toHaveCount(0);
+  const resolution=await canvas.evaluate(el=>{const c=el as HTMLCanvasElement;return {width:c.width,height:c.height,cssWidth:c.clientWidth,cssHeight:c.clientHeight};});
+  expect(resolution.width).toBeGreaterThanOrEqual(resolution.cssWidth);
+  expect(resolution.height).toBeGreaterThanOrEqual(resolution.cssHeight);
   await page.getByRole("button",{name:"Pause animation",exact:true}).click();
   await expect(page.getByRole("button",{name:"Play animation",exact:true})).toBeVisible();
   // ResizeObserver may draw a final still after renderer reconfiguration.
@@ -61,4 +59,18 @@ test("black hole runs autonomously and ASCII keeps five-pixel cells and scene bo
   await page.getByRole("button",{name:"Play animation",exact:true}).click();
   const still=Number(await canvas.getAttribute("data-frame"));
   expect(still).toBeLessThan(4);
+});
+
+test("landing example spreads hypotheses across the map and uses concrete plan labels",async({page})=>{
+  await page.emulateMedia({reducedMotion:"reduce"});
+  await page.goto("/?lang=ru&ui=observatory");
+  const map=page.locator(".land-model .v4-amap");
+  for(const quadrant of ["test_first","proceed","park","monitor"])
+    await expect(map.locator(`.v4-amap-dot.is-${quadrant}`).first()).toBeAttached();
+  await expect(page.locator(".v4-radar-scores")).toContainText("Целевой клиент");
+  await expect(page.locator(".v4-radar-scores")).toContainText("Гипотезы и проверки");
+  await expect(page.locator(".v4-radar-why")).toHaveCount(0);
+  await page.locator(".v4-radar-scores button").first().click();
+  await expect(page.locator(".v4-radar-why")).toContainText("Целевой клиент");
+  await expect(page.locator(".land-note,.v4-demo-tag")).toHaveCount(0);
 });

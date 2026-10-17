@@ -68,6 +68,6 @@ input, textarea { caret-color: var(--accent-ink); }
 /* Data colours have distinct jobs; the brand/action accent remains green. */
 .v4-app {
   --data-1: #36d99b; --data-2: #70dfc3; --data-3: #79cceb;
-  --data-4: #b3acf0; --data-5: #e6c17b;
-  --data-plan: #79cceb; --data-day: #e6c17b;
+  --data-4: #b3acf0; --data-5: #b6f6d2;
+  --data-plan: #79cceb; --data-day: #9cf6bd;
 }

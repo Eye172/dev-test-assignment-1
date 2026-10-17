@@ -13,7 +13,7 @@ import { confirmLeave, useHydrated } from "./ui";
 import { OrbitDial, useOrbitModel } from "./orbit";
 import { CommandPalette } from "./command-palette";
 import { useDisplay } from "@/ui/display";
-import { Brand, DemoTag, DisplayMenu, ease } from "@/ui/kit";
+import { Brand, DisplayMenu, ease } from "@/ui/kit";
 import type { MessageKey } from "@/ui/i18n/en";
 
 type WorkspaceContext = {
@@ -114,7 +114,6 @@ export function WorkspaceShell({ initial, serverNow, children }: { initial: Work
       <button type="button" className="v4-search" onClick={() => setPaletteOpen(true)} aria-label={`${t("chrome.search")} ⌘K`} aria-keyshortcuts="Control+K Meta+K">
         <Search size={15} aria-hidden/><span className="v4-hide-sm">{t("chrome.search")}</span><kbd aria-hidden className="v4-hide-sm">⌘K</kbd>
       </button>
-      <DemoTag/>
       <DisplayMenu/>
       <ShareMenu startupId={workspace.startup.id} onCopy={() => void copyLink()}/>
     </div>

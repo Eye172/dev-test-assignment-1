@@ -9,6 +9,7 @@ import { Brand, DemoLink, DisplayMenu } from "../kit";
 import { AssumptionMap, ChannelBullseye, ReadinessRadar } from "../viz";
 import { SignalFlow } from "./signal-flow";
 import { BlackHole } from "./black-hole";
+import { exampleMap } from "./example-map";
 
 export type LandingData = { insights: Insights; name: string; segment: string; model: string; stage: string; demoId: string };
 const steps = ["describe", "decide", "model", "plan", "learn"] as const;
@@ -23,7 +24,6 @@ export function Landing({ data }: { data: LandingData }) {
     <main id="content">
       <Chain/>
       <Models data={data}/>
-      <Honest/>
     </main>
     <LandingFooter demoId={data.demoId}/>
   </div>;
@@ -34,7 +34,7 @@ function LandingHeader() {
   return <header className="land-header">
     <Brand/>
     <nav aria-label="Primary" className="land-nav">
-      <a href="#chain">{t("land.chain.title")}</a><a href="#models">{t("dash.models")}</a><a href="#principles">{t("land.honest.is")}</a>
+      <a href="#chain">{t("land.chain.title")}</a><a href="#models">{t("dash.models")}</a>
     </nav>
     <div className="land-header-actions"><DisplayMenu/><Link href="/startups/new" className="v4-button is-primary is-small">{t("land.cta.create")}</Link></div>
   </header>;
@@ -50,7 +50,6 @@ function HeroCopy({ title, lede }: { title: string; lede: string }) {
       <Link href="/startups/new" className="v4-button is-primary">{t("land.cta.create")}<ArrowRight size={16} aria-hidden className="v4-arrow"/></Link>
       <DemoLink className="v4-button"/>
     </div>
-    <p className="land-note mono">{t("land.note")}</p>
   </div>;
 }
 
@@ -141,21 +140,13 @@ function Models({ data }: { data: LandingData }) {
       </figure>
       <figure data-slide className="land-model">
         <figcaption><h3>{t("model.assumptions")}</h3><p>{t("model.assumptions.detail")}</p></figcaption>
-        <div className="land-model-art"><AssumptionMap items={data.insights.assumptions} list={false}/></div>
+        <div className="land-model-art"><AssumptionMap items={exampleMap(data.insights.assumptions)} list={false}/></div>
       </figure>
       <figure data-slide className="land-model">
         <figcaption><h3>{t("model.channels")}</h3><p>{t("model.channels.detail")}</p></figcaption>
         <div className="land-model-art"><ChannelBullseye channels={data.insights.channels} model={data.model} stage={data.stage}/></div>
       </figure>
     </div>
-  </section>;
-}
-
-function Honest() {
-  const { t } = useDisplay();
-  return <section data-slide id="principles" className="land-section land-honest" aria-label={t("land.honest.is")}>
-    <div><h2>{t("land.honest.is")}</h2><ul>{(["is1", "is2", "is3"] as const).map(k => <li key={k}>{t(`land.honest.${k}`)}</li>)}</ul></div>
-    <div><h2>{t("land.honest.isnt")}</h2><ul className="is-not">{(["isnt1", "isnt2", "isnt3"] as const).map(k => <li key={k}>{t(`land.honest.${k}`)}</li>)}</ul></div>
   </section>;
 }
 
@@ -200,12 +191,10 @@ function useSlideEntries(root: React.RefObject<HTMLDivElement | null>, version: 
 
 function HeroScene({ variant, y, opacity }: { variant: "cinematic" | "high"; y?: import("motion/react").MotionValue<number>; opacity?: import("motion/react").MotionValue<number> }) {
   const { t } = useDisplay();
-  const [mode, setMode] = useState<"light" | "ascii">("light");
   const [paused, setPaused] = useState(false);
   return <>
-    <motion.div className="land-scene" style={{ y, opacity }}><BlackHole variant={variant} mode={mode} paused={paused}/></motion.div>
-    <div className="land-scene-controls" role="group" aria-label={t("scene.mode")}>
-      {(["light", "ascii"] as const).map(m => <button key={m} type="button" aria-pressed={mode === m} onClick={() => setMode(m)}>{t(m === "light" ? "scene.cinema" : "scene.ascii")}</button>)}
+    <motion.div className="land-scene" style={{ y, opacity }}><BlackHole variant={variant} paused={paused}/></motion.div>
+    <div className="land-scene-controls">
       <button type="button" className="land-scene-pause" aria-label={t(paused ? "scene.play" : "scene.pause")} onClick={() => setPaused(p => !p)}>{paused ? <Play size={14} aria-hidden/> : <Pause size={14} aria-hidden/>}</button>
     </div>
   </>;

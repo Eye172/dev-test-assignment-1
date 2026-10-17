@@ -9,9 +9,9 @@
 
 .land-hero { position: relative; min-height: 100dvh; display: grid; align-items: center; padding: 120px var(--gutter) 80px; isolation: isolate; }
 .land-scene { position: absolute; inset: 0; z-index: -1; }
-.v4-blackhole { position: absolute; inset: 0; opacity: 0; transition: opacity 1.4s var(--ease-out); }
-.v4-blackhole.is-ready { opacity: 1; }
-.v4-blackhole canvas { width: 100%; height: 100%; display: block; }
+.v4-blackhole { position: absolute; inset: 0; }
+.v4-blackhole canvas { width: 100%; height: 100%; display: block; opacity: 0; transition: opacity 1.4s var(--ease-out); }
+.v4-blackhole.is-ready canvas { opacity: 1; }
 .land-copy { max-width: 640px; position: relative; }
 .land-copy h1 { font-size: clamp(2.6rem, 1.4rem + 4.6vw, 5.4rem); line-height: 0.98; letter-spacing: -0.045em; }
 :lang(ru) .land-copy h1, :lang(kk) .land-copy h1 { font-size: clamp(2.3rem, 1.3rem + 3.6vw, 4.4rem); letter-spacing: -0.03em; line-height: 1.02; }
@@ -20,7 +20,6 @@
 @keyframes land-word { from { transform: translateY(105%); } to { transform: none; } }
 .land-lede { margin-top: 22px; font-size: clamp(16px, 0.5vw + 14px, 19px); line-height: 1.6; color: var(--muted); max-width: 52ch; animation: land-fade 0.9s var(--ease-out) 0.5s both; }
 .land-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 30px; animation: land-fade 0.9s var(--ease-out) 0.65s both; }
-.land-note { margin-top: 16px; color: var(--faint); font-size: 11.5px; animation: land-fade 0.9s var(--ease-out) 0.8s both; }
 @keyframes land-fade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 .land-scroll { position: absolute; left: 50%; bottom: 28px; translate: -50% 0; width: 24px; height: 38px; border: 1.5px solid var(--line-strong); border-radius: 12px; }
 .land-scroll span { position: absolute; left: 50%; top: 8px; width: 2px; height: 7px; margin-left: -1px; border-radius: 1px; background: var(--ink); animation: land-scroll 1.8s var(--ease-in-out) infinite; }
@@ -98,18 +97,9 @@
 }
 .land-scene-controls { position: absolute; right: var(--gutter); bottom: 32px; display: flex; align-items: center; gap: 4px; padding: 4px; border-radius: 10px; background: #101814; color: #c7d3cb; border: 1px solid #35483d; z-index: 2; }
 .land-scene-controls button { min-height: 36px; padding: 8px 12px; border: 0; border-radius: 7px; color: inherit; background: transparent; font: 500 11px var(--font-mono); cursor: pointer; }
-.land-scene-controls button[aria-pressed=true] { color: #05150b; background: #9cf6bd; }
 .land-scene-controls .land-scene-pause { display: grid; place-items: center; min-width: 36px; }
 @media (pointer: coarse) { .land-scene-controls button, .land-scene-controls .land-scene-pause { min-height: 44px; min-width: 44px; } }
 @media (max-width: 640px) { .land-scene-controls { bottom: 24px; right: 18px; } .land-scroll { left: 32px; } .land-model { padding-block: 40px; gap: 24px; } }
-.land-honest { display: grid; gap: 32px; grid-template-columns: minmax(0, 1fr); padding-top: 40px; }
-@media (min-width: 820px) { .land-honest { grid-template-columns: 1fr 1fr; } }
-.land-honest h2 { font-size: 20px; margin-bottom: 14px; }
-.land-honest ul { display: grid; gap: 0; }
-.land-honest li { padding: 12px 0 12px 26px; border-top: 1px solid var(--line); position: relative; font-size: 15px; }
-.land-honest li::before { content: ""; position: absolute; left: 2px; top: 19px; width: 10px; height: 6px; border-left: 2px solid var(--accent-ink); border-bottom: 2px solid var(--accent-ink); transform: rotate(-45deg); }
-.land-honest ul.is-not li { color: var(--muted); }
-.land-honest ul.is-not li::before { width: 12px; height: 2px; border: 0; background: var(--faint); transform: none; top: 23px; }
 .land-footer { border-top: 1px solid var(--line); padding: 72px var(--gutter) 40px; }
 .land-footer-cta { max-width: 1240px; margin: 0 auto; display: grid; gap: 8px; }
 .land-footer-title { font: 700 clamp(1.8rem, 1.2rem + 2.2vw, 3rem)/1.05 var(--font-display); letter-spacing: -0.035em; max-width: 22ch; }
@@ -122,11 +112,11 @@
 .is-flow .land-model-art { background: var(--surface); }
 
 @media (prefers-reduced-motion: reduce) {
-  .land-word > span, .land-lede, .land-actions, .land-note, .led-plate-orbit, .led-plate-halo, .led-plate-mark, .land-scroll span { animation: none !important; opacity: 1; stroke-dashoffset: 0; }
+  .land-word > span, .land-lede, .land-actions, .led-plate-orbit, .led-plate-halo, .led-plate-mark, .land-scroll span { animation: none !important; opacity: 1; stroke-dashoffset: 0; }
 }
 
 .v4-blackhole:not(.is-ready)::before { content: ""; position: absolute; width: min(70vw,700px); aspect-ratio: 2; right: 0; top: 44%; border-radius: 50%; background: radial-gradient(ellipse,transparent 24%,#1f6b3f 25%,#112c1d 28%,transparent 48%); opacity: 0.5; }
-@media (prefers-reduced-motion: reduce) { .v4-blackhole { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .v4-blackhole canvas { transition: none; } }
 
 .land-chain-head { display: flex; align-items: center; justify-content: space-between; gap: 32px; }
 .land-chain-head .land-section-head { margin-bottom: 32px; }

@@ -35,18 +35,18 @@
 /* Assumption map */
 .v4-amap svg { width: 100%; height: auto; overflow: visible; }
 .v4-amap-zone { fill: var(--surface-2); }
-.v4-amap-zone.is-priority { fill: color-mix(in srgb,var(--data-day) 17%,var(--surface)); }
-.v4-amap-zone.is-proceed { fill: color-mix(in srgb,var(--accent-signal) 12%,var(--surface)); }
+.v4-amap-zone.is-priority { fill: color-mix(in srgb,var(--accent-signal) 8%,var(--surface)); stroke: color-mix(in srgb,var(--accent-ink) 38%,var(--line)); stroke-width: 1; }
+.v4-amap-zone.is-proceed { fill: var(--surface-2); }
 .v4-amap-mid { stroke: var(--line); stroke-dasharray: 3 4; }
 .v4-amap-axis { stroke: var(--line-strong); }
 .v4-amap-q { font: 600 11.5px var(--font-sans); fill: var(--muted); }
 .v4-amap-q.is-hot { fill: var(--accent-ink); }
 .v4-amap-axis-label { font: 500 10px var(--font-mono); fill: var(--faint); }
 .v4-amap-dot > :nth-child(2) { fill: var(--surface); stroke: var(--line-strong); stroke-width: 1.5; transition: fill var(--dur-fast) var(--ease-out); }
-.v4-amap-dot.is-test_first > :nth-child(2) { fill: var(--data-day); stroke: var(--surface); }
+.v4-amap-dot.is-test_first > :nth-child(2) { fill: var(--accent-signal); stroke: var(--accent-ink); stroke-width: 1; }
 .v4-amap-dot.is-hover > :nth-child(2) { stroke-width: 3; }
 .v4-amap-n { font: 700 11px var(--font-mono); fill: var(--ink); pointer-events: none; }
-.v4-amap-dot.is-test_first .v4-amap-n { fill: #14130c; }
+.v4-amap-dot.is-test_first .v4-amap-n { fill: #04140c; }
 .v4-amap-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 10px 0 14px; font-size: 12px; color: var(--muted); }
 .v4-amap-legend span { display: inline-flex; align-items: center; gap: 6px; }
 .v4-amap-legend svg { width: 13px; height: 13px; fill: none; stroke: var(--ink); stroke-width: 1.5; }
@@ -188,7 +188,7 @@
 
 .v4-amap-key { display: grid; gap: 9px; margin-top: 20px; }
 .v4-amap-key li { display: grid; grid-template-columns: 24px minmax(0,1fr); gap: 10px; align-items: start; font-size: 12px; line-height: 1.5; color: var(--muted); }
-.v4-amap-num.is-test_first { background: var(--data-day); color: #14130c; border-color: transparent; }
+.v4-amap-num.is-test_first { background: var(--accent-signal); color: #04140c; border-color: transparent; }
 .v4-bull-key { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 14px; font-size: 11px; color: var(--muted); margin-top: 14px; }
 .v4-bull-key span { display: inline-flex; align-items: center; gap: 6px; }
 .v4-bull-key i { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); }

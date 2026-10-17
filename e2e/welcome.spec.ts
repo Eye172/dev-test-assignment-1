@@ -11,7 +11,8 @@ test("all three landing pages remain readable without JavaScript at responsive b
         await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
         const actions = page.locator(".land-copy .land-actions");
         await expect(actions.getByRole("link", { name: "Create startup", exact: true })).toBeVisible();
-        await expect(page.locator(".land-note")).toContainText("synthetic");
+        await expect(actions.getByRole("button", { name: "Explore the demo startup", exact: true })).toBeVisible();
+        await expect(page.locator(".land-footer-note")).toContainText("Demo");
         await expect(page.locator("#models")).toContainText("Fieldnote");
         for (const item of await page.locator(".land-steps li, .land-agents li").all()) {
           expect(await item.evaluate(el => getComputedStyle(el).opacity)).toBe("1");

@@ -40,8 +40,8 @@ export function ReadinessRadar({ axes, size = 300, compact = false }: { axes: Ax
         <span className="v4-radar-meter" aria-hidden><span style={{transform:`scaleX(${a.score/100})`}}/></span>
       </button>
     </li>)}</ol>
-    {!compact && <div className="v4-radar-why" aria-live="polite">
-      {active ? <><h4>{t(`axis.${active.key}`)}</h4><Reasons reasons={active.reasons}/></> : <p className="v4-muted">{t("readiness.explain")}</p>}
+    {!compact && active && <div className="v4-radar-why" aria-live="polite">
+      <h4>{t(`axis.${active.key}`)}</h4><Reasons reasons={active.reasons}/>
     </div>}</div>
   </div>;
 }
@@ -90,7 +90,7 @@ export function AssumptionMap({ items, list = true }: { items: MappedAssumption[
         <text x={positions[i].x} y={positions[i].y+4} textAnchor="middle" className="v4-amap-n">{i+1}</text>
       </motion.g>)}
     </svg>
-    <div className="v4-amap-legend">{(["desirability", "viability", "feasibility"] as const).map(l => <span key={l}><svg viewBox="0 0 16 16" aria-hidden>{lensShape(l, 8, 8, 5)}</svg>{t(`lens.${l}`)} <em>{t(`lens.${l}.q`)}</em></span>)}</div>
+    <div className="v4-amap-legend">{(["desirability", "viability", "feasibility"] as const).map(l => <span key={l}><svg viewBox="0 0 16 16" aria-hidden>{lensShape(l, 8, 8, 5)}</svg>{t(`lens.${l}`)}</span>)}</div>
     {!list && <ol className="v4-amap-key" aria-label={t("amap.points")}>{items.map((a,i) => <li key={a.id}><span className={`v4-amap-num is-${a.quadrant}`}>{i+1}</span><span>{label(a)}</span></li>)}</ol>}
     {list && <ol className="v4-amap-list">{items.map((a, i) => <li key={a.id} className={hover === a.id ? "is-hover" : ""} onMouseEnter={() => setHover(a.id)} onMouseLeave={() => setHover(null)}>
       <span className="v4-amap-num mono">{i + 1}</span>

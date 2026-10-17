@@ -146,3 +146,10 @@ Live review completed over the preserved original specialist artifacts and retur
 ## 2026-10-17 UTC+5 — Codex — owner-requested visual refinement
 
 Continued the same v4 candidate following the owner's annotated screenshots. Fixed existing demo-copy/system-task language projections without database mutation, preserved raw-input calculations and dirty drafts, added an autonomous WebGL scene with a separate 5px ASCII pass and pause, alternating landing entries and bounded particle assembly. Removed the generic landing roster. Shared readiness/assumption/channel charts and the orbit now use stronger surfaces, normal-flow labels and meaningful colour/number legends. The independent critic's three additional findings were corrected. See docs/design/V4-VISUAL-REFINEMENT.md for sources, scope and boundaries; docs/V4-COMPLETION.md for acceptance. Main/production remain under owner approval.
+
+
+## 2026-10-17 UTC+5 — Codex — final visual simplification and original ТЗ cross-check
+
+Applied the owner's follow-up: remove ASCII and yellow chart accents, retain only a brighter native-resolution light scene with edge antialiasing, replace stretched background star cells with soft points, simplify duplicate demo/disclaimer chrome and abstract copy. The landing-only hypothesis example now occupies all four regions; saved workspace evidence is unchanged. GTM labels name the customer, offer, channels, monetization, hypotheses/tests and plan. Rule calculations are available on selection. Original §06 still has one concise demo disclosure in the landing footer. The independent critic found no additional overlaps or assignment violations. Original requirements and the remaining v4 production-promotion boundary are recorded in docs/ASSIGNMENT-CHECK.md.
+
+Latest owner follow-up also removes the entire “What this is / What this is not” landing section and its navigation anchor.

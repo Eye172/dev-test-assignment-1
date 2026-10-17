@@ -67,16 +67,6 @@ export function DisplayMenu({ align = "end" }: { align?: "start" | "end" }) {
   </div>;
 }
 
-export function DemoTag() {
-  const { t } = useDisplay();
-  const [open, setOpen] = useState(false);
-  const ref = useDismiss<HTMLDivElement>(open, () => setOpen(false));
-  return <div className="v4-demo" ref={ref}>
-    <button type="button" className="v4-demo-tag" aria-expanded={open} onClick={() => setOpen(o => !o)}><span className="v4-demo-dot" aria-hidden/>{t("chrome.demo")}</button>
-    <AnimatePresence>{open && <motion.p className="v4-popover v4-demo-note" initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, transition: { duration: 0.12 } }} transition={{ duration: 0.2, ease }}>{t("chrome.demoNote")}</motion.p>}</AnimatePresence>
-  </div>;
-}
-
 export function DemoLink({ className = "v4-button", children }: { className?: string; children?: ReactNode }) {
   const { t } = useDisplay();
   const router = useRouter();
