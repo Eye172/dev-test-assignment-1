@@ -1,5 +1,6 @@
 import { test, expect, type Page } from "@playwright/test";
 import { readFile } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
 import AxeBuilder from "@axe-core/playwright";
 import type { AiStudioState } from "../src/lib/domain/ai";
 import type { Workspace } from "../src/lib/domain/types";
@@ -15,6 +16,33 @@ async function unlock(page:Page,id:string){
 const state=async(page:Page,id:string)=>(await (await page.request.get(`/api/startups/${id}/ai`)).json()).data as AiStudioState;
 const workspace=async(page:Page,id:string)=>(await (await page.request.get(`/api/startups/${id}`)).json()).data as Workspace;
 
+test("a new follow-up and an explicitly selected historical run survive refresh",async({page},info)=>{
+  const fixtures=JSON.parse(await readFile(".data/ai-acceptance.json","utf8"));
+  const {startupId:id}=fixtures[`${info.project.name}:${info.retry}`];
+  await unlock(page,id);
+  const saved=await state(page,id),original=saved.runs[0];
+  const next={...structuredClone(original),id:randomUUID(),createdAt:new Date().toISOString()};
+  let created=false;
+  // Offline UI fixture: no provider request is made or represented as a real council run.
+  await page.route(`**/api/startups/${id}/ai`,async route=>{
+    if(route.request().method()==="GET")return route.fulfill({json:{data:{...saved,runs:created?[next,...saved.runs]:saved.runs}}});
+    const body=route.request().postDataJSON();
+    if(body.action==="create"){created=true;return route.fulfill({json:{data:{id:next.id,created:true}}});}
+    return route.continue();
+  });
+  await page.getByRole("button",{name:"Follow up",exact:true}).click();
+  await page.getByRole("textbox",{name:"Your brief",exact:true}).fill("Offline follow-up selection and recovery fixture");
+  await page.getByRole("button",{name:"Start the team",exact:true}).click();
+  await expect(page.getByRole("combobox",{name:"Select run"})).toHaveValue(next.id);
+  await expect(page).toHaveURL(new RegExp(`run=${next.id}`));
+  await page.reload();
+  await expect(page.getByRole("combobox",{name:"Select run"})).toHaveValue(next.id);
+  await page.getByRole("combobox",{name:"Select run"}).selectOption(original.id);
+  await expect(page).toHaveURL(new RegExp(`run=${original.id}`));
+  await page.reload();
+  await expect(page.getByRole("combobox",{name:"Select run"})).toHaveValue(original.id);
+});
+
 test("research, decision memory, reviewed plan and adverse observation form one persisted flow",async({page},info)=>{
   test.setTimeout(120000);
   const fixtures=JSON.parse(await readFile(".data/ai-acceptance.json","utf8"));
@@ -28,6 +56,8 @@ test("research, decision memory, reviewed plan and adverse observation form one 
   await page.getByRole("button",{name:"Move Decisions and tradeoffs earlier",exact:true}).click();
   await page.getByRole("button",{name:"Hide What changed",exact:true}).click();
   await page.getByRole("button",{name:"Save arrangement"}).click();
+  // Wait for the visible save acknowledgement, including the bounded post-save view refresh.
+  await expect(page.getByRole("button",{name:"Save arrangement",exact:true})).not.toBeVisible({timeout:25000});
   await expect.poll(async()=>(await state(page,id)).layout!.plates[0].id).toBe("decisions");
   const hypotheses=page.locator("section[aria-labelledby='analysis-hypotheses']");
   for(let i=0;i<3;i++)await hypotheses.getByRole("button",{name:"Accept hypothesis",exact:true}).first().click();

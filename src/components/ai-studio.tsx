@@ -49,6 +49,11 @@ export function AiStudio() {
   const resumedCheckpoints=useRef(new Set<string>());
   const [loaded,setLoaded]=useState(false);
   const run=state?.runs.find(r=>r.id===selected)||state?.runs[0];
+  const selectRun=(id:string)=>{
+    setSelected(id);
+    const url=new URL(window.location.href);url.searchParams.set("run",id);
+    window.history.replaceState(null,"",`${url.pathname}${url.search}${url.hash}`);
+  };
   const running=state?.runs.find(active);
   const composerVisible=!state?.runs.length||composerOpen||!!brief.trim()||!!parent;
   const chooseRole=(next:AiRole)=>{setRole(next);const panel=document.getElementById("ai-specialist-proposals") as HTMLDetailsElement|null;if(panel)panel.open=true;requestAnimationFrame(()=>{document.getElementById("artifact-title")?.focus({preventScroll:true});document.getElementById("ai-specialist-proposals")?.scrollIntoView({behavior:workspace.startup.preferences.motion==="reduced"||matchMedia("(prefers-reduced-motion: reduce)").matches?"instant":"smooth",block:"start"});});};
@@ -88,7 +93,7 @@ export function AiStudio() {
     const attemptId=requestId||crypto.randomUUID();setRequestId(attemptId);
     const submitted={mode,brief,parent,requestId:attemptId};
     const result=await perform({action:"create",payload:{mode:submitted.mode,brief:submitted.brief,requestId:submitted.requestId,parentRunId:submitted.parent}}) as {id:string}|undefined;
-    if(result){autoResume.current=result.id;setSelected(result.id);setRole(modeRoles[submitted.mode][0]);setBrief(current=>current===submitted.brief?"":current);setParent(current=>current===submitted.parent?null:current);setRequestId(current=>current===submitted.requestId?null:current);notify("Brief saved. The team has started.");}
+    if(result){autoResume.current=result.id;selectRun(result.id);setRole(modeRoles[submitted.mode][0]);setBrief(current=>current===submitted.brief?"":current);setParent(current=>current===submitted.parent?null:current);setRequestId(current=>current===submitted.requestId?null:current);notify("Brief saved. The team has started.");}
   };
   const apply=async()=>{
     if(!run||!review)return;
@@ -117,7 +122,7 @@ export function AiStudio() {
           {parent&&<p className="ai-followup-tag">Following up from saved specialist artifacts <button type="button" className="text-link" onClick={()=>setParent(null)}>Clear</button></p>}
         </form>
       </section>}
-      {state.runs.length>0&&<div className="ai-run-toolbar"><label>Run <select aria-label="Select run" value={run?.id} onChange={e=>setSelected(e.target.value)}>{state.runs.map((r,i)=><option key={r.id} value={r.id}>{i===0?"Latest · ":""}{modes[r.mode].label} · {new Date(r.createdAt).toLocaleString()} · {statusText[r.status]}</option>)}</select></label><span className="field-help">History stays after refresh</span></div>}
+      {state.runs.length>0&&<div className="ai-run-toolbar"><label>Run <select aria-label="Select run" value={run?.id} onChange={e=>selectRun(e.target.value)}>{state.runs.map((r,i)=><option key={r.id} value={r.id}>{i===0?"Latest · ":""}{modes[r.mode].label} · {new Date(r.createdAt).toLocaleString()} · {statusText[r.status]}</option>)}</select></label><span className="field-help">History stays after refresh</span></div>}
       {!run&&<AnalysisBoard state={state} busy={busy} mutate={perform} onReview={(s,target)=>{setPlanPreview(null);setReview({step:s,target});}} onObserve={ids=>{setEvidenceTargets(ids);setEvidenceOpen(true);}}/>}
       {run&&<>
         <section className="ai-console instrument" aria-label="Specialist progress">
