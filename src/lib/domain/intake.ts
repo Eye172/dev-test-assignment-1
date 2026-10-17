@@ -20,6 +20,7 @@ export const emptyDraft = (): IntakeDraft => ({
 const sentences = (text: string) => text.replace(/\s+/g, " ").split(/(?<=[.!?])\s+(?=[A-ZА-Я0-9"“])/).map(s => s.trim()).filter(Boolean);
 const clip = (s: string, n: number) => s.length > n ? `${s.slice(0, n - 1).trimEnd()}…` : s;
 const count = (text: string, words: RegExp) => (text.match(words) ?? []).length;
+const customerBenefit = (s: string) => !/(?:our|my|founder.s) (?:goal|target)|(?:цель|мақсат)|(?:привлечь|получить|найти)\s+(?:\S+\s+){0,3}(?:клиент|платящ)|(?:acquire|win|get)\s+(?:\S+\s+){0,3}(?:paying customers|paid clients)/iu.test(s);
 
 export const markets = ["Kazakhstan", "Uzbekistan", "Kyrgyzstan", "Central Asia", "Russia", "CIS", "Turkey", "UAE", "Saudi Arabia", "MENA", "India", "Indonesia", "Southeast Asia", "China", "Japan", "South Korea", "Germany", "France", "United Kingdom", "UK", "Europe", "DACH", "Nordics", "Poland", "United States", "US", "USA", "North America", "Canada", "Brazil", "Latin America", "Mexico", "Nigeria", "Kenya", "Africa", "Australia", "Global"];
 const marketRe = new RegExp(`\\b(${markets.map(m => m.replace(/ /g, "\\s+")).join("|")})\\b`, "gi");
@@ -77,7 +78,7 @@ export function extract(raw: string): IntakeDraft {
 
   const all = sentences(text);
   hint("painPoint", clip(all.find(s => /\b(problem|struggl|pain|waste|hard to|can'?t|frustrat|lose|losing|manual|scattered|slow)\w*/i.test(s)) ?? "", 300));
-  hint("outcome", clip(all.find(s => /\b(so that|saves?|reduc|increas|faster|cut|in minutes|without)\w*/i.test(s)) ?? "", 300));
+  hint("outcome", clip(all.find(s => customerBenefit(s) && /\b(so that|saves?|reduc|increas|faster|cut|in minutes|without)\w*/i.test(s)) ?? "", 300));
   hint("price", text.match(/\$\s?\d[\d,.]*\s*(?:k\b)?(?:\s*(?:\/|per)\s*\w+){0,2}/i)?.[0] ?? "");
   hint("pricingModel", text.match(/\b(subscription|freemium|one-?time|usage-based|per seat|commission|paid pilot|licen[cs]e)\b/i)?.[0] ?? "");
   const channelText = sentences(text).filter(s => !/\b(no|not|never|without|avoid|exclude|won.t|don.t)\b/i.test(s)).join(" ");
@@ -140,7 +141,7 @@ function extractCyrillic(text: string, draft: IntakeDraft) {
   if (seg) set("customerSegment", clip(seg.trim(), 200));
   const all = sentences(text);
   hint("painPoint", clip(all.find(s => /(?<!\p{L})(?:проблем|теря|потер|сложн|неудобн|вручную|долго|разброс|хаос|мучают|путаниц|қиын|жоғал|қолмен)/iu.test(s)) ?? "", 300));
-  hint("outcome", clip(all.find(s => /(?<!\p{L})(?:чтобы|экономит|сокращ|быстрее|без |увелич|үнемде|жылдам)/iu.test(s)) ?? "", 300));
+  hint("outcome", clip(all.find(s => customerBenefit(s) && /(?<!\p{L})(?:чтобы|экономит|сокращ|быстрее|без |увелич|үнемде|жылдам)/iu.test(s)) ?? "", 300));
   hint("price", text.match(/\d[\d\s.,]*\s?(?:тенге|тг|₸|теңге|руб\p{L}*|₽|сум|сом|\$|usd|kzt)(?:\s*(?:в|за|\/|айына)\s*\p{L}+)?/iu)?.[0]?.trim() ?? "");
   hint("pricingModel", text.match(/(?<!\p{L})(?:подписк\p{L}*|разов\p{L}*|комисси\p{L}*|freemium|платн\p{L}* пилот\p{L}*|жазылым\p{L}*)/iu)?.[0] ?? "");
   const positive = all.filter(s => !/(?<!\p{L})(?:не |нет |без |никогда|емес|жоқ)/iu.test(s)).join(" ");
@@ -176,10 +177,14 @@ export function nextQuestion(draft: IntakeDraft, asked: string[], limit = 7): Qu
 export function nextIntakeQuestion(draft: IntakeDraft, asked: string[], questions: Question[]): Question | null {
   if (asked.length >= 7) return null;
   const covered=questions.filter(q=>asked.includes(q.id)&&q.field!=="context").map(q=>q.field);
-  const question = questions.find(q => !asked.includes(q.id) && (q.field === "context" || !covered.includes(q.field)) && (q.field === "context" ||
-    (q.field in draft.profile ? !draft.profile[q.field as keyof ProfileDraft] :
-      q.field === "channels" ? !draft.hints.channels.length : !draft.hints[q.field as "painPoint" | "price"])));
-  return question ?? nextQuestion(draft,[...asked,...covered],Number.MAX_SAFE_INTEGER);
+  const question = questions.find(q => !asked.includes(q.id) && (!(q.field in draft.profile) || !draft.profile[q.field as keyof ProfileDraft]));
+  if (question) {
+    const populated = !(question.field in draft.profile) || !!draft.profile[question.field as keyof ProfileDraft];
+    // Generated questions can concern access or evidence for an existing field.
+    // Keep that answer in the journal instead of dropping it or overwriting facts.
+    return populated ? { ...question, field: "context" } : question;
+  }
+  return nextQuestion(draft,[...asked,...covered],Number.MAX_SAFE_INTEGER);
 }
 
 export function answer(draft: IntakeDraft, field: Question["field"], value: string | string[]): IntakeDraft {

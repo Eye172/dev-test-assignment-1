@@ -22,7 +22,7 @@ export function buildPlanPreview(workspace:Workspace,result:AiResult,input?:Plan
   if(new Set(selection.retainedEstimates.map(x=>x.taskId)).size!==selection.retainedEstimates.length)blockers.push("A retained task has competing estimates.");
   for(const id of selection.retireTaskIds){const t=active.find(t=>t.id===id);if(!t)blockers.push("A selected task is no longer active.");else if(t.status==="done")blockers.push("Completed work must remain preserved; archive it separately if needed.");}
   for(const e of selection.retainedEstimates)if(!active.some(t=>t.id===e.taskId&&!selection.retireTaskIds.includes(t.id)))blockers.push("An estimate references a task that is not being retained.");
-  const weeks=[1,2,3,4].map(week=>({week,minutes:0,unknownTasks:[] as string[]}));
+  const weeks=[1,2,3,4].map(week=>({week,minutes:selection.weeklyReserves[week-1],unknownTasks:[] as string[]}));
   const amounts=new Map<string,number>();
   const add=(week:number,title:string,minutes:number|null,costs:{currency:string;amount:number|null}[])=>{
     const bucket=weeks[week-1];if(minutes===null)bucket.unknownTasks.push(title);else bucket.minutes+=minutes;

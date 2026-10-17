@@ -12,7 +12,7 @@ export const metadata: Metadata = {
   title: { default: "Orbit GTM Studio", template: "%s · Orbit GTM Studio" },
   description: "A founder's workspace for a precise go-to-market strategy, transparent models and a practical 30-day plan.",
   robots: { index: false, follow: false },
-  icons: { icon: "/icon.svg" },
+  icons: { icon: "/brand/orbit-icon-v4.svg" },
 };
 export const viewport: Viewport = {
   themeColor: [{ media: "(prefers-color-scheme: dark)", color: "#07090a" }, { media: "(prefers-color-scheme: light)", color: "#f4f7f4" }],

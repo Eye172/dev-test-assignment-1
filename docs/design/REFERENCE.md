@@ -155,3 +155,6 @@ Pattern across the owner's work: **one characterful object per screen, calm ever
 | Asymmetric grid with intentional empty columns | Calm, editorial, breathing room | Wasted space on small laptops | **Adopted ≥1280 only**; collapses at 1024 |
 | Timeline lanes for the 30-day roadmap | Time is actually spatial here | Horizontal scroll on mobile | **Adopted on desktop**; vertical timeline on mobile |
 | Rotated/tilted chips in the working UI | Playful | Harder to read, looks messy | **Rejected** in the app |
+
+
+17 October final tab-icon correction: `/brand/orbit-icon-v4.svg` and `/icon.svg` embed the supplied `blackorbit-logo-light.png` and crop its original symbol through the SVG viewport. No generated replacement mark is used. A distinct metadata URL avoids reuse of the previous browser-cached favicon.

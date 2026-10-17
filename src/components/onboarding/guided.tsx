@@ -27,7 +27,7 @@ export function guidedToDraft(g: GuidedState): IntakeDraft {
   const put = <K extends keyof IntakeDraft["profile"]>(k: K, v: IntakeDraft["profile"][K], o: "answer" | "choice") => { if (v) { d.profile[k] = v; d.origin[k] = o; } };
   put("name", g.name.trim(), "answer"); put("description", g.oneLiner.trim(), "answer");
   put("businessModel", g.model, "choice"); put("stage", g.stage, "choice");
-  put("targetMarket", markets.slice(0, 2).join(" and "), "choice"); put("customerSegment", composedSegment(g), g.segment.trim() ? "answer" : "choice");
+  put("targetMarket", markets.slice(0, 2).join(", "), "choice"); put("customerSegment", composedSegment(g), g.segment.trim() ? "answer" : "choice");
   put("websiteUrl", g.website.trim() && !/^https?:/i.test(g.website.trim()) ? `https://${g.website.trim()}` : g.website.trim(), "answer");
   if (g.pain.trim()) { d.hints.painPoint = g.pain.trim(); d.origin.painPoint = "answer"; }
   if (g.price.trim()) { d.hints.price = g.price.trim(); d.origin.price = "answer"; }

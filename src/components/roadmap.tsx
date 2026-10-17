@@ -16,6 +16,8 @@ import { Counter, planDay, weekDone } from "./orbit";
 import { StatusRing } from "./status-ring";
 import { useDisplay } from "@/ui/display";
 import type { MessageKey } from "@/ui/i18n/en";
+import { orderTasks } from "@/lib/domain/task-order";
+import { useAnalysisCopy } from "@/ui/use-analysis-copy";
 
 type T = (key: MessageKey, vars?: Record<string, string | number>) => string;
 
@@ -52,13 +54,14 @@ export function Roadmap() {
   const wide = useMedia("(min-width: 1100px)");
   const [view, setView] = useDevicePref<"board" | "list">("roadmap-view", "board");
   const [generating, setGenerating] = useState(false);
+  const [confirmingPlan,setConfirmingPlan]=useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [rulesOpen, setRulesOpen] = useState(false);
   const [adding, setAdding] = useState(() => search.get("add") === "1");
   const [dropWeek, setDropWeek] = useState<number | null>(null);
   const [moveError, setMoveError] = useState<string | null>(null);
   const { update } = useTaskUpdate();
-  const active = workspace.tasks.filter(t => !t.archived);
+  const active = orderTasks(workspace.tasks.filter(t => !t.archived));
   const archived = workspace.tasks.filter(t => t.archived);
   const p = workspace.roadmapProgress;
   const incomplete = workspace.completion.sections.filter(s => !s.complete);
@@ -71,12 +74,13 @@ export function Roadmap() {
   }, []);
 
   async function generate() {
-    if (workspace.activePlan ? !window.confirm(t("rm.confirmSwitch")) : active.length && !window.confirm(t("rm.confirmRefresh"))) return;
+    setConfirmingPlan(false);
     setGenerating(true); setError(null);
     try { const ws = await track(api<Workspace>(`/api/startups/${workspace.startup.id}/roadmap`, { method: "POST", body: JSON.stringify(workspace.activePlan ? { replaceAiPlan: true, expectedPlanId: workspace.activePlan.id, locale } : { locale }) })); setWorkspace(ws); notify(active.length ? t("rm.refreshed") : t("rm.generated")); }
     catch (e) { setError(e as Error); }
     finally { setGenerating(false); }
   }
+  function requestGenerate(){if(workspace.activePlan||active.length)setConfirmingPlan(true);else void generate();}
   async function moveToWeek(task: Task, week: number) {
     if (task.week === week) return;
     setMoveError(null);
@@ -94,7 +98,7 @@ export function Roadmap() {
         </div>}
         <button className="button small ghost" onClick={() => setRulesOpen(true)}><Info size={15} aria-hidden/>{t("rm.how")}</button>
         {active.length > 0 && <button className="button small" onClick={() => setAdding(true)}><Plus size={15} aria-hidden/>{t("rm.add")}</button>}
-        <button className={`button small ${active.length ? "" : "primary"}`} onClick={generate} disabled={generating} aria-busy={generating}>{generating ? <><Spinner/>{t("rm.working")}</> : <><RefreshCw size={15} aria-hidden/>{workspace.activePlan ? t("rm.switch") : active.length ? t("rm.refresh") : t("rm.generate")}</>}</button>
+        <button className={`button small ${active.length ? "" : "primary"}`} onClick={requestGenerate} disabled={generating} aria-busy={generating}>{generating ? <><Spinner/>{t("rm.working")}</> : <><RefreshCw size={15} aria-hidden/>{workspace.activePlan ? t("rm.switch") : active.length ? t("rm.refresh") : t("rm.generate")}</>}</button>
       </div>
     </div>
     {error && <ErrorNotice error={`${t("rm.genFailed")} ${error.message}`} onRetry={generate}/>}
@@ -104,7 +108,7 @@ export function Roadmap() {
       <h2>{t("ov.noTasks")}</h2>
       <p>{t("rm.emptyBody")}</p>
       {incomplete.length > 0 && <p className="field-help">{t("rm.incomplete", { list: incomplete.map(s => t(`section.${s.key}`)).join(", ") })} <Link className="text-link" href={`/startups/${workspace.startup.id}/strategy?section=${incomplete[0].key}`}>{t("ov.openStrategy")}</Link></p>}
-      <button className="button primary" onClick={generate} disabled={generating}>{generating ? <><Spinner/>{t("rm.working")}</> : t("ov.generate")}</button>
+      <button className="button primary" onClick={requestGenerate} disabled={generating}>{generating ? <><Spinner/>{t("rm.working")}</> : t("ov.generate")}</button>
     </section> : <>
       <ProgressTrack progress={p} tasks={workspace.tasks} activePlanCreatedAt={workspace.activePlan?.createdAt}/>
       {moveError && <p className="field-error" role="alert">{moveError}</p>}
@@ -137,6 +141,10 @@ export function Roadmap() {
       </details>}
     </>}
 
+    <Dialog open={confirmingPlan} onClose={()=>setConfirmingPlan(false)} title={t(workspace.activePlan?"rm.switch":"rm.refresh")} locked={generating}>
+      <p>{t(workspace.activePlan?"rm.confirmSwitch":"rm.confirmRefresh")}</p>
+      <div className="flow-actions"><button type="button" className="button ghost" onClick={()=>setConfirmingPlan(false)}>{t("common.cancel")}</button><button type="button" className="button primary" onClick={()=>void generate()}>{t(workspace.activePlan?"rm.switch":"rm.refresh")}</button></div>
+    </Dialog>
     <Dialog open={rulesOpen} onClose={() => setRulesOpen(false)} title={t("rm.how")}>
       <p className="muted">{t("rm.howLede")}</p>
       <ul className="rule-list">{rules.map(([week, name]) => <li key={name}><span className="rule-name"><span className="label">{t("common.weekN", { n: week })}</span>{t(`rm.rule.${name}` as MessageKey)}</span><span>{t(`rm.rule.${name}.t` as MessageKey)}</span></li>)}</ul>
@@ -179,6 +187,7 @@ function ProgressTrack({ progress: p, tasks, activePlanCreatedAt }: { progress: 
 }
 
 function TaskCard({ task, compact, draggable, onDropWeek, onHoverWeek }: { task: Task; compact: boolean; draggable: boolean; onDropWeek: (week: number) => void; onHoverWeek: (w: number | null) => void }) {
+  const copy=useAnalysisCopy();
   const hydrated = useHydrated();
   const { t, tk } = useDisplay();
   const { update } = useTaskUpdate();
@@ -219,7 +228,12 @@ function TaskCard({ task, compact, draggable, onDropWeek, onHoverWeek }: { task:
           <h3 id={`t-${task.id}`} className="task-title">{task.title}</h3>
         </div>
         {!compact && <p className="task-deliverable"><span className="label">{t("rm.deliverable")}</span>{task.deliverable}</p>}
-        {task.notes && !compact && <p className="task-notes">{task.notes}</p>}
+        {task.notes && !compact && <p className="task-notes">{task.source==="ai" ? task.notes.split("\n").map((line,i)=>{
+          const match=line.match(/^(Hypothesis|Method|Metric|Success|Failure|Inconclusive|Deadline|Effort|Dependencies): (.*)$/);
+          if(!match)return <span key={i}>{line}{"\n"}</span>;
+          const content=match[1]==="Dependencies"?match[2].split(", ").map(key=>workspace.tasks.find(t=>t.experiment?.key===key)?.title||copy(key)).join(" · "):match[2];
+          return <span key={i}>{copy(match[1])}: {content}{"\n"}</span>;
+        }) : task.notes}</p>}
         {task.experiment&&!compact&&<details className="task-experiment"><summary>{t("rm.criteria")}</summary><dl><dt>{t("rm.success")}</dt><dd>{task.experiment.measurement.success}</dd><dt>{t("rm.failure")}</dt><dd>{task.experiment.measurement.failure}</dd><dt>{t("rm.inconclusive")}</dt><dd>{task.experiment.measurement.inconclusive}</dd><dt>{t("rm.sample")}</dt><dd>{task.experiment.measurement.minimumSample ?? t("common.unknown")} {task.experiment.measurement.unit} · {t("common.day")} {task.experiment.measurement.deadlineDay}</dd><dt>{t("rm.resources")}</dt><dd>{task.experiment.effortMinutes ?? t("common.unknown")} min · {task.experiment.costs.map(c => `${c.currency} ${c.amount ?? t("common.unknown")}`).join(" + ") || t("rm.noCash")}</dd></dl><p className="field-help">{task.edited ? t("rm.editedCriteria") : t("rm.judgeCriteria")}</p></details>}
         {error && <p className="field-error" role="alert">{error} {t("rm.undone")}</p>}
         <div className="task-actions">

@@ -147,7 +147,8 @@ export async function runAiJob(id:string) {
         }
         await store.finish(run,serious.length?"needs_attention":"completed");return;
       }
-      if(Date.now()-start+(pending[0].role==="intake"?110000:200000)>260000){await store.finish(run,"paused","Checkpoint saved. Resume to continue the remaining specialist work.");return;}
+      const nextTimeout=(await store.execution(pending[0])).settings.timeoutMs;
+      if(Date.now()-start+nextTimeout>260000){await store.finish(run,"paused","Checkpoint saved. Resume to continue the remaining specialist work.");return;}
       active=pending[0];await store.startStep(run,active);await executeSpecialist(store,run,active,provider,receipts);active=undefined;
     }
   } catch(error) {

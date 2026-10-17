@@ -1,3 +1,5 @@
+> Current release evidence and deployment state: [RELEASE-2026-10-17.md](RELEASE-2026-10-17.md). The narrative below records earlier milestones and must not be used as the final release status.
+
 # v4 completion record — 17 October 2026
 
 This record concerns the `claude/studio-v4` candidate. Production remains the earlier release until the owner approves deployment. Original handoff: [HANDOFF-V4.md](HANDOFF-V4.md), written by Claude at approximately 13:10 UTC+5. Its pending browser verification, live specialist verification, responsive review and delivery preparation are the continuation scope.

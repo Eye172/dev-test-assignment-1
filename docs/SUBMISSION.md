@@ -1,3 +1,5 @@
+> Current release evidence and deployment state: [RELEASE-2026-10-17.md](RELEASE-2026-10-17.md). The narrative below records earlier milestones and must not be used as the final release status.
+
 # Orbit GTM Studio submission
 
 **Current source: v4 review candidate on `claude/studio-v4`, pending owner approval for production deployment.** The live links below describe the previously deployed release. Current v4 checks and remaining release steps are recorded in [V4-COMPLETION.md](V4-COMPLETION.md); historical test totals below do not certify v4. Candidate archives are written to a separate directory so the previous submission remains intact.

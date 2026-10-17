@@ -6,7 +6,7 @@ A founder workspace for a go-to-market strategy and a transparent 30-day action 
 
 Independent developer-test implementation for the AI Startify ecosystem. All demonstration content is synthetic. Strategy completeness and completed tasks are not commercial validation.
 
-[Current production release](https://orbit-gtm-studio.vercel.app) · [Seeded Fieldnote profile](https://orbit-gtm-studio.vercel.app/startups/11111111-1111-4111-8111-111111111111). **v4 is a review candidate on `claude/studio-v4`; the production links still serve the earlier release until the owner approves deployment.** See [v4 completion evidence](docs/V4-COMPLETION.md) and [SUBMISSION.md](docs/SUBMISSION.md).
+[Current production release](https://orbit-gtm-studio.vercel.app) · [Seeded Fieldnote profile](https://orbit-gtm-studio.vercel.app/startups/11111111-1111-4111-8111-111111111111). Final verification and deployment state: [release record](docs/RELEASE-2026-10-17.md). See [v4 completion evidence](docs/V4-COMPLETION.md) and [SUBMISSION.md](docs/SUBMISSION.md).
 
 ## Run locally
 

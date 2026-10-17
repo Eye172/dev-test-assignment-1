@@ -23,7 +23,7 @@ describe("unfinished analysis drafts and provider receipts",()=>{
   });
   it("restores blank budgets, scope and temporarily invalid numeric edits",()=>{
     const draft={retireTaskIds:[],retainedEstimates:[],limits:{weeklyMinutes:0,budgets:[{currency:"",amount:null}],basis:"",confirmed:false},acknowledgeUnknowns:false,experimentEdits:[{key:"e1",title:"",week:0,reason:""}]};
-    expect(planDraftSchema.parse(draft)).toEqual(draft);
+    expect(planDraftSchema.parse(draft)).toEqual({...draft,weeklyReserves:[0,0,0,0]});
     expect(planSelectionSchema.safeParse(draft).success).toBe(false);
   });
   it("preserves the experiment assumption bound when recording founder revisions",()=>{

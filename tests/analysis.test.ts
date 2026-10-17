@@ -220,6 +220,18 @@ describe("decision memory and one feasible active plan",()=>{
     const changed=structuredClone(r);changed.experiments[0].contract!.dependsOn=["e6"];
     expect(buildPlanPreview(ws,changed).blockers.some(x=>x.includes("dependency"))).toBe(true);
   });
+  it("includes additional delivery reserves in capacity, validates bounds and preserves them in the preview",async()=>{
+    const c=await ready(),ws=await store.workspace(c.startup.id),r=c.specialist("experimenter").result!;
+    const base=buildPlanPreview(ws,r);
+    expect(base.selection.weeklyReserves).toEqual([0,0,0,0]);
+    const selection={...base.selection,weeklyReserves:[0,90,90,90]};
+    const reserved=buildPlanPreview(ws,r,selection);
+    expect(reserved.weeks.map((w,i)=>w.minutes-base.weeks[i].minutes)).toEqual([0,90,90,90]);
+    expect(reserved.hash).not.toBe(base.hash);
+    const overloaded=buildPlanPreview(ws,r,{...selection,weeklyReserves:[10080,0,0,0]});
+    expect(overloaded.blockers.some(x=>x.includes("capacity"))).toBe(true);
+    expect(()=>buildPlanPreview(ws,r,{...selection,weeklyReserves:[-1,0,0,0]})).toThrow();
+  });
   it("versions explicit founder changes, rejects stale edits and cross-workspace observation links",async()=>{
     const startup=await store.createStartup(demoProfile),payload={requestId:randomUUID(),id:null,expectedRevision:0,status:"active",data:{kind:"hypothesis",proposal:hypothesis("manual")},reason:"Founder records a testable starting belief"};
     const item=await ai.analysis.saveMemory(startup.id,payload);expect((await ai.analysis.saveMemory(startup.id,payload)).id).toBe(item.id);

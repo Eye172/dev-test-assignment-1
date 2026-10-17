@@ -1,4 +1,5 @@
 "use client";
+import { useAnalysisCopy } from "@/ui/use-analysis-copy";
 import { useEffect, useMemo, useState } from "react";
 import { motion, MotionConfig } from "motion/react";
 import { ArrowLeft, ArrowRight, Check, ListChecks, MessagesSquare, SkipForward } from "lucide-react";
@@ -77,6 +78,7 @@ const checklist: { key: string; ok: (d: IntakeDraft) => boolean }[] = [
 ];
 
 export function OnboardingFlow() {
+  const copy=useAnalysisCopy();
   const { t, tk, locale } = useDisplay();
   const [s, setS] = useState<Saved>(initial);
   const [restored, setRestored] = useState(false);
@@ -165,7 +167,7 @@ export function OnboardingFlow() {
           <Back onClick={()=>{patch({intakeAdvance:false});go(s.path==="guided"?"guided":"free");}}/>
           <h1 id="interpret-title" tabIndex={-1}>{s.intakeMaterialKey===key&&["queued","running"].includes(s.intake?.status||"")?t("ob.reading"):t("ob.understand")}</h1>
           <p className="lead">{t("ob.interpretLede")}</p>
-          {(aiError||s.intakeMaterialKey===key&&s.intake?.error)&&<p className="field-error" role="alert">{aiError||s.intake?.error}</p>}
+          {(aiError||s.intakeMaterialKey===key&&s.intake?.error)&&<p className="field-error" role="alert">{copy(aiError||s.intake?.error||"")}</p>}
           {!access&&<div><p role="status">{aiError?t("ob.notChecked"):t("ob.checking")}</p><button className="button" onClick={()=>void checkAccess()}>{t("ob.retryAi")}</button></div>}
           {access&&!access.configured&&<p className="info-notice">{t("ob.aiUnavailable")}</p>}
           {access?.configured&&(!access.authorized||showUnlock)&&<form className="unlock" onSubmit={async e=>{e.preventDefault();setAiError("");try{await api("/api/intake",{method:"POST",body:JSON.stringify({action:"unlock",payload:{code}})});setAccess({configured:true,authorized:true});setShowUnlock(false);setCode("");await analyze(false,true);}catch(err){setAiError((err as Error).message);}}}><label htmlFor="intake-code">{t("ob.code")}</label><input id="intake-code" className="input" type="password" autoComplete="current-password" value={code} onChange={e=>setCode(e.target.value)}/><button className="button" disabled={!code||analyzing}>{t("ob.unlock")}</button></form>}

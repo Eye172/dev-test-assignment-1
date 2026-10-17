@@ -1,4 +1,5 @@
 "use client";
+import { useAnalysisCopy } from "@/ui/use-analysis-copy";
 import { useRef, useState } from "react";
 import { FileText, Paperclip, X } from "lucide-react";
 import { readAttachment } from "@/lib/read-attachment";
@@ -16,6 +17,7 @@ const maxFiles = 3; const maxBytes = 5 * 1024 * 1024;
 export function FileAttach({ files, onChange,onReading }: { files: Attached[]; onChange: (files: Attached[]) => void; aiReading?: boolean;onReading?:(busy:boolean)=>void }) {
   const input = useRef<HTMLInputElement>(null);
   const { t } = useDisplay();
+  const copy=useAnalysisCopy();
   const [over, setOver] = useState(false);
   const [error, setError] = useState("");
   const [reading, setReading] = useState(false);
@@ -41,7 +43,7 @@ export function FileAttach({ files, onChange,onReading }: { files: Attached[]; o
     <input ref={input} type="file" multiple accept={accepted} hidden onChange={e => { void add(e.target.files); e.target.value = ""; }}/>
     {files.length > 0 && <ul className="attach-list">{files.map(f => <li key={f.name}>
       <FileText size={15} aria-hidden/><span className="attach-name">{f.name}</span>
-      <span className="attach-state">{f.kind === "text" ? `${t("files.read")} · ${f.coverage || ""}` : `${t("files.notRead")} · ${f.error || t("files.reattach")}`}</span>
+      <span className="attach-state">{f.kind === "text" ? `${t("files.read")} · ${copy(f.coverage || "")}` : `${t("files.notRead")} · ${f.error || t("files.reattach")}`}</span>
       <button type="button" className="icon-button small" disabled={reading} aria-label={`${t("files.remove")}: ${f.name}`} onClick={() => onChange(files.filter(x => x !== f))}><X size={14}/></button>
     </li>)}</ul>}
     {error && <p className="field-error" role="alert">{error}</p>}

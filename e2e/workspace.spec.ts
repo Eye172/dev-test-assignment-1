@@ -111,9 +111,12 @@ test("founder completes the six-screen flow with real persistence and an exporte
   expect((await savedWorkspace(page,id)).completion).toMatchObject({ percentage: 100,completed: 5 });
   await navigate(page,"Roadmap");
   // Onboarding already generated a first plan from the profile; refreshing it now uses the completed strategy.
+  await page.getByRole("button",{name:"Refresh plan",exact:true}).click();
+  await page.getByRole("dialog",{name:"Refresh plan",exact:true}).getByRole("button",{name:"Cancel",exact:true}).click();
+  await expect(page.getByRole("dialog",{name:"Refresh plan",exact:true})).toHaveCount(0);
   const generated = page.waitForResponse(r => r.request().method() === "POST" && r.url().endsWith("/roadmap"));
-  page.once("dialog",dialog => dialog.accept());
   await page.getByRole("button",{ name: "Refresh plan",exact: true }).click();
+  await page.getByRole("dialog",{name:"Refresh plan",exact:true}).getByRole("button",{name:"Refresh plan",exact:true}).click();
   expect((await generated).status()).toBe(200);
   await expect(page.locator(".v4-toast").filter({ hasText: "Plan refreshed" })).toBeVisible();
   const status = page.getByLabel(/^Status for /).first();
@@ -125,9 +128,9 @@ test("founder completes the six-screen flow with real persistence and an exporte
   expect(plan.tasks.filter(t => !t.archived).length).toBeGreaterThanOrEqual(6);
   expect(plan.tasks.filter(t => !t.archived).length).toBeLessThanOrEqual(10);
   const completedId = plan.tasks.find(t => t.status === "done")!.id;
-  page.once("dialog",dialog => dialog.accept());
   const refreshed = page.waitForResponse(r => r.request().method() === "POST" && r.url().endsWith("/roadmap"));
   await page.getByRole("button",{ name: "Refresh plan",exact: true }).click();
+  await page.getByRole("dialog",{name:"Refresh plan",exact:true}).getByRole("button",{name:"Refresh plan",exact:true}).click();
   expect((await refreshed).status()).toBe(200);
   expect((await savedWorkspace(page,id)).tasks.find(t => t.id === completedId)?.status).toBe("done");
   await page.reload();

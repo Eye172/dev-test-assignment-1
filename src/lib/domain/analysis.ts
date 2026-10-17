@@ -126,6 +126,7 @@ export const defaultAnalysisLayout = (): AnalysisLayout => ({ version: 1, plates
 export type QualityIssue = { id: string; stepId: string; severity: "blocking" | "material" | "minor"; target: string; topic: string; reason: string; correction: string; deterministic: boolean; status: "open" | "resolved" | "deferred"; resolution: string | null };
 export const planSelectionSchema = z.object({
   retireTaskIds: z.array(z.uuid()).max(500),
+  weeklyReserves: z.array(z.number().int().min(0).max(10080)).length(4).default([0,0,0,0]),
   retainedEstimates: z.array(z.object({ taskId: z.uuid(), effortMinutes: z.number().int().min(0).max(100000).nullable(), costs: z.array(moneyAssumptionSchema).max(5) }).strict()).max(500),
   limits: planLimitsSchema, acknowledgeUnknowns: z.boolean(),
   experimentEdits: z.array(z.object({ key, title: required(240).optional(), deliverable: required(3000).optional(), method: required().optional(), week: z.number().int().min(1).max(4).optional(), effortMinutes: z.number().int().min(0).max(100000).nullable().optional(), costs:z.array(moneyAssumptionSchema).max(5).optional(), measurement:experimentContractSchema.shape.measurement.optional(), reason:required(1000) }).strict()).max(10).default([]),

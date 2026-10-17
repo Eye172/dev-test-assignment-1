@@ -1,0 +1,79 @@
+[
+  {
+    "id": "01",
+    "scenario": "Landing, autonomous light scene, pause, navigation, new favicon",
+    "status": "passed",
+    "evidence": "Chrome; no ASCII; icon /brand/orbit-icon-v4.svg; no horizontal overflow",
+    "screenshot": "01-landing.jpg"
+  },
+  {
+    "id": "02",
+    "scenario": "Guided B2B MVP ShiftBuddy; seven steps and draft recovery",
+    "status": "passed",
+    "evidence": "Reload restored step and answers; real contextual preflight; two markets manually corrected before create; source comma fix awaiting final browser retest Final-build guided B2C MVP SpeakWeekRelease also created: d13315bb-93ca-41c4-80d5-57ff1e90333b. Reload restored step4 selections. Confirmed markets exactly Казахстан, Узбекистан without English separator.",
+    "screenshot": "02-guided-confirm.jpg;02-guided-two-markets-final.jpg"
+  },
+  {
+    "id": "03",
+    "scenario": "Free-form RouteSlot: founder goal versus customer outcome",
+    "status": "passed",
+    "evidence": "Real retention/churn/access questions; context answers did not replace ICP or channels; unknown promised outcome remained empty Pricing view independently confirmed 35000 KZT per company monthly.",
+    "screenshot": "03-customer-outcome.jpg"
+  },
+  {
+    "id": "04",
+    "scenario": "PDF + DOCX + TXT BakePlan and real AI clarification recovery",
+    "status": "passed",
+    "evidence": "All three actual files read; questions identified contradictions and capacity; pending answer and earlier answers survived reload",
+    "screenshot": "04-materials-confirm.jpg"
+  },
+  {
+    "id": "05",
+    "scenario": "No-AI B2G Idea creation and invalid profile validation",
+    "status": "passed",
+    "evidence": "Whitespace name and javascript URL rejected; corrected CycleCheck created with eight rule tasks",
+    "screenshot": "05-validation-final.jpg"
+  },
+  {
+    "id": "06",
+    "scenario": "Five independent saves, exactly three assumptions, three-channel cap",
+    "status": "passed",
+    "evidence": "0→20→40→60→80→100; saved drafts restored; all hypotheses remain untested; separate tab dashboard confirms five sections",
+    "screenshot": "06-five-sections-final.jpg"
+  },
+  {
+    "id": "07",
+    "scenario": "Rule roadmap refresh, task lifecycle and preservation",
+    "status": "passed",
+    "evidence": "App confirmation Cancel preserves state; Confirm generates10 current rule suggestions. Marked one done and one skipped, created week2 custom task, archived/restored it, regenerated and reloaded. Done status and custom text/week remain; 1/(11-1)=10% matches overview.",
+    "screenshot": "07-refresh-dialog.jpg;07-plan-lifecycle.jpg"
+  },
+  {
+    "id": "08",
+    "scenario": "Owner-gated actual AI, cost limits, capacity blocker and persisted plan",
+    "status": "passed with provider limits",
+    "evidence": "Full run timed out; another stopped before daily reservation; explicit narrow experiment run d8d681d5-e7f4-4e38-b91a-362708736c3b completed with critic repair. Eight conditional tasks applied. 640/600 blocked despite acknowledgement; 450/600 allowed. No false claim of fresh six-role success.",
+    "screenshot": "08-capacity-blocker.jpg;08-ai-plan-saved.jpg"
+  },
+  {
+    "id": "09",
+    "scenario": "RU/EN/KK, Observatory/Ledger/Flow and narrow screen",
+    "status": "passed",
+    "evidence": "Saved Russian business data unchanged; actual width422 equals scrollWidth422; requested390x844; viewport reset",
+    "screenshot": "09-mobile-ledger-kk.jpg"
+  },
+  {
+    "id": "10",
+    "scenario": "Direct saved URL, sharing, profile editing and not-found recovery",
+    "status": "passed with export tool limitation",
+    "evidence": "Separate direct URL shows100% strategy, persisted profile description changed through modal and survives reload, progress10% matches roadmap, share menu available, invalid UUID gives readable404 and home recovery. Clipboard read returned no text and manual download tool failed: no manual export-file claim. Automated backup export coverage retained.",
+    "screenshot": "10-profile-persistence.jpg;10-not-found.jpg"
+  },
+  {
+    "id": "11",
+    "scenario": "Localized memory enum persistence",
+    "status": "passed",
+    "evidence": "Saved manual high-risk hypothesis in RU, opened same record in KK: combobox value high and selected жоғары; original Russian hypothesis text unchanged. Independent critic confirms fixes and no remaining defect in reviewed evidence.",
+    "screenshot": "11-memory-risk-kk.jpg"
+  }
+]
