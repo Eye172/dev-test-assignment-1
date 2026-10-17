@@ -1,5 +1,6 @@
 import "server-only";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
+import { stableJson } from "@/lib/domain/json";
 import { calculateCompletion, calculateRoadmapProgress, emptySection } from "@/lib/domain/completion";
 import { generateRoadmap } from "@/lib/domain/roadmap";
 import { customTaskSchema, profileUpdateSchema, sectionKeys, sectionSchemas, sectionUpdateSchema, startupInputSchema, taskUpdateSchema, type SectionKey, type StartupInput } from "@/lib/domain/schemas";
@@ -53,6 +54,18 @@ export class Store {
       VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$11::jsonb) RETURNING *`,
     [id,p.name,p.description,p.businessModel,p.stage,p.targetMarket,p.customerSegment,p.websiteUrl,p.context,JSON.stringify(p.customFields),JSON.stringify(p.preferences)]);
     return startupFromRow(row);
+  }
+  async createStartupOnce(input:unknown, requestId:string) {
+    const p=startupInputSchema.parse(input);
+    const inputHash=createHash("sha256").update(stableJson(p)).digest("hex");
+    return this.db.transaction(async tx=>{
+      await tx.query("INSERT INTO startup_creation_requests(request_id,input_hash) VALUES($1,$2) ON CONFLICT DO NOTHING",[requestId,inputHash]);
+      const [row]=await tx.query("SELECT * FROM startup_creation_requests WHERE request_id=$1 FOR UPDATE",[requestId]);
+      if(row.input_hash!==inputHash)throw new AppError("CREATION_CHANGED","A workspace was already created with the earlier submitted profile. Open it before changing its profile.",409,row.startup_id?{createdStartupId:String(row.startup_id)}:undefined);
+      if(row.startup_id)return this.findStartup(String(row.startup_id),tx);
+      const startup=await this.createStartup(p,randomUUID(),tx);
+      await tx.query("UPDATE startup_creation_requests SET startup_id=$2 WHERE request_id=$1",[requestId,startup.id]);return startup;
+    });
   }
   async updateStartup(id: string, input: unknown) {
     const { expectedRevision, patch } = profileUpdateSchema.parse(input);

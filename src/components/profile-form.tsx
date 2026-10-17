@@ -24,7 +24,7 @@ const recoverySchema = z.object({
 });
 
 export type ProfileSeed = Partial<Draft> & { customFields?: Record<string, string> };
-export function ProfileForm({ initial, seed, origins, onSaved, onCancel, onReloaded, submitLabel }: { initial?: Startup; seed?: ProfileSeed; origins?: Partial<Record<string, string>>; onSaved?: (startup: Startup) => void | Promise<void>; onCancel?: () => void; onReloaded?: (workspace: Workspace) => void; submitLabel?: string }) {
+export function ProfileForm({ initial, seed, origins, onSaved, onCancel, onReloaded, submitLabel, recoveryScope, creationRequestId }: { initial?: Startup; seed?: ProfileSeed; origins?: Partial<Record<string, string>>; onSaved?: (startup: Startup) => void | Promise<void>; onCancel?: () => void; onReloaded?: (workspace: Workspace) => void; submitLabel?: string; recoveryScope?:string;creationRequestId?:string }) {
   const router = useRouter();
   const hydrated = useHydrated();
   const start = initial ? fromStartup(initial) : { ...blank, ...Object.fromEntries(Object.entries(seed ?? {}).filter(([k, v]) => k !== "customFields" && v)) } as Draft;
@@ -42,9 +42,14 @@ export function ProfileForm({ initial, seed, origins, onSaved, onCancel, onReloa
   const summary = useRef<HTMLDivElement>(null);
   const dirty = JSON.stringify({ data, custom }) !== baseline;
   useDirtyGuard(dirty);
-  const draftKey = `profile:${initial?.id ?? "new"}`;
+  const draftKey = `profile:${initial?.id ?? recoveryScope ?? "new"}`;
   useDraftRecovery(draftKey,{ data,custom,revision,baseline },dirty,value => {
     const recovered = recoverySchema.parse(value);
+    if(seed&&!initial){
+      const previous=JSON.parse(recovered.baseline) as {data:Draft;custom:[string,string][]};
+      const rebased=Object.fromEntries(editable.map(k=>[k,recovered.data[k]===previous.data[k]?start[k]:recovered.data[k]])) as Draft;
+      setData(rebased);setCustom(JSON.stringify(recovered.custom)===JSON.stringify(previous.custom)?startCustom:recovered.custom);setBaseline(JSON.stringify({data:start,custom:startCustom}));return;
+    }
     setData(recovered.data); setCustom(recovered.custom); setRevision(recovered.revision); setBaseline(recovered.baseline);
   });
 
@@ -68,6 +73,7 @@ export function ProfileForm({ initial, seed, origins, onSaved, onCancel, onReloa
     try {
       const startup = await api<Startup>(initial ? `/api/startups/${initial.id}` : "/api/startups", {
         method: initial ? "PATCH" : "POST",
+        ...(!initial&&creationRequestId?{headers:{"Idempotency-Key":creationRequestId}}:{}),
         // New workspaces follow the device's light or dark setting until the founder picks one.
         body: JSON.stringify(initial ? { expectedRevision: revision, patch: parsed.data } : { ...parsed.data, preferences: { theme: "system", density: "comfortable", motion: "full", accent: "green", dashboardLayout: null } }),
       });
@@ -104,12 +110,13 @@ export function ProfileForm({ initial, seed, origins, onSaved, onCancel, onReloa
   }, []);
 
   const conflict = error instanceof ClientError && error.status === 409;
-  const originText: Record<string, string> = { text: "From your text", file: "From your file", answer: "Your answer", choice: "Your choice" };
+  const originText: Record<string, string> = { text: "From your text", file: "From your file", answer: "Your answer", choice: "Your choice",ai:"AI interpretation · confirm" };
   // Shows where a pre-filled value came from until the founder edits it.
   const tag = (k: keyof Draft) => origins?.[k] && data[k] === start[k] ? <span className="origin-tag">{originText[origins[k]!] ?? origins[k]}</span> : null;
   const invalid = fieldOrder.filter(k => fields[k]);
   return <form onSubmit={save} ref={form} noValidate className="profile-form">
     {error && <div ref={summary} tabIndex={-1} className="error-summary" role="alert">
+      {error instanceof ClientError&&error.code==="CREATION_CHANGED"&&error.fields?.createdStartupId&&<button type="button" className="button small" onClick={async()=>{const ws=await api<Workspace>(`/api/startups/${error.fields!.createdStartupId}`);if(onSaved)await onSaved(ws.startup);else router.push(`/startups/${ws.startup.id}`);}}>Open the workspace already created</button>}
       <ErrorNotice error={conflict ? "This profile changed in another tab or by someone else. Load the latest version, or copy your draft first." : error}
         onReload={conflict ? () => void loadLatest() : undefined}
         onCopy={conflict ? () => void navigator.clipboard.writeText(JSON.stringify({ ...data, customFields: Object.fromEntries(custom) }, null, 2)) : undefined}/>

@@ -31,11 +31,14 @@ export async function executionInput(store:AiStore,run:LeasedRun,step:AiStep,com
   const historicalDecisions=memory.filter(m=>["rejected","deferred","superseded"].includes(m.status)).map(m=>({id:m.id,status:m.status,data:m.data,reason:m.reason}));
   const openIssues=(await store.analysis.issues(run.id)).filter(i=>i.status==="open");
   const [r]=await store.db.query("SELECT sources FROM ai_runs WHERE id=$1",[run.id]);
+  const material=run.snapshot.founderMaterial;
+  const textLimit=step.role==="intake"?16000:6000;
+  const founderMaterial=material?{text:material.text,files:material.files.map(f=>({...f,text:f.text.slice(0,textLimit),coverage:f.coverage+(f.text.length>textLimit?`; this role sees the first ${textLimit} characters; full extraction retained in private snapshot`:"")}))}:undefined;
   return {
     asOf:new Date().toISOString(),role:step.role,round:step.round,brief:run.brief,
-    snapshot:{workspace:{...workspace,tasks},evidence,currentDecisions,historicalDecisions,pendingDecisions:memory.filter(m=>m.status==="proposed"&&m.revision>1),parentArtifacts},
+    snapshot:{workspace:{...workspace,tasks},evidence,currentDecisions,historicalDecisions,pendingDecisions:memory.filter(m=>m.status==="proposed"&&m.revision>1),parentArtifacts,founderMaterial,intakeInterpretation:run.snapshot.intake?{id:run.snapshot.intake.id,result:run.snapshot.intake.result}:undefined},
     precedingArtifacts:upstream,sourceLedger:step.role==="researcher"?r.sources:(r.sources as {url:string}[]).filter(s=>pages.some(p=>p.url===s.url)),capturedPages,findings,openIssues,
     manifest:{snapshotHash:fingerprint(run.snapshot),memory:memory.map(m=>({id:m.id,revision:m.revision,status:m.status})),evidenceIds:evidence.map(e=>e.id),artifactIds:completed.map(s=>s.id),pageVersions:pages.map(p=>({id:p.id,contentHash:p.contentHash,accessedAt:p.accessedAt})),taskView:fullTasks?"full":"summary"},
-    instruction:"Use current accepted decisions separately from historical proposals. Make the next decision concrete. New observations can challenge an accepted direction without silently replacing it. A captured passage is source text, not proof that a vendor's assertion is true.",
+    instruction:"The confirmed saved profile is authoritative over earlier onboarding extraction and material when fields conflict; disclose other contradictions. Uploaded material and intake interpretation are founder-provided context, not independently verified sources. Use current accepted decisions separately from historical proposals. Make the next decision concrete. New observations can challenge an accepted direction without silently replacing it. A captured passage is source text, not proof that a vendor's assertion is true.",
   };
 }

@@ -35,7 +35,7 @@ export async function GET(request:Request,context:Context) {
 export async function POST(request:Request,context:Context) {
   return handle(request,async()=>{
     const id=idFrom((await context.params).id);
-    const input=await readJson(request);const p=z.object({action:z.string(),payload:z.unknown().optional()}).passthrough().parse(input);
+    const input=await readJson(request,{maxBytes:256*1024});const p=z.object({action:z.string(),payload:z.unknown().optional()}).passthrough().parse(input);
     if(p.action==="unlock") {const cookie=await unlockAi(request,p.payload);const response=json({authorized:true});response.headers.set("Set-Cookie",cookie);return response;}
     requireAiAuthorization(request);
     if(p.action==="lock"){const response=json({authorized:false});response.headers.set("Set-Cookie",lockAiCookie());return response;}

@@ -40,7 +40,7 @@ export const experimentContractSchema = z.object({
   key, hypothesisRefs: refs, decisionRefs: refs, dependsOn: z.array(key).max(10),
   effortMinutes: z.number().int().min(0).max(100000).nullable(), costs: z.array(moneyAssumptionSchema).max(5),
   measurement: z.object({ unit: required(200), minimumSample: z.number().int().min(1).nullable(), success: required(1000), failure: required(1000), inconclusive: required(1000), deadlineDay: z.number().int().min(1).max(30) }),
-  assumptions: z.array(required(600)).max(6), existingTaskIds: z.array(z.uuid()).max(10),
+  assumptions: z.array(required(600)).max(10), existingTaskIds: z.array(z.uuid()).max(10),
 });
 export const planLimitsSchema = z.object({
   weeklyMinutes: z.number().int().min(1).max(10080).nullable(),

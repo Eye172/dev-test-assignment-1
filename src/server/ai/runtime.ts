@@ -109,7 +109,9 @@ export async function executeSpecialist(store:AiStore,run:LeasedRun,step:AiStep,
   const runner=new Runner({modelProvider:provider,tracingDisabled:true,traceIncludeSensitiveData:false});
   const result=await runner.run(agent,payload,{maxTurns:execution.settings.maxTurns,signal:AbortSignal.timeout(execution.settings.timeoutMs)});
   if(!result.finalOutput)throw new AppError("AI_EMPTY_OUTPUT","This specialist returned no usable proposal.",502);
-  const parsed=modelOutputSchema(step.role).parse(result.finalOutput);
+  const validation=modelOutputSchema(step.role).safeParse(result.finalOutput);
+  if(!validation.success){await store.recordTool(run,step,"artifact_validation",{schema:execution.settings.artifactVersion},{rejectedArtifact:result.finalOutput,issues:validation.error.issues});throw new AppError("AI_ARTIFACT_INVALID","The specialist response did not meet its data contract. Reported usage and the rejected proposal remain in private history; nothing was applied.",422);}
+  const parsed=validation.data;
   if(step.role==="experimenter"&&parsed.experiments.length<6)throw new AppError("AI_PLAN_INVALID","The experiment designer returned fewer than six tasks. Start a focused experiment follow-up.",422);
   await store.completeStep(run,step,checkCitations(parsed,[...priorSources,...found],step.role,run.snapshot.evidence),found);
 }

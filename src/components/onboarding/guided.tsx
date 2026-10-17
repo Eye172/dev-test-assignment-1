@@ -39,15 +39,15 @@ export function guidedToDraft(g: GuidedState): IntakeDraft {
 const topics = ["Basics", "Who pays", "Stage", "Market", "First customer", "Problem and price", "Material"] as const;
 const ease = [0.22, 1, 0.36, 1] as const;
 
-export function GuidedBrief({ value: g, onChange, onBack, onDone, files, onFiles }: { value: GuidedState; onChange: (g: GuidedState) => void; onBack: () => void; onDone: () => void; files: Attached[]; onFiles: (f: Attached[]) => void }) {
-  const [i, setI] = useState(0);
+export function GuidedBrief({ value: g, onChange, onBack, onDone, files, onFiles,topic=0,onTopic,readingFiles=false,onReading }: { value: GuidedState; onChange: (g: GuidedState) => void; onBack: () => void; onDone: () => void; files: Attached[]; onFiles: (f: Attached[]) => void;topic?:number;onTopic?:(n:number)=>void;readingFiles?:boolean;onReading?:(busy:boolean)=>void }) {
+  const i=topic;
   const [dir, setDir] = useState(1);
   const set = (p: Partial<GuidedState>) => onChange({ ...g, ...p });
   const toggle = (k: "types" | "signals" | "markets" | "roles" | "sizes" | "channels", v: string, max = 99) =>
     set({ [k]: g[k].includes(v) ? g[k].filter(x => x !== v) : g[k].length < max ? [...g[k], v] : g[k] } as Partial<GuidedState>);
   const done = [!!(g.name.trim() && g.oneLiner.trim()), !!g.model, !!g.stage, !!(g.markets.length || g.otherMarket.trim()), !!composedSegment(g), !!(g.pain || g.price || g.channels.length), files.length > 0];
-  const move = (n: number) => { setDir(n > i ? 1 : -1); setI(n); };
-  const next = () => i < topics.length - 1 ? move(i + 1) : onDone();
+  const move = (n: number) => { if(readingFiles)return;setDir(n > i ? 1 : -1); onTopic?.(n); };
+  const next = () => {if(readingFiles)return;if(i < topics.length - 1)move(i+1);else onDone();};
   // Plain render helpers (not components), so inputs keep focus and state across renders.
   const chips = (k: "types" | "signals" | "markets" | "roles" | "sizes" | "channels", options: string[], max?: number) =>
     <div className="chip-row" role="group">{options.map(o => <button type="button" key={o} className={`chip ${g[k].includes(o) ? "on" : ""}`} aria-pressed={g[k].includes(o)} onClick={() => toggle(k, o, max)}>{o}</button>)}</div>;
@@ -78,7 +78,7 @@ export function GuidedBrief({ value: g, onChange, onBack, onDone, files, onFiles
               {cards(modelOptions, g.model, v => set({ model: v, roles: [], sizes: [] }))}
               <p className="g-sub">What kind of business is it? <span className="faint">Pick any that fit.</span></p>
               {chips("types", businessTypes)}
-              {g.types.includes("Other") && <input className="input" value={g.otherType} onChange={e => set({ otherType: e.target.value })} placeholder="Describe the type" aria-label="Other business type"/>}
+              {g.types.includes("Other") && <input className="input" maxLength={200} value={g.otherType} onChange={e => set({ otherType: e.target.value })} placeholder="Describe the type" aria-label="Other business type"/>}
             </>}
             {i === 2 && <>
               <h2>Where are you today?</h2>
@@ -90,37 +90,37 @@ export function GuidedBrief({ value: g, onChange, onBack, onDone, files, onFiles
               <h2>Which market do you want to win first?</h2>
               <p className="field-help">Pick one or two. Starting narrow makes channels and prices testable.</p>
               {marketGroups.map(gr => <div key={gr.label} className="g-group"><p className="g-sub small">{gr.label}</p>{chips("markets", gr.options, 2)}</div>)}
-              <label className="g-field"><span>Or type it</span><input className="input" value={g.otherMarket} onChange={e => set({ otherMarket: e.target.value })} placeholder="Almaty fintech startups, Nordics, Gulf region…"/></label>
+              <label className="g-field"><span>Or type it</span><input className="input" maxLength={200} value={g.otherMarket} onChange={e => set({ otherMarket: e.target.value })} placeholder="Almaty fintech startups, Nordics, Gulf region…"/></label>
             </>}
             {i === 4 && <>
               <h2>Who feels the problem most — and pays first?</h2>
               {!g.model ? <p className="info-notice">Choose who pays first (topic 2) to see matching roles.</p> : <>
                 <p className="g-sub">Role</p>{chips("roles", buyerRoles[g.model], 2)}
                 <p className="g-sub">{g.model === "B2C" ? "Age group" : g.model === "B2B" ? "Company size" : "Level"}</p>{chips("sizes", sizeOptions[g.model], 2)}
-                <label className="g-field"><span>Industry or situation <span className="faint">optional</span></span><input className="input" value={g.industry} onChange={e => set({ industry: e.target.value })} placeholder="logistics, dental clinics, first-year university"/></label>
+                <label className="g-field"><span>Industry or situation <span className="faint">optional</span></span><input className="input" maxLength={200} value={g.industry} onChange={e => set({ industry: e.target.value })} placeholder="logistics, dental clinics, first-year university"/></label>
               </>}
-              <label className="g-field"><span>In your words <span className="faint">overrides the choices above</span></span><input className="input" value={g.segment} onChange={e => set({ segment: e.target.value })} placeholder={composedSegment(g) || "Operations managers at logistics companies with 20–200 employees"}/></label>
+              <label className="g-field"><span>In your words <span className="faint">overrides the choices above</span></span><input className="input" maxLength={500} value={g.segment} onChange={e => set({ segment: e.target.value })} placeholder={composedSegment(g) || "Operations managers at logistics companies with 20–200 employees"}/></label>
               {composedSegment(g) && <p className="g-preview">Your first customer: <strong>{composedSegment(g)}</strong></p>}
             </>}
             {i === 5 && <>
               <h2>The problem, the price, the first channel.</h2>
               <p className="field-help">All optional — each answer becomes a draft you review later. Guesses are fine; the plan turns them into tests.</p>
-              <label className="g-field"><span>What do they struggle with today?</span><input className="input" value={g.pain} onChange={e => set({ pain: e.target.value })} placeholder="Interview notes are scattered across docs and calls"/></label>
+              <label className="g-field"><span>What do they struggle with today?</span><input className="input" maxLength={3000} value={g.pain} onChange={e => set({ pain: e.target.value })} placeholder="Interview notes are scattered across docs and calls"/></label>
               <p className="g-sub">How would they pay?</p>
               <div className="chip-row" role="radiogroup">{pricingModels.map(p => <button type="button" role="radio" aria-checked={g.pricing === p} key={p} className={`chip ${g.pricing === p ? "on" : ""}`} onClick={() => set({ pricing: g.pricing === p ? "" : p })}>{p}</button>)}</div>
-              <label className="g-field"><span>First price guess</span><input className="input" value={g.price} onChange={e => set({ price: e.target.value })} placeholder="$29 per workspace per month"/></label>
+              <label className="g-field"><span>First price guess</span><input className="input" maxLength={500} value={g.price} onChange={e => set({ price: e.target.value })} placeholder="$29 per workspace per month"/></label>
               <p className="g-sub">Where are your first customers? <span className="faint">Up to three.</span></p>
               {chips("channels", channelOptions, 3)}
             </>}
             {i === 6 && <>
               <h2>Anything you already have?</h2>
-              <label className="g-field"><span>Website <span className="faint">optional</span></span><input className="input" value={g.website} onChange={e => set({ website: e.target.value })} inputMode="url" placeholder="fieldnote.app"/></label>
-              <FileAttach files={files} onChange={onFiles} aiReading={false}/>
+              <label className="g-field"><span>Website <span className="faint">optional</span></span><input className="input" maxLength={2000} value={g.website} onChange={e => set({ website: e.target.value })} inputMode="url" placeholder="fieldnote.app"/></label>
+              <FileAttach files={files} onChange={onFiles} onReading={onReading}/>
             </>}
           </motion.div>
         </AnimatePresence>
         <div className="flow-actions">
-          <button type="button" className="button primary" onClick={next}>{i < topics.length - 1 ? "Next" : "Review profile"}<ArrowRight size={17} aria-hidden className="arrow"/></button>
+          <button type="button" className="button primary" disabled={readingFiles} onClick={next}>{i < topics.length - 1 ? "Next" : "Review profile"}<ArrowRight size={17} aria-hidden className="arrow"/></button>
           {i < topics.length - 1 && !done[i] && <button type="button" className="button ghost" onClick={next}>Skip for now</button>}
         </div>
       </div>

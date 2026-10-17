@@ -20,6 +20,16 @@ test("AI HTTP boundary gates private data and saves observations idempotently wi
   await request.post(endpoint,{data:{action:"lock"}});expect((await data<{evidence:unknown[]}>(await request.get(endpoint))).evidence).toEqual([]);expect((await request.get(`${endpoint}?export=1`)).status()).toBe(401);
 });
 
+test("pre-creation interpretation is private and requires explicit owner access",async({request})=>{
+  test.skip(!!process.env.E2E_BASE_URL,"Isolated local/CI credentials only; no provider call is made.");
+  const flags=await data<{authorized:boolean;configured:boolean}>(await request.get("/api/intake"));expect(flags).toMatchObject({configured:true,authorized:false});
+  expect((await request.get(`/api/intake?id=${crypto.randomUUID()}`)).status()).toBe(401);
+  expect((await request.post("/api/intake",{data:{action:"analyze",payload:{}}})).status()).toBe(401);
+  await data(await request.post("/api/intake",{data:{action:"unlock",payload:{code:"ci-studio-code-no-production-access"}}}));
+  expect((await request.get(`/api/intake?id=${crypto.randomUUID()}`)).status()).toBe(404);
+  expect((await request.post("/api/intake",{data:{action:"analyze",payload:{requestId:crypto.randomUUID(),text:"",files:[]}}})).status()).toBe(422);
+});
+
 // Different synthetic data from the public demo exercises the real HTTP boundary.
 const profile = {
   name: "Routecraft acceptance example",description: "Delivery planning for independent neighborhood shops.",

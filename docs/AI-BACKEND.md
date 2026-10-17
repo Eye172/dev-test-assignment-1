@@ -1,6 +1,6 @@
 # Evidence, decision memory and AI execution
 
-Owner-authorized expansion, 17 October 2026. The original assignment remains usable without paid AI: six required screens, five independently saved sections, exactly three market assumptions, up to three channels, saved-section completion, PostgreSQL persistence and a deterministic 30-day roadmap. `/startups/:id/agents` adds the private evidence workspace.
+Owner-authorized expansion, 17 October 2026. The original assignment remains usable without paid AI: six required screens, five independently saved sections, exactly three market assumptions, up to three channels, saved-section completion, PostgreSQL persistence and a deterministic 30-day roadmap. `/startups/:id/ai` adds the private evidence workspace; `/agents` redirects there.
 
 ## Roles and communication
 
@@ -112,5 +112,19 @@ Local unfinished briefs, memory, observations, plan reviews and layout changes r
 Use one process per local PGlite directory, or isolated PostgreSQL. On Windows, Node may need `--use-system-ca` for the installed root CA; certificate verification remains enabled. Production uses Vercel Secrets and PostgreSQL. No real API key is required in CI.
 
 Current release verification and real-call outcomes are recorded in ACCEPTANCE.md and SUBMISSION.md. Earlier version-1 successful runs are historical evidence, not proof that every version-2 path passed.
+
+## Integrated onboarding and material
+
+`GET /api/intake` returns only configuration/access flags. `POST {action:"unlock",payload:{code}}` sets the same signed HttpOnly owner cookie as AI studio. `POST {action:"analyze",payload:{requestId,text,files}}` explicitly requests one paid asynchronous interpretation and returns 202 with an `IntakeRecord`; `GET ?id=<uuid>` requires owner access and polls its status. Files contain `{name,size,kind,text,coverage,error}`; no binary or base64 upload is accepted. Input is capped at 256 KB, three 5 MB originals, 16,000 brief characters and 20,000 extracted characters per file. PDF.js reads at most 30 text-layer pages; fflate reads bounded DOCX body/header/footer or PPTX slide XML. Extraction limitations remain attached; images, scans, charts and speaker notes are not interpreted.
+
+The optional preflight uses frozen `orbit-preflight-1.0.0` instructions, low reasoning, at most 4,000 output tokens, a 95-second provider timeout and zero retries. Usage/reservations share `ai_budget_days` with specialist runs. `ai_intakes` and `ai_intake_calls` retain private inputs, instructions, result and actual usage. Duplicate workers can claim only queued work. An interrupted running attempt becomes failed after 150 seconds; its uncertain reservation remains. Re-dispatching queued work preserves its ID. Terminal failure requires an explicit new paid interpretation; an ambiguous HTTP retry preserves the original request ID.
+
+Clarification is deterministic after extraction, asks only required gaps and stops at completion or seven questions. No additional paid conversation is needed to record an answer. Pending answers, guided topics and confirmation edits have validated per-tab recovery. A completed AI interpretation's unknowns stay unknown until founder input; an old file cannot silently fill them. The saved profile is authoritative over earlier extraction. Profile creation supports a UUID `Idempotency-Key`; identical retries return the same startup and changed retries expose a recoverable conflict.
+
+Full specialist creation additionally accepts `intakeId?` and `material?:{text,files}`. Its immutable private snapshot retains the full readable material, guided answers and clarification answers; each role receives a bounded view with visible truncation limits. A completed intake binds to one startup. Prompt instructions explicitly prefer confirmed saved values over earlier material and treat document claims as founder-provided context, not verified external evidence. Public exports exclude this material; owner export includes linked intake/call history.
+
+Creating a workspace does not implicitly authorize paid specialist work. The founder chooses the checkbox or the launch/studio action explicitly. Startup identity and the exact frozen AI request survive reloads and lost acknowledgements. Setup seeds drafts synchronously and only into empty recovery keys; it never overwrites newer editor recovery. Checkpoints continue through the existing resume endpoint, without retrying ambiguous paid calls.
+
+Prompt version `orbit-council-2.0.7` permits the monetizer's payment hypothesis and the experimenter's operational hypothesis/sequence decision alongside the strategist's three priority market assumptions. Specialists may propose issue resolutions; only the independent critic can close persisted review issues. Experiment contracts allow up to ten explicit bounded assumptions. Provider JSON decoding constrains structure/types; full Zod business validation follows it. Rejected artifacts and reported usage remain in owner history rather than being applied.
 
 Official references: [Agents SDK](https://developers.openai.com/api/docs/guides/agents/quickstart), [structured outputs](https://developers.openai.com/api/docs/guides/structured-outputs), [web search](https://developers.openai.com/api/docs/guides/tools-web-search), [reasoning and output allowances](https://developers.openai.com/api/docs/guides/reasoning). Native source and tests are authoritative.

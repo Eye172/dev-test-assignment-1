@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { sectionKeys, sectionSchemas, type SectionKey } from "./schemas";
 import { analysisSchema, experimentContractSchema, type AnalysisLayout, type MemoryItem, type QualityIssue, type SourcePage } from "./analysis";
+import { founderMaterialSchema } from "./intake-api";
 
 export const aiRoles = ["intake", "researcher", "strategist", "monetizer", "experimenter", "critic"] as const;
 export type AiRole = typeof aiRoles[number];
@@ -43,11 +44,12 @@ export function outputSchema(role: AiRole) {
 export function modelOutputSchema(role:AiRole){
   return outputSchema(role).extend({analysis:analysisSchema.extend({
     research:role==="researcher"?analysisSchema.shape.research:z.null(),
-    hypotheses:role==="strategist"?analysisSchema.shape.hypotheses:analysisSchema.shape.hypotheses.max(0),
-    decisions:role==="strategist"||role==="monetizer"?analysisSchema.shape.decisions:analysisSchema.shape.decisions.max(0),
+    hypotheses:["strategist","monetizer","experimenter"].includes(role)?analysisSchema.shape.hypotheses:analysisSchema.shape.hypotheses.max(0),
+    decisions:["strategist","monetizer","experimenter"].includes(role)?analysisSchema.shape.decisions:analysisSchema.shape.decisions.max(0),
     planLimits:role==="experimenter"?analysisSchema.shape.planLimits:z.null(),
     sourceChecks:role==="critic"?analysisSchema.shape.sourceChecks:analysisSchema.shape.sourceChecks.max(0),
-    resolutions:role==="critic"?analysisSchema.shape.resolutions:analysisSchema.shape.resolutions.max(0),
+    // Specialists can propose a resolution; only the independent critic closes persisted issues.
+    resolutions:analysisSchema.shape.resolutions,
   })});
 }
 export function validatedProposal(key: SectionKey, result: AiResult) {
@@ -57,7 +59,7 @@ export function validatedProposal(key: SectionKey, result: AiResult) {
 }
 export const runModes = ["full", "research", "strategy", "pricing", "experiments"] as const;
 export type RunMode = typeof runModes[number];
-export const createAiRunSchema = z.object({ mode: z.enum(runModes), brief: z.string().trim().max(6000), requestId: z.uuid(), parentRunId: z.uuid().nullable().optional() }).strict();
+export const createAiRunSchema = z.object({ mode: z.enum(runModes), brief: z.string().trim().max(6000), requestId: z.uuid(), parentRunId: z.uuid().nullable().optional(), intakeId:z.uuid().nullable().optional(), material:founderMaterialSchema.optional() }).strict();
 export const evidenceSchema = z.object({
   requestId: z.uuid(),
   taskId: z.uuid().nullable(), kind: z.enum(["interview", "commitment", "payment", "analytics", "other"]),
