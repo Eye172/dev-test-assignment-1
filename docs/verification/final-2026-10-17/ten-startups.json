@@ -1,0 +1,62 @@
+[
+  [
+    "ShiftBuddy",
+    "5a0ec028-99d3-4550-aaac-4047ac8915a7",
+    "local",
+    "guided, B2B MVP, actual AI experiment plan"
+  ],
+  [
+    "RouteSlot Release",
+    "e44ac07d-6261-4066-9f4d-658ccb3b4c32",
+    "local",
+    "free-form, B2B early traction, real preflight"
+  ],
+  [
+    "BakePlan",
+    "e75084ff-c0fd-4625-be5e-48e31fc81ce0",
+    "local",
+    "PDF/DOCX/TXT, B2B MVP, real preflight recovery"
+  ],
+  [
+    "CycleCheck",
+    "1bad3533-7734-4db9-9460-fb9b76006d85",
+    "local",
+    "B2G idea, five sections, complete task lifecycle"
+  ],
+  [
+    "SpeakWeekRelease",
+    "d13315bb-93ca-41c4-80d5-57ff1e90333b",
+    "local",
+    "guided B2C MVP, two markets, no paid AI"
+  ],
+  [
+    "Fieldnote copy",
+    "3f53f7f0-1af1-407b-b673-32ff9724ae77",
+    "Vercel preview",
+    "prefilled separate persisted copy"
+  ],
+  [
+    "GridLedger",
+    "2f439393-4f36-451c-b00d-ae1aa16cf050",
+    "local",
+    "B2B UK early traction, GBP, manual confirmation wins"
+  ],
+  [
+    "ReturnDesk",
+    "03f85f2a-04eb-4d37-89dd-16722736ece1",
+    "local",
+    "B2B MVP, free pilots and unknown commercial effect"
+  ],
+  [
+    "EduVoice",
+    "7d131c53-c415-478f-8a71-1ae604a3848a",
+    "local",
+    "B2C US Idea, zero budget and unknown price"
+  ],
+  [
+    "AkimatFlow",
+    "3be8767c-3e7b-4803-889e-b9e2a1685414",
+    "local",
+    "B2G Idea, permission and procurement unknown"
+  ]
+]

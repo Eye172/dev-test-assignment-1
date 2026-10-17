@@ -2,7 +2,7 @@
 
 # v4 completion record — 17 October 2026
 
-This record concerns the `claude/studio-v4` candidate. Production remains the earlier release until the owner approves deployment. Original handoff: [HANDOFF-V4.md](HANDOFF-V4.md), written by Claude at approximately 13:10 UTC+5. Its pending browser verification, live specialist verification, responsive review and delivery preparation are the continuation scope.
+This historical milestone record concerns the `claude/studio-v4` candidate before final release. Production still served the earlier version at that time; the completed publication and final acceptance are recorded in RELEASE-2026-10-17.md. Original handoff: [HANDOFF-V4.md](HANDOFF-V4.md), written by Claude at approximately 13:10 UTC+5. Its pending browser verification, live specialist verification, responsive review and delivery preparation are the continuation scope.
 
 ## Owner-requested visual refinement
 

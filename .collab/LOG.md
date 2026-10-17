@@ -153,3 +153,8 @@ Continued the same v4 candidate following the owner's annotated screenshots. Fix
 Applied the owner's follow-up: remove ASCII and yellow chart accents, retain only a brighter native-resolution light scene with edge antialiasing, replace stretched background star cells with soft points, simplify duplicate demo/disclaimer chrome and abstract copy. The landing-only hypothesis example now occupies all four regions; saved workspace evidence is unchanged. GTM labels name the customer, offer, channels, monetization, hypotheses/tests and plan. Rule calculations are available on selection. Original §06 still has one concise demo disclosure in the landing footer. The independent critic found no additional overlaps or assignment violations. Original requirements and the remaining v4 production-promotion boundary are recorded in docs/ASSIGNMENT-CHECK.md.
 
 Latest owner follow-up also removes the entire “What this is / What this is not” landing section and its navigation anchor.
+
+
+## 2026-10-17 — final v4 delivery
+
+PR13 merged as ecf3e22 after verified application 780bdd8 passed 93 domain/SQL tests and 100 browser tests locally and in PostgreSQL CI. Vercel production 4Y9L6AFFWyJU6ULgY5cH6g3RhzUM reached Ready; anonymous hosted acceptance passed 32 scenarios with two isolated-code skips. Seventeen manual scenarios cover ten different startup cases, plus actual hosted preflight and lock recovery. Real full-council timeouts/budget limits remain explicit; no new successful six-role run is claimed. Final evidence: docs/RELEASE-2026-10-17.md. The original ContractPing draft and persistent local database were preserved.

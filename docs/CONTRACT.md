@@ -72,3 +72,8 @@ No delete controls are offered. Skipping, archiving and editing retain work. Sha
 ## Verification
 
 Unit tests cover completeness, drafts and roadmap rules. Database/service integration tests use real PGlite SQL including transactions, constraints, conflict detection and regeneration history. HTTP tests cover validation/error handling. Browser acceptance covers creation, all five independent saves, refresh/direct links, dashboard percentages, roadmap generation/status persistence, repeated generation, customization, export, desktop/mobile and keyboard/reduced-motion behavior. CI runs lint, typecheck, tests, production build and browser acceptance.
+
+
+### Final release refinements — 17 October
+
+Preflight 1.3 retains generated evidence/access questions as private context instead of overwriting existing business facts, distinguishes founder targets from customer benefit, and supplies explicit structured-output bounds. Reviewed plan selections add four numeric weeklyReserves with a backward-compatible zero default; capacity and preview hashes include them. The official current logo symbol is embedded from the provided PNG in the cache-safe tab icon. Final public release evidence is in RELEASE-2026-10-17.md.

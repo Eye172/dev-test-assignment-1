@@ -64,6 +64,8 @@ Before applying a version-2 plan, the owner reviews a server-generated preview:
 - Dependencies must exist and precede their dependents; deadlines must fit assigned weeks. Workload and cash overruns block acceptance.
 - Missing estimates or unconfirmed combined sales/delivery allocation require explicit acknowledgement. The resulting plan is labelled conditional, rather than capacity-verified.
 
+The reviewed selection also accepts `weeklyReserves`: exactly four integer minute values, 0–10080, defaulting to four zeros for older selections. These are additional delivery/support/other obligations not already counted in task estimates. They are included in week totals and the preview hash; overload remains blocking even when unknowns are acknowledged.
+
 A preview hash binds the reviewed selection to task, section and profile revisions. Changed data requires a new preview. Apply is transactional and idempotent. It supersedes the previous active plan, archives only selected suggestions and retains their history. Task notes and structured experiment criteria derive from the same accepted measurement.
 
 Rule regeneration is blocked while an AI plan is active. An explicit switch with the expected plan ID restores the rule path and preserves human-owned work. Roadmap status formulas remain unchanged. Moving or editing a task retains its accepted experiment contract and makes the need to recheck criteria visible.

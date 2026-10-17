@@ -1,6 +1,6 @@
 # Orbit GTM Studio handover
 
-v4 review candidate: three authored interfaces (Observatory, Ledger, Flow), EN/RU/KK, explainable readiness/assumption/channel/evidence/positioning/sizing models, and expanded specialist insight artifacts. Public dashboard plate rearrangement is replaced by these compositions; private AI analysis arrangement remains available. Display choices persist on the device. The current production alias still serves the previous release pending owner approval. Read [V4-COMPLETION.md](V4-COMPLETION.md) for current evidence; earlier acceptance records below remain historical.
+v4 is published on the public Vercel alias through PR13. It retains Observatory, Ledger and Flow in EN/RU/KK, with clearer shared models and the owner's requested light scene/branding. Display choices stay on the device and saved business data remains unchanged. Read [RELEASE-2026-10-17.md](RELEASE-2026-10-17.md) for final verification, deployment and limits; earlier acceptance records are historical.
 
 Orbit is an independent synthetic-data founder workspace. Its required six-screen journey records five independently saved GTM sections and turns them into a 30-day plan. Completion remains exactly saved complete sections / 5; neither completed forms nor tasks establish commercial validation.
 

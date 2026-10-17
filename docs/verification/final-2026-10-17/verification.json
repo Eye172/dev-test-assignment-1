@@ -1,0 +1,43 @@
+{
+  "applicationRevision": "780bdd893714004e178811d3f0a6d3d7187f1afa",
+  "releaseMerge": "ecf3e225d52a067b067d82225f561273ff604cd1",
+  "pullRequest": "https://github.com/Eye172/dev-test-assignment-1/pull/13",
+  "local": {
+    "verify": "passed",
+    "domainSqlTests": 93,
+    "browserTests": 100,
+    "browserMinutes": 7.6,
+    "browserRetries": 0,
+    "productionDependencyVulnerabilities": 0
+  },
+  "postgresCI": {
+    "url": "https://github.com/Eye172/dev-test-assignment-1/actions/runs/39032050380",
+    "domainSqlTests": 93,
+    "browserTests": 100,
+    "browserMinutes": 10.8,
+    "status": "success"
+  },
+  "manual": {
+    "scenarios": 17,
+    "distinctStartups": 10,
+    "manifest": "manual.json",
+    "workspaces": "ten-startups.json"
+  },
+  "production": {
+    "status": "ready",
+    "deployment": "4Y9L6AFFWyJU6ULgY5cH6g3RhzUM",
+    "url": "https://orbit-gtm-studio.vercel.app",
+    "database": "postgres",
+    "mode": "demo",
+    "favicon": "verified",
+    "realPreflight": "passed",
+    "workspace": "82d381a4-9afe-4ad1-a330-abff31614636",
+    "hostedTests": {
+      "passed": 32,
+      "skipped": 2,
+      "minutes": 5.8,
+      "retries": 0,
+      "skipReason": "Two isolated-credential AI tests are not run against production; actual hosted owner unlock/preflight/lock was checked manually."
+    }
+  }
+}

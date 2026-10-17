@@ -75,5 +75,47 @@
     "status": "passed",
     "evidence": "Saved manual high-risk hypothesis in RU, opened same record in KK: combobox value high and selected жоғары; original Russian hypothesis text unchanged. Independent critic confirms fixes and no remaining defect in reviewed evidence.",
     "screenshot": "11-memory-risk-kk.jpg"
+  },
+  {
+    "id": "12",
+    "scenario": "Vercel preview build and independent prefilled demo",
+    "status": "passed",
+    "evidence": "Actual deployed preview opened and created a separate Fieldnote copy at 3f53f7f0-1af1-407b-b673-32ff9724ae77 with five saved sections and nine rule tasks; original example unchanged. Preview access is not anonymous-public production evidence.",
+    "screenshot": "12-vercel-preview.jpg"
+  },
+  {
+    "id": "13",
+    "scenario": "GridLedger early traction, GBP and confirmed-profile precedence",
+    "status": "passed with local-reader limitation",
+    "evidence": "B2B UK solar-installation software; three current paying companies at GBP49/month. Local heuristic suggested MVP when mixed with a working MVP sentence; manually confirmed Early Traction before creating 2f439393-4f36-451c-b00d-ae1aa16cf050. Confirmed stage persisted. This optional rules-only reader is not claimed to understand every phrase or currency; full original brief remains context. Reopening creation returned the same saved launch rather than a duplicate.",
+    "screenshot": "14-gridledger.jpg"
+  },
+  {
+    "id": "14",
+    "scenario": "ReturnDesk free pilots do not imply revenue",
+    "status": "passed",
+    "evidence": "B2B Kazakhstan MVP; two free pilots and no revenue; 12000 KZT shop/month is a hypothesis, no marketplace integration. Confirmation correctly selected MVP and B2B. Created 03f85f2a-04eb-4d37-89dd-16722736ece1; launch and separate overview confirmed.",
+    "screenshot": "15-returndesk.jpg"
+  },
+  {
+    "id": "15",
+    "scenario": "EduVoice B2C idea, zero budget and unknown price",
+    "status": "passed",
+    "evidence": "B2C United States, Idea, five hours weekly, zero cash, no product/users/payments, no job placement promise. Confirmation correctly kept Idea/B2C and market/segment; created 7d131c53-c415-478f-8a71-1ae604a3848a without paid AI.",
+    "screenshot": "16-eduvoice.jpg"
+  },
+  {
+    "id": "16",
+    "scenario": "AkimatFlow B2G permission before procurement",
+    "status": "passed",
+    "evidence": "B2G Kazakhstan Idea, purchasing authority and procurement unknown, no product/pilot/revenue/integration/citizen data. Created 3be8767c-3e7b-4803-889e-b9e2a1685414; overview and full reload kept the saved profile.",
+    "screenshot": "17-akimatflow.jpg"
+  },
+  {
+    "id": "17",
+    "scenario": "Actual production AI: budget, buyer benefit, GBP and owner lock",
+    "status": "passed",
+    "evidence": "On the published ecf3e22 release, actual provider questions referred to 6 hours/week, GBP200 and access to new installers, then asked why the three current clients pay. Two honest context answers were entered; other uncertainties skipped. AI correctly selected B2B/Early Traction, retained GBP49 per company monthly and left customer outcome empty. Created 82d381a4-9afe-4ad1-a330-abff31614636 and reloaded it. Pricing and value drafts saved independently. Full team explicitly unchecked. Owner access then locked and private studio again required a code. This is a real hosted preflight, not a fresh six-role council.",
+    "screenshot": "19-production-real-ai-question.jpg;20-production-ai-confirm.jpg;21-production-price.jpg;22-production-outcome.jpg;24-production-owner-lock.jpg"
   }
 ]
