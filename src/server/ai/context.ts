@@ -40,6 +40,11 @@ export async function executionInput(store:AiStore,run:LeasedRun,step:AiStep,com
   const tasks=workspace.tasks.map((t,i)=>fullTasks?{...t,ref:`task_${i+1}`}:{id:t.id,ref:`task_${i+1}`,title:t.title,week:t.week,status:t.status,archived:t.archived,edited:t.edited,source:t.source});
   const currentDecisions=memory.filter(m=>m.status==="accepted"||m.status==="active");
   const historicalDecisions=memory.filter(m=>["rejected","deferred","superseded"].includes(m.status)).map(m=>({id:m.id,status:m.status,data:m.data,reason:m.reason}));
+  // Proposed memory mirrors the exact hypotheses/decisions already supplied in
+  // specialist artifacts. Send that content once, retaining revision/status refs.
+  const artifactProposals=new Map([...upstream.map(s=>s.result),...parentArtifacts.map(p=>p.result)].flatMap(r=>[...(r.analysis?.hypotheses||[]),...(r.analysis?.decisions||[])].map(p=>[p.id,fingerprint(p)] as const)));
+  const pending=memory.filter(m=>m.status==="proposed"&&(m.revision>1||refs.has(m.id)));
+  const mirrored=new Set(pending.filter(m=>artifactProposals.get(m.id)===fingerprint(m.data.proposal)).map(m=>m.id));
   const openIssues=(await store.analysis.issues(run.id)).filter(i=>i.status==="open");
   // Re-run exact supplied artifacts, including inherited revisions. Model issue titles are not receipts.
   const validationMemory=step.role==="intake"?[]:await store.analysis.memory(startupId);
@@ -55,8 +60,8 @@ export async function executionInput(store:AiStore,run:LeasedRun,step:AiStep,com
   const textLimit=step.role==="intake"?16000:6000;
   const founderMaterial=material?{text:material.text,answers:material.answers||[],files:material.files.map(f=>({...f,text:f.text.slice(0,textLimit),coverage:f.coverage+(f.text.length>textLimit?`; this role sees the first ${textLimit} characters; full extraction retained in private snapshot`:"")}))}:undefined;
   return {
-    asOf:new Date().toISOString(),role:step.role,round:step.round,brief:run.brief,
-    snapshot:{workspace:{...workspace,tasks},evidence,currentDecisions,historicalDecisions,pendingDecisions:memory.filter(m=>m.status==="proposed"&&(m.revision>1||refs.has(m.id))),parentArtifacts,priorArtifactProposals,founderMaterial,intakeInterpretation:run.snapshot.intake?{id:run.snapshot.intake.id,result:run.snapshot.intake.result}:undefined},
+    asOf:new Date().toISOString(),role:step.role,round:step.round,brief:run.brief,outputLanguage:run.snapshot.founderLanguage??"en",
+    snapshot:{workspace:{...workspace,tasks},evidence,currentDecisions,historicalDecisions,pendingDecisions:pending.filter(m=>!mirrored.has(m.id)),artifactMemoryRefs:pending.filter(m=>mirrored.has(m.id)).map(m=>({id:m.id,revision:m.revision,status:m.status,kind:m.data.kind,content:"Exact proposal supplied in preceding/parent artifacts; not accepted"})),parentArtifacts,priorArtifactProposals,founderMaterial,intakeInterpretation:run.snapshot.intake?{id:run.snapshot.intake.id,result:run.snapshot.intake.result}:undefined},
     precedingArtifacts:upstream,sourceLedger:step.role==="researcher"?r.sources:(r.sources as {url:string}[]).filter(s=>pages.some(p=>p.url===s.url)),capturedPages,findings,openIssues,normalizationLedger,contractValidationLedger,
     referencePolicy:"Completed and inherited artifacts contain server-normalized task UUIDs. task_N aliases are an input convenience, never a required stored representation. Judge existingTaskIds by membership in the immutable snapshot. A UUID matching the supplied task is correct. The normalization ledger records exact original aliases when a conversion occurred. A workspace_record finding describes its originating snapshotAt, not today's administrative state. Read the supplied current workspace for current sections, tasks and acceptance. Findings are immutable historical records: propose new findings and decision revisions when their interpretation changes; never demand an in-place rewrite under an old finding UUID.",
     manifest:{snapshotHash:fingerprint(run.snapshot),memory:memory.map(m=>({id:m.id,revision:m.revision,status:m.status})),evidenceIds:evidence.map(e=>e.id),artifactIds:completed.map(s=>s.id),pageVersions:pages.map(p=>({id:p.id,contentHash:p.contentHash,accessedAt:p.accessedAt})),taskView:fullTasks?"full":"summary"},

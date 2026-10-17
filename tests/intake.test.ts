@@ -24,11 +24,16 @@ describe("onboarding interpretation and safe recovery",()=>{
     const id=randomUUID();const a=await store.createStartupOnce(demoProfile,id),b=await store.createStartupOnce(demoProfile,id);expect(b.id).toBe(a.id);
     await expect(store.createStartupOnce({...demoProfile,name:"Changed"},id)).rejects.toMatchObject({code:"CREATION_CHANGED",fields:{createdStartupId:a.id}});
   });
-  it("asks generated business questions after a complete profile and skips facts already supplied",()=>{
+  it("keeps generated follow-ups for populated fields without overwriting founder facts",()=>{
     const d=emptyDraft();const {name,description,businessModel,stage,targetMarket,customerSegment}=demoProfile;d.profile={name,description,businessModel,stage,targetMarket,customerSegment,websiteUrl:""};
-    const questions:Question[]=[{id:"known_market",field:"targetMarket",text:"Which country?",why:"A required field",kind:"text"},{id:"dispatch_workflow",field:"context",text:"How are courier voice notes turned into a dispatch record today?",why:"The next experiment must compare against that workflow.",kind:"text"}];
-    expect(nextIntakeQuestion(d,[],questions)?.id).toBe("dispatch_workflow");
-    expect(nextIntakeQuestion(d,["dispatch_workflow"],questions)).toBeNull();
+    d.hints.channels=["Founder-led outreach"];
+    const questions:Question[]=[{id:"buyer_access",field:"channels",text:"Which buyers can you actually reach this week?",why:"A channel label does not establish access",kind:"text"},{id:"dispatch_workflow",field:"context",text:"How are courier voice notes turned into a dispatch record today?",why:"The next experiment must compare against that workflow.",kind:"text"}];
+    const first=nextIntakeQuestion(d,[],questions)!;
+    expect(first).toMatchObject({id:"buyer_access",field:"context"});
+    expect(answer(d,first.field,"I can ask five interviewees for introductions").hints.channels).toEqual(["Founder-led outreach"]);
+    expect(nextIntakeQuestion(d,[],[{...questions[0],field:"painPoint"}])?.field).toBe("context");
+    expect(nextIntakeQuestion(d,["buyer_access"],questions)?.id).toBe("dispatch_workflow");
+    expect(nextIntakeQuestion(d,["buyer_access","dispatch_workflow"],questions)).toBeNull();
     expect(nextIntakeQuestion(d,Array.from({length:7},(_,i)=>String(i)),questions)).toBeNull();
     expect(nextIntakeQuestion(d,[],[])).toBeNull();
     d.profile.name="";
@@ -36,6 +41,12 @@ describe("onboarding interpretation and safe recovery",()=>{
     expect(nextIntakeQuestion(d,["startup_name"],[named])).toBeNull();
     expect(intakeDraftSchema.safeParse(answer(d,"businessModel","Small companies")).success).toBe(true);
     expect(intakeDraftSchema.safeParse(answer(d,"stage","Testing it now")).success).toBe(true);
+  });
+  it("does not seed a founder acquisition target as the customer's promised result",()=>{
+    const d=extract("RouteSlot — B2B SaaS для диспетчеров. Цель: за 30 дней привлечь двух новых платящих клиентов без скидки и разобраться с причиной отказа.");
+    expect(d.hints.outcome).toBe("");
+    expect(extract("Our goal is to get two paying customers without discounts.").hints.outcome).toBe("");
+    expect(extract("RouteSlot helps delivery teams. It saves dispatchers time by keeping delivery windows together.").hints.outcome).toContain("saves dispatchers");
   });
   it("persists extraction input, fences duplicate workers and settles shared budget once",async()=>{
     const p=material(),a=await intake.create(p),b=await intake.create(p);expect(b.id).toBe(a.id);

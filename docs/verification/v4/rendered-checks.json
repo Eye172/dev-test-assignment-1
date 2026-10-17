@@ -1,0 +1,246 @@
+[
+  {
+    "device": "desktop",
+    "ui": "observatory",
+    "screen": "home",
+    "lang": "ru",
+    "width": 1440,
+    "documentWidth": 1440,
+    "removedSections": 0,
+    "removedNavLinks": 0,
+    "errors": []
+  },
+  {
+    "device": "desktop",
+    "ui": "observatory",
+    "screen": "light",
+    "lang": "ru",
+    "renderer": "light",
+    "width": 1440,
+    "height": 1000,
+    "cssWidth": 1440,
+    "cssHeight": 1000,
+    "errors": []
+  },
+  {
+    "device": "desktop",
+    "ui": "observatory",
+    "screen": "dashboard",
+    "lang": "ru",
+    "width": 1440,
+    "documentWidth": 1440,
+    "removedSections": 0,
+    "removedNavLinks": 0,
+    "errors": []
+  },
+  {
+    "device": "desktop",
+    "ui": "ledger",
+    "screen": "home",
+    "lang": "ru",
+    "width": 1440,
+    "documentWidth": 1440,
+    "removedSections": 0,
+    "removedNavLinks": 0,
+    "errors": []
+  },
+  {
+    "device": "desktop",
+    "ui": "ledger",
+    "screen": "dashboard",
+    "lang": "ru",
+    "width": 1440,
+    "documentWidth": 1440,
+    "removedSections": 0,
+    "removedNavLinks": 0,
+    "errors": []
+  },
+  {
+    "device": "desktop",
+    "ui": "flow",
+    "screen": "home",
+    "lang": "ru",
+    "width": 1440,
+    "documentWidth": 1440,
+    "removedSections": 0,
+    "removedNavLinks": 0,
+    "errors": []
+  },
+  {
+    "device": "desktop",
+    "ui": "flow",
+    "screen": "dashboard",
+    "lang": "ru",
+    "width": 1440,
+    "documentWidth": 1440,
+    "removedSections": 0,
+    "removedNavLinks": 0,
+    "errors": []
+  },
+  {
+    "device": "desktop",
+    "screen": "orbit",
+    "lang": "ru",
+    "labels": [
+      {
+        "label": "1Целевой клиент80/100",
+        "width": 322.96875,
+        "height": 46
+      },
+      {
+        "label": "2Ценностное предложение80/100",
+        "width": 322.96875,
+        "height": 46
+      },
+      {
+        "label": "3Каналы привлечения100/100",
+        "width": 322.96875,
+        "height": 46
+      },
+      {
+        "label": "4Модель монетизации100/100",
+        "width": 322.96875,
+        "height": 46
+      },
+      {
+        "label": "5Гипотезы и проверки80/100",
+        "width": 322.96875,
+        "height": 46
+      },
+      {
+        "label": "6План действий35/100",
+        "width": 322.96875,
+        "height": 46
+      }
+    ],
+    "skipLink": {
+      "x": 16,
+      "y": -60,
+      "width": 234.640625,
+      "height": 44
+    },
+    "errors": []
+  },
+  {
+    "device": "phone",
+    "ui": "observatory",
+    "screen": "home",
+    "lang": "kk",
+    "width": 390,
+    "documentWidth": 390,
+    "removedSections": 0,
+    "removedNavLinks": 0,
+    "errors": []
+  },
+  {
+    "device": "phone",
+    "ui": "observatory",
+    "screen": "light",
+    "lang": "kk",
+    "renderer": "light",
+    "width": 585,
+    "height": 1266,
+    "cssWidth": 390,
+    "cssHeight": 844,
+    "errors": []
+  },
+  {
+    "device": "phone",
+    "ui": "observatory",
+    "screen": "dashboard",
+    "lang": "kk",
+    "width": 390,
+    "documentWidth": 390,
+    "removedSections": 0,
+    "removedNavLinks": 0,
+    "errors": []
+  },
+  {
+    "device": "phone",
+    "ui": "ledger",
+    "screen": "home",
+    "lang": "kk",
+    "width": 390,
+    "documentWidth": 390,
+    "removedSections": 0,
+    "removedNavLinks": 0,
+    "errors": []
+  },
+  {
+    "device": "phone",
+    "ui": "ledger",
+    "screen": "dashboard",
+    "lang": "kk",
+    "width": 390,
+    "documentWidth": 390,
+    "removedSections": 0,
+    "removedNavLinks": 0,
+    "errors": []
+  },
+  {
+    "device": "phone",
+    "ui": "flow",
+    "screen": "home",
+    "lang": "kk",
+    "width": 390,
+    "documentWidth": 390,
+    "removedSections": 0,
+    "removedNavLinks": 0,
+    "errors": []
+  },
+  {
+    "device": "phone",
+    "ui": "flow",
+    "screen": "dashboard",
+    "lang": "kk",
+    "width": 390,
+    "documentWidth": 390,
+    "removedSections": 0,
+    "removedNavLinks": 0,
+    "errors": []
+  },
+  {
+    "device": "phone",
+    "screen": "orbit",
+    "lang": "kk",
+    "labels": [
+      {
+        "label": "1Мақсатты клиент80/100",
+        "width": 157,
+        "height": 46
+      },
+      {
+        "label": "2Құндылық ұсынысы80/100",
+        "width": 157,
+        "height": 50.78125
+      },
+      {
+        "label": "3Клиент тарту арналары100/100",
+        "width": 157,
+        "height": 50.78125
+      },
+      {
+        "label": "4Монетизация моделі100/100",
+        "width": 157,
+        "height": 50.78125
+      },
+      {
+        "label": "5Гипотезалар мен тексерулер80/100",
+        "width": 157,
+        "height": 50.78125
+      },
+      {
+        "label": "6Іс-қимыл жоспары35/100",
+        "width": 157,
+        "height": 50.78125
+      }
+    ],
+    "skipLink": {
+      "x": 16,
+      "y": -60,
+      "width": 142.34375,
+      "height": 44
+    },
+    "errors": []
+  }
+]

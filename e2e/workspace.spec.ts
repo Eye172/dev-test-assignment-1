@@ -31,7 +31,7 @@ async function navigate(page: Page, name: string) {
 
 test("founder completes the six-screen flow with real persistence and an exported backup", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("link",{ name: "Create startup",exact: true }).click();
+  await page.locator(".land-actions").first().getByRole("link",{ name: "Create startup",exact: true }).click();
   // Free-form path: the founder writes; rules pick out what they can and ask only for the rest.
   await page.getByRole("button",{ name: /^Free form/ }).click();
   await page.getByLabel("Your startup in your own words").fill("Harbor pilot\nShared delivery coordination for small independent shops in Central Asia. We have an MVP.");
@@ -52,7 +52,7 @@ test("founder completes the six-screen flow with real persistence and an exporte
   await page.getByRole("button",{ name: /Create and launch/ }).click();
   await expect(page.getByText("Some required details need attention.")).toBeVisible();
   await page.getByLabel(/^Startup name/).fill("Harbor pilot — synthetic example");
-  await page.getByLabel(/^Description/).fill("Shared delivery coordination for small independent shops.");
+  await page.getByLabel(/^Short description/).fill("Shared delivery coordination for small independent shops.");
   await page.getByLabel(/^Target country or market/).fill("Central Asia");
   await page.getByLabel(/^Primary customer segment/).fill("Shop owners with a small local delivery operation");
   await page.getByLabel(/^Website \(optional\)/).fill("example.com");
@@ -107,15 +107,18 @@ test("founder completes the six-screen flow with real persistence and an exporte
   }
   await saveSection(page,"assumptions");
   await navigate(page,"Dashboard");
-  await expect(page.getByRole("region",{ name: "Summary",exact: true })).toContainText("100%");
+  await expect(page.getByRole("region",{ name: "Completion",exact: true })).toContainText("100%");
   expect((await savedWorkspace(page,id)).completion).toMatchObject({ percentage: 100,completed: 5 });
   await navigate(page,"Roadmap");
   // Onboarding already generated a first plan from the profile; refreshing it now uses the completed strategy.
+  await page.getByRole("button",{name:"Refresh plan",exact:true}).click();
+  await page.getByRole("dialog",{name:"Refresh plan",exact:true}).getByRole("button",{name:"Cancel",exact:true}).click();
+  await expect(page.getByRole("dialog",{name:"Refresh plan",exact:true})).toHaveCount(0);
   const generated = page.waitForResponse(r => r.request().method() === "POST" && r.url().endsWith("/roadmap"));
-  page.once("dialog",dialog => dialog.accept());
   await page.getByRole("button",{ name: "Refresh plan",exact: true }).click();
+  await page.getByRole("dialog",{name:"Refresh plan",exact:true}).getByRole("button",{name:"Refresh plan",exact:true}).click();
   expect((await generated).status()).toBe(200);
-  await expect(page.locator(".toast").filter({ hasText: "Plan refreshed" })).toBeVisible();
+  await expect(page.locator(".v4-toast").filter({ hasText: "Plan refreshed" })).toBeVisible();
   const status = page.getByLabel(/^Status for /).first();
   const changed = page.waitForResponse(r => r.request().method() === "PATCH" && /\/tasks\//.test(r.url()));
   await status.selectOption("done");
@@ -125,9 +128,9 @@ test("founder completes the six-screen flow with real persistence and an exporte
   expect(plan.tasks.filter(t => !t.archived).length).toBeGreaterThanOrEqual(6);
   expect(plan.tasks.filter(t => !t.archived).length).toBeLessThanOrEqual(10);
   const completedId = plan.tasks.find(t => t.status === "done")!.id;
-  page.once("dialog",dialog => dialog.accept());
   const refreshed = page.waitForResponse(r => r.request().method() === "POST" && r.url().endsWith("/roadmap"));
   await page.getByRole("button",{ name: "Refresh plan",exact: true }).click();
+  await page.getByRole("dialog",{name:"Refresh plan",exact:true}).getByRole("button",{name:"Refresh plan",exact:true}).click();
   expect((await refreshed).status()).toBe(200);
   expect((await savedWorkspace(page,id)).tasks.find(t => t.id === completedId)?.status).toBe("done");
   await page.reload();
@@ -198,59 +201,40 @@ test("a profile can be revised with personal context and reopened by its shared 
   const direct = await context.newPage();
   await direct.goto(profilePath);
   await expect(direct.getByRole("heading",{ name: persisted.name,exact: true })).toBeVisible();
-  await expect(direct.getByRole("complementary",{ name: "Startup facts",exact: true }).getByText(persisted.targetMarket,{ exact: true })).toBeVisible();
+  await expect(direct.locator(".v4-facts:visible").getByText(persisted.targetMarket,{ exact: true })).toBeVisible();
   await direct.getByRole("button",{ name: "Edit profile",exact: true }).click();
   await expect(direct.getByLabel(/^Anything the plan should consider/)).toHaveValue(persisted.context);
   await direct.close();
   await page.screenshot({ path: test.info().outputPath("reopened-profile.png"),fullPage: true });
 });
 
-test("layout changes and appearance preferences survive a full reload", async ({ page, isMobile }) => {
+test("language, interface version and theme survive a full reload", async ({ page }) => {
   const ws = await copyDemo(page); const id = ws.startup.id;
   await page.goto(`/startups/${id}/dashboard`);
-  await page.getByRole("button",{ name: "Workspace preferences",exact: true }).click();
-  const preferences = page.getByRole("dialog",{ name: "Workspace preferences",exact: true });
-  for (const value of ["light","compact","reduced"]) {
-    const saved = page.waitForResponse(r => r.request().method() === "PATCH" && r.url().endsWith(`/api/startups/${id}`));
-    const radio = preferences.getByRole("radio",{ name: value,exact: true });
-    await radio.click();
-    expect((await saved).status()).toBe(200);
-    await expect(radio).toBeChecked();
-  }
-  await preferences.getByRole("button",{ name: "Close",exact: true }).click();
-  await page.getByRole("button",{ name: "Customize",exact: true }).click();
-  const initialOrder = await page.locator("[data-plate-id]").evaluateAll(n => n.map(x => x.getAttribute("data-plate-id")));
-  const later = page.getByRole("button",{ name: "Move Progress readout later",exact: true });
-  if (await later.isEnabled()) await later.click();
-  else await page.getByRole("button",{ name: "Move Progress readout earlier",exact: true }).click();
-  if (!isMobile) await page.getByRole("button",{ name: "Progress readout: M, Half",exact: true }).click();
-  // Profile snapshot and Channel experiment start hidden in the authored default; hide a visible plate instead.
-  await page.getByRole("button",{ name: "Hide Missing inputs",exact: true }).click();
-  const saved = page.waitForResponse(r => r.request().method() === "PATCH" && r.url().endsWith(`/api/startups/${id}`));
-  await page.getByRole("button",{ name: "Done",exact: true }).click();
-  expect((await saved).status()).toBe(200);
-  const layout = (await savedWorkspace(page,id)).startup.preferences.dashboardLayout;
-  expect(layout).not.toBeNull();
-  expect(layout!.plates.find(p => p.id === "gaps")?.hidden).toBe(true);
-  if (!isMobile) expect(layout!.plates.find(p => p.id === "readout")?.size).toBe("M");
+  await expect(page.locator("html")).toHaveAttribute("lang", "en");
+  await page.locator(".v4-chip-button").click();
+  const display = page.getByRole("dialog", { name: "Display", exact: true });
+  await display.getByRole("button", { name: "Русский", exact: true }).click();
+  await expect(page.locator("html")).toHaveAttribute("lang", "ru");
+  await expect(page.getByRole("heading", { name: "Дашборд", exact: true })).toBeVisible();
+  // A locale change keeps the Display popover open so another preference can
+  // be chosen. Changing the interface remounts its header and closes it.
+  await page.getByRole("dialog", { name: "Вид", exact: true }).getByRole("button", { name: /Досье/ }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-ui", "ledger");
+  await expect(page.locator(".v4-ws")).toHaveClass(/is-ledger/);
+  await page.locator(".v4-chip-button").click();
+  await page.getByRole("dialog", { name: "Вид", exact: true }).getByRole("button", { name: "Тёмная", exact: true }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   await page.reload();
-  await expect(page.locator("html")).toHaveAttribute("data-theme","light");
-  await expect(page.locator("html")).toHaveAttribute("data-density","compact");
-  await expect(page.locator("html")).toHaveAttribute("data-motion","reduced");
-  expect(await page.locator("[data-plate-id]").evaluateAll(n => n.map(x => x.getAttribute("data-plate-id")))).not.toEqual(initialOrder);
-  await expect(page.getByRole("heading",{ name: "Missing inputs",exact: true })).not.toBeVisible();
-  await page.screenshot({ path: test.info().outputPath("personalized-dashboard.png"),fullPage: true });
-  await page.getByRole("button",{ name: "Customize",exact: true }).click();
-  page.once("dialog",confirmation => confirmation.accept());
-  await page.getByRole("button",{ name: "Reset",exact: true }).click();
-  const reset = page.waitForResponse(r => r.request().method() === "PATCH" && r.url().endsWith(`/api/startups/${id}`));
-  await page.getByRole("button",{ name: "Done",exact: true }).click();
-  expect((await reset).status()).toBe(200);
-  expect((await savedWorkspace(page,id)).startup.preferences.dashboardLayout).toBeNull();
-  await expect(page.getByRole("heading",{ name: "Missing inputs",exact: true })).toBeVisible();
-  await expect(page.getByRole("heading",{ name: "Profile snapshot",exact: true })).not.toBeVisible();
+  await expect(page.locator("html")).toHaveAttribute("lang", "ru");
+  await expect(page.locator("html")).toHaveAttribute("data-ui", "ledger");
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await expect(page.getByRole("navigation", { name: "Рабочее пространство", exact: true }).getByRole("link", { name: "Дашборд", exact: true })).toBeVisible();
+  await page.screenshot({ path: test.info().outputPath("ledger-ru-dark.png"), fullPage: true });
+  await page.goto(`/startups/${id}?lang=en&ui=observatory&theme=system`);
+  await expect(page.locator("html")).toHaveAttribute("lang", "en");
+  await expect(page.locator("html")).toHaveAttribute("data-ui", "observatory");
 });
-
 test("custom tasks can be edited, archived and restored without losing their content", async ({ page }) => {
   const ws = await copyDemo(page); const id = ws.startup.id;
   await page.goto(`/startups/${id}/roadmap`);
@@ -309,45 +293,6 @@ test("keyboard navigation protects drafts and reduced motion keeps the interface
   await expect(page.getByRole("heading",{ name: "Dashboard",exact: true })).toBeVisible();
   const widths = await page.evaluate(() => ({ viewport: window.innerWidth,document: document.documentElement.scrollWidth }));
   expect(widths.document).toBeLessThanOrEqual(widths.viewport);
-});
-
-test("pointer dragging and keyboard cancellation keep a predictable panel order", async ({ page, isMobile }) => {
-  test.skip(isMobile,"Phones use the already-tested explicit move buttons.");
-  const ws = await copyDemo(page); const id = ws.startup.id;
-  await page.goto(`/startups/${id}/dashboard`);
-  await page.getByRole("button",{ name: "Customize",exact: true }).click();
-  const order = () => page.locator("[data-plate-id]").evaluateAll(nodes => nodes.map(n => n.getAttribute("data-plate-id")));
-  const initial = await order();
-  const handle = page.getByRole("button",{ name: /^Move Progress readout, position/ });
-  await handle.focus(); await page.keyboard.press("Space"); await page.keyboard.press("ArrowDown");
-  await expect.poll(order).not.toEqual(initial);
-  await page.keyboard.press("Escape");
-  await expect.poll(order).toEqual(initial);
-  // Actual pointer movement, rather than invoking the reorder callback. Center the pair so the drop target is on screen,
-  // and wait for the cancel's layout spring to settle so positions are measured where a person would see them.
-  await page.locator('[data-plate-id="readout"]').evaluate(el => el.scrollIntoView({ block: "center" }));
-  const positions = () => page.locator("[data-plate-id]").evaluateAll(nodes => nodes.map(n => { const r = n.getBoundingClientRect(); return `${Math.round(r.x)},${Math.round(r.y)}`; }).join(" "));
-  let previous = "";
-  await expect.poll(async () => { const now = await positions(); const stable = now === previous; previous = now; return stable; },{ intervals: [100] }).toBe(true);
-  await handle.hover();
-  const from = await handle.boundingBox();
-  const to = await page.locator('[data-plate-id="next"]').boundingBox();
-  expect(from).not.toBeNull(); expect(to).not.toBeNull();
-  await page.mouse.move(from!.x + from!.width/2,from!.y + from!.height/2);
-  await page.mouse.down();
-  // Paced at roughly one pointer event per frame, like a person's drag rather than a burst within one frame.
-  const target = { x: to!.x + to!.width/2,y: to!.y + Math.min(to!.height/2,100) };
-  const start = { x: from!.x + from!.width/2,y: from!.y + from!.height/2 };
-  for (let i = 1; i <= 16; i++) { await page.mouse.move(start.x + (target.x - start.x) * i/16,start.y + (target.y - start.y) * i/16); await page.waitForTimeout(16); }
-  await page.mouse.up();
-  await expect.poll(order).not.toEqual(initial);
-  previous = "";
-  await expect.poll(async () => { const now = await positions(); const stable = now === previous; previous = now; return stable; },{ intervals: [100] }).toBe(true);
-  const moved = await order();
-  await page.getByRole("button",{ name: "Done",exact: true }).click();
-  await expect(page.getByRole("button",{ name: "Customize",exact: true })).toBeVisible();
-  await page.reload();
-  await expect.poll(order).toEqual(moved);
 });
 
 test("autosave writes a pause in typing without moving focus, and stops on a conflict", async ({ page }) => {

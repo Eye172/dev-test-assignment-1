@@ -1,0 +1,23 @@
+{
+  "scope": "2026-10-17 owner visual/copy refinement",
+  "verify": {
+    "lint": "passed",
+    "types": "passed",
+    "unitSqlTests": 89,
+    "build": "passed"
+  },
+  "browser": {
+    "startTime": "2026-10-17T10:19:16.662Z",
+    "duration": 382962.262,
+    "expected": 98,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  },
+  "note": "Full suite before the final deletion of the static What this is / What this is not section. The final build and focused landing acceptance are recorded separately.",
+  "finalStaticSectionRemoval": {
+    "verify": "lint, types, 89 unit/SQL tests and build passed",
+    "focusedBrowser": "2 desktop/phone landing cases passed",
+    "rendered": "No principles section or menu link in all 3 interfaces at desktop/phone widths; no JS errors or horizontal overflow"
+  }
+}

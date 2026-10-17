@@ -46,8 +46,56 @@ export const planLimitsSchema = z.object({
   weeklyMinutes: z.number().int().min(1).max(10080).nullable(),
   budgets: z.array(moneyAssumptionSchema).max(5), basis: required(), confirmed: z.boolean(),
 });
+/* Structured GTM insights (v3 contract). Numbers stay null unless a captured passage or founder statement supports them. */
+const basis = z.enum(["founder", "reported", "inferred"]);
+export const personaSchema = z.object({
+  key, name: required(120), role: required(200), context: required(600), budgetOwner: required(240),
+  jobs: z.array(required(320)).max(4), pains: z.array(required(320)).max(4), gains: z.array(required(320)).max(4),
+  triggers: z.array(required(300)).max(3), objections: z.array(required(300)).max(3), whereToFind: z.array(required(200)).max(4),
+  basis, findingRefs: refs,
+});
+export const positioningSchema = z.object({
+  alternatives: z.array(required(220)).max(4), uniqueAttributes: z.array(required(300)).max(4), value: z.array(required(300)).max(4),
+  bestFit: required(500), category: required(200), categoryStyle: z.enum(["head_to_head", "big_fish_small_pond", "new_game"]),
+  statement: required(700), findingRefs: refs,
+});
+const score = z.number().int().min(1).max(10);
+export const channelScoreSchema = z.object({
+  key, channel: required(120), ring: z.enum(["inner", "middle", "outer"]), impact: score, confidence: score, ease: score,
+  rationale: required(500), firstTest: required(500), costNote: required(300), findingRefs: refs,
+});
+export const marketSizingSchema = z.object({
+  accountUnit: required(200),
+  accounts: z.object({ low: z.number().min(0).nullable(), high: z.number().min(0).nullable(), basis: required(600), findingRefs: refs }),
+  annualValue: z.object({ amount: z.number().min(0).nullable(), currency: z.string().regex(/^[A-Z]{3}$/).nullable(), basis: required(600), findingRefs: refs }),
+  serviceablePercent: z.number().min(0).max(100).nullable(), serviceableBasis: required(400),
+  yearOneAccounts: z.number().min(0).nullable(), yearOneBasis: required(400),
+  gaps: z.array(required(400)).max(5),
+});
+export const pricingResearchSchema = z.object({
+  anchors: z.array(z.object({ name: required(160), price: required(200), unit: required(160), findingRefs: refs })).max(6),
+  tiers: z.array(z.object({ name: required(80), price: required(120), includes: z.array(required(200)).max(5), forWhom: required(220) })).max(3),
+  wtpQuestions: z.array(required(300)).max(4), recommendedTest: required(700),
+});
+export const aiInsightsSchema = z.object({
+  personas: z.array(personaSchema).max(2).nullable(), positioning: positioningSchema.nullable(),
+  channels: z.array(channelScoreSchema).max(8).nullable(), market: marketSizingSchema.nullable(), pricing: pricingResearchSchema.nullable(),
+});
+export type AiInsights = z.infer<typeof aiInsightsSchema>;
+/** Each specialist may fill only its own insight slots; the rest are structurally null. */
+export function insightsFor(role: string) {
+  if (!["researcher", "strategist", "monetizer"].includes(role)) return z.null();
+  return z.object({
+    personas: role === "strategist" ? aiInsightsSchema.shape.personas : z.null(),
+    positioning: role === "strategist" ? aiInsightsSchema.shape.positioning : z.null(),
+    channels: role === "strategist" ? aiInsightsSchema.shape.channels : z.null(),
+    market: role === "researcher" ? aiInsightsSchema.shape.market : z.null(),
+    pricing: role === "monetizer" ? aiInsightsSchema.shape.pricing : z.null(),
+  }).nullable();
+}
 export const analysisSchema = z.object({
   version: z.literal(2), findings: z.array(findingSchema).max(20), research: researchSchema.nullable(),
+  insights: aiInsightsSchema.nullable().default(null),
   hypotheses: z.array(hypothesisProposalSchema).max(5), decisions: z.array(decisionProposalSchema).max(4),
   planLimits: planLimitsSchema.nullable(),
   resolutions: z.array(z.object({ issueId: z.uuid(), outcome: z.enum(["resolved", "deferred"]), reason: required(), findingRefs: refs })).max(24),
@@ -78,6 +126,7 @@ export const defaultAnalysisLayout = (): AnalysisLayout => ({ version: 1, plates
 export type QualityIssue = { id: string; stepId: string; severity: "blocking" | "material" | "minor"; target: string; topic: string; reason: string; correction: string; deterministic: boolean; status: "open" | "resolved" | "deferred"; resolution: string | null };
 export const planSelectionSchema = z.object({
   retireTaskIds: z.array(z.uuid()).max(500),
+  weeklyReserves: z.array(z.number().int().min(0).max(10080)).length(4).default([0,0,0,0]),
   retainedEstimates: z.array(z.object({ taskId: z.uuid(), effortMinutes: z.number().int().min(0).max(100000).nullable(), costs: z.array(moneyAssumptionSchema).max(5) }).strict()).max(500),
   limits: planLimitsSchema, acknowledgeUnknowns: z.boolean(),
   experimentEdits: z.array(z.object({ key, title: required(240).optional(), deliverable: required(3000).optional(), method: required().optional(), week: z.number().int().min(1).max(4).optional(), effortMinutes: z.number().int().min(0).max(100000).nullable().optional(), costs:z.array(moneyAssumptionSchema).max(5).optional(), measurement:experimentContractSchema.shape.measurement.optional(), reason:required(1000) }).strict()).max(10).default([]),

@@ -9,6 +9,7 @@ test-results/
 *.tsbuildinfo
 next-env.d.ts
 .vercel/
+.claude/
 .DS_Store
 .pdf-worker-cache/
 public/vendor/pdf.worker.min.mjs

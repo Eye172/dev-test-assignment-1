@@ -1,9 +1,11 @@
 "use client";
 import Link from "next/link";
+import { useDisplay } from "@/ui/display";
 export default function ErrorPage({ reset }: { error: Error & { digest?: string }; reset: () => void }) {
-  return <main id="content" className="recovery">
-    <h1 tabIndex={-1}>Something went wrong.</h1>
-    <p className="muted">This page couldn’t load. Your saved work is safe in the database. Try again, or go back to the start.</p>
-    <div className="actions"><button className="button primary" onClick={reset}>Try again</button><Link href="/" className="button ghost">Go home</Link></div>
+  const { t } = useDisplay();
+  return <main id="content" className="recovery v4-recovery">
+    <h1 tabIndex={-1}>{t("err.title")}</h1>
+    <p className="v4-lede">{t("err.body")}</p>
+    <div className="land-actions"><button className="v4-button is-primary" onClick={reset}>{t("common.retry")}</button><Link href="/" className="v4-button">{t("common.backHome")}</Link></div>
   </main>;
 }

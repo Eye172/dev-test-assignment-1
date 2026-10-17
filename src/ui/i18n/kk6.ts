@@ -1,0 +1,20 @@
+import type { en6 } from "./en6";
+export const kk6: Record<keyof typeof en6, string> = {
+  "scene.pause": "Анимацияны тоқтату",
+  "scene.play": "Анимацияны қосу",
+  "model.readiness": "GTM-жоспар құру",
+  "model.readiness.detail": "Клиент, ұсыныс, арналар, баға, гипотезалар мен әрекеттер.",
+  "model.assumptions": "Басты белгісіздікті табу",
+  "model.assumptions.detail": "Тігінен — маңыздылық, көлденеңінен — тексеру нәтижелері.",
+  "model.channels": "Келесі экспериментке назар аудару",
+  "model.channels.detail": "Ортасында — таңдалған арналар, келесі шеңберде — үміткерлер.",
+  "model.recorded": "Сипатталған стратегия",
+  "dial.strategy": "Стратегия · бес бөлім",
+  "dial.execution": "Жоспар · орындалған жұмыс",
+  "dial.clock": "Жоспардың ағымдағы күні",
+  "dial.caption": "Толтырылған бөлімдер стратегияны сипаттайды. Олар нарықтағы сұранысты дәлелдемейді.",
+  "dial.sectionKey": "Әр түс — бір бөлім. Ашу үшін басыңыз.",
+  "dial.week": "{n}-апта",
+  "amap.proceedShort": "Өлшеуді жалғастыру",
+  "amap.points": "Карта маркерлері",
+};

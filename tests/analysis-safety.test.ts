@@ -3,8 +3,18 @@ import { memoryDraftSchema, planDraftSchema } from "@/lib/domain/analysis-drafts
 import { memoryDataSchema, planSelectionSchema, reviewedExperiments, experimentContractSchema } from "@/lib/domain/analysis";
 import { receiptFetch, type ProviderReceipt } from "@/server/ai/provider-receipts";
 import { hypothesis, result } from "./fixtures/analysis-case";
+import { wireSchema } from "@/server/ai/wire-schema";
 
 describe("unfinished analysis drafts and provider receipts",()=>{
+  it("keeps role permissions in the provider schema while relaxing verbosity bounds",()=>{
+    type Wire = {schema:{properties:{analysis:{properties:{sourceChecks:{maxItems?:number};hypotheses:{maxItems?:number}}}}}};
+    const experimenter=wireSchema("experimenter") as unknown as Wire;
+    const researcher=wireSchema("researcher") as unknown as Wire;
+    const critic=wireSchema("critic") as unknown as Wire;
+    expect(experimenter.schema.properties.analysis.properties.sourceChecks.maxItems).toBe(0);
+    expect(researcher.schema.properties.analysis.properties.hypotheses.maxItems).toBe(0);
+    expect(critic.schema.properties.analysis.properties.sourceChecks.maxItems).toBeUndefined();
+  });
   it("restores unfinished memory without relaxing the save contract",()=>{
     const draft={kind:"hypothesis",proposal:{...hypothesis("draft"),statement:"",rationale:"",reviewWhen:""}};
     expect(memoryDraftSchema.parse(draft)).toEqual(draft);
@@ -13,7 +23,7 @@ describe("unfinished analysis drafts and provider receipts",()=>{
   });
   it("restores blank budgets, scope and temporarily invalid numeric edits",()=>{
     const draft={retireTaskIds:[],retainedEstimates:[],limits:{weeklyMinutes:0,budgets:[{currency:"",amount:null}],basis:"",confirmed:false},acknowledgeUnknowns:false,experimentEdits:[{key:"e1",title:"",week:0,reason:""}]};
-    expect(planDraftSchema.parse(draft)).toEqual(draft);
+    expect(planDraftSchema.parse(draft)).toEqual({...draft,weeklyReserves:[0,0,0,0]});
     expect(planSelectionSchema.safeParse(draft).success).toBe(false);
   });
   it("preserves the experiment assumption bound when recording founder revisions",()=>{

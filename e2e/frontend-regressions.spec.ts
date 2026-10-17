@@ -18,9 +18,6 @@ async function copyDemo(page: Page, plan = false) {
   expect(planned.ok()).toBe(true);
   return (await planned.json()).data as Workspace;
 }
-async function saved(page: Page, id: string) {
-  return (await (await page.request.get(`/api/startups/${id}`)).json()).data as Workspace;
-}
 
 async function minimumTouchTarget(control: Locator) {
   // Position springs can briefly yield 43.999969px for a 44px button. Wait for the
@@ -56,18 +53,6 @@ test("form and task controls wait for hydration and retain typed input", async (
   await expect(price).toHaveValue("$29 per seat");
 });
 
-test("customize mode makes plate content inert", async ({ page }) => {
-  const ws = await copyDemo(page,true);
-  await page.goto(`/startups/${ws.startup.id}/dashboard`);
-  await page.getByRole("button",{ name: "Customize",exact: true }).click();
-  const markDone = page.locator("button",{ hasText: "Mark done" });
-  expect(await markDone.evaluate(el => el.closest("[inert]") !== null)).toBe(true);
-  await markDone.click({ force: true });
-  expect((await saved(page,ws.startup.id)).roadmapProgress.done).toBe(ws.roadmapProgress.done);
-  await page.getByRole("button",{ name: "Cancel",exact: true }).click();
-  await expect(page.getByRole("button",{ name: "Mark done",exact: true })).toBeVisible();
-});
-
 test("share menu supports arrow keys, boundaries and returning to normal tab order", async ({ page }) => {
   const ws = await copyDemo(page);
   await page.goto(`/startups/${ws.startup.id}/dashboard`);
@@ -82,12 +67,12 @@ test("share menu supports arrow keys, boundaries and returning to normal tab ord
   await page.keyboard.press("Home"); await expect(copy).toBeFocused();
   await page.keyboard.press("Escape"); await expect(trigger).toBeFocused();
   await expect(trigger).toHaveAttribute("aria-expanded","false");
-  await trigger.click(); await page.keyboard.press("Tab");
-  await expect(page.getByRole("button",{ name: "Workspace preferences",exact: true })).toBeFocused();
+  await trigger.click(); await expect(copy).toBeFocused(); await page.keyboard.press("Tab");
   await expect(trigger).toHaveAttribute("aria-expanded","false");
+  await expect(copy).toBeHidden();
 });
 
-test("strategy feedback and phone customization leave their controls usable", async ({ page,isMobile }) => {
+test("strategy feedback and phone navigation leave their controls usable", async ({ page,isMobile }) => {
   const ws = await copyDemo(page);
   await page.goto(`/startups/${ws.startup.id}/strategy?section=icp`);
   const buyer = page.getByLabel(/^Buyer type/);
@@ -98,7 +83,7 @@ test("strategy feedback and phone customization leave their controls usable", as
   }
   await buyer.fill("Founder of a seasonal rental business");
   await page.getByRole("button",{ name: "Save section",exact: true }).click();
-  const toast = page.locator(".toast");
+  const toast = page.locator(".v4-toast");
   await expect(toast).toContainText("saved");
   const feedback = await toast.boundingBox();
   const save = await page.getByRole("button",{ name: "Save section",exact: true }).boundingBox();
@@ -107,17 +92,8 @@ test("strategy feedback and phone customization leave their controls usable", as
   if (isMobile) {
     await expect(page.locator(".editor-footer .save-state")).toHaveText("Saved",{ useInnerText: true });
     await page.getByRole("navigation",{ name: "Workspace",exact: true }).getByRole("link",{ name: "Dashboard",exact: true }).click();
-    const customize = page.getByRole("button",{ name: "Customize",exact: true });
-    await expect(customize).toBeVisible();
-    await minimumTouchTarget(customize);
-    await customize.click();
-    const toolbar = page.locator(".plate-toolbar").first();
-    for (const button of await toolbar.getByRole("button").all()) {
-      if (!await button.isVisible()) continue;
-      await minimumTouchTarget(button);
-    }
-    expect((await page.locator(".customize-bar").boundingBox())!.height).toBeLessThan(104);
-    for (const button of await page.locator(".customize-bar").getByRole("button").all()) await minimumTouchTarget(button);
-    await expect(page.getByText("Move with arrows. Hide what you don’t need.",{ exact: true })).toBeVisible();
+    await expect(page.getByRole("heading",{ name: "Dashboard",exact: true })).toBeVisible();
+    await minimumTouchTarget(page.locator(".v4-chip-button"));
+    for (const link of await page.getByRole("navigation",{ name: "Workspace",exact: true }).getByRole("link").all()) await minimumTouchTarget(link);
   }
 });

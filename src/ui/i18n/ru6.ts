@@ -1,0 +1,20 @@
+import type { en6 } from "./en6";
+export const ru6: Record<keyof typeof en6, string> = {
+  "scene.pause": "Остановить анимацию",
+  "scene.play": "Запустить анимацию",
+  "model.readiness": "Собрать GTM-план",
+  "model.readiness.detail": "Клиент, предложение, каналы, цена, гипотезы и действия.",
+  "model.assumptions": "Найти главную неопределённость",
+  "model.assumptions.detail": "По вертикали — важность, по горизонтали — результаты проверок.",
+  "model.channels": "Сфокусировать следующий эксперимент",
+  "model.channels.detail": "В центре — выбранные каналы, в следующем круге — кандидаты.",
+  "model.recorded": "Описанная стратегия",
+  "dial.strategy": "Стратегия · пять разделов",
+  "dial.execution": "План · выполненная работа",
+  "dial.clock": "Текущий день плана",
+  "dial.caption": "Заполненные разделы описывают стратегию. Они не доказывают спрос на рынке.",
+  "dial.sectionKey": "Каждый цвет — один раздел. Нажмите, чтобы открыть его.",
+  "dial.week": "Неделя {n}",
+  "amap.proceedShort": "Продолжать замеры",
+  "amap.points": "Маркеры на карте",
+};

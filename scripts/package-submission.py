@@ -6,12 +6,16 @@ import re
 import shutil
 import subprocess
 import zipfile
+import argparse
 from pypdf import PdfReader
 
 ROOT = Path(__file__).resolve().parents[1]
-OUT = ROOT.parent / "submission-2026-10-17"
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument("--output-dir", type=Path, default=ROOT.parent / "submission-2026-10-17")
+OUT = parser.parse_args().output_dir.resolve()
 OUT.mkdir(parents=True, exist_ok=True)
 revision = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
+branch = subprocess.check_output(["git", "branch", "--show-current"], cwd=ROOT, text=True).strip()
 archive = OUT / "orbit-gtm-studio-source.zip"
 subprocess.run(["git", "archive", "--format=zip", "--prefix=orbit-gtm-studio/", f"--output={archive}", revision], cwd=ROOT, check=True)
 
@@ -57,7 +61,7 @@ assert len(reader.pages) == 1, "Handover must be one page"
 links = [a.get_object().get("/A", {}).get("/URI") for a in reader.pages[0].get("/Annots", [])]
 assert len([x for x in links if x]) >= 3, "Handover links are missing"
 (OUT / "SOURCE-REVISION.txt").write_text(revision + "\n", encoding="utf-8")
-(OUT / "SUBMISSION.txt").write_text("""Orbit GTM Studio — independent synthetic-data developer assignment
+(OUT / "SUBMISSION.txt").write_text(f"Source snapshot: {branch} at {revision}. See docs/RELEASE-2026-10-17.md for verified deployment state.\n\n" + """Orbit GTM Studio — independent synthetic-data developer assignment
 
 Live: https://orbit-gtm-studio.vercel.app/
 Demo: https://orbit-gtm-studio.vercel.app/startups/11111111-1111-4111-8111-111111111111

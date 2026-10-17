@@ -24,7 +24,7 @@ function canonical(v:unknown):unknown {
 }
 export const hash = (v: unknown) => createHash("sha256").update(JSON.stringify(canonical(v))).digest("hex");
 type Vector = { profile: string; sections: Record<string, number>; tasks: Record<string, number>; evidence: string[]; memory?:Record<string,string> };
-export type AiSnapshot = { workspace: Workspace; evidence: AiEvidence[]; parent: { role: AiRole; result: AiResult; runId?:string; stepId?:string; asOf?:string }[]; parentSources:AiSource[]; memory?:MemoryItem[]; pages?:SourcePage[]; findings?:StoredFinding[]; founderMaterial?:import("@/lib/domain/intake-api").FounderMaterial; intake?:{id:string;inputHash:string;result:unknown;promptVersion:string;model:string} };
+export type AiSnapshot = { workspace: Workspace; evidence: AiEvidence[]; parent: { role: AiRole; result: AiResult; runId?:string; stepId?:string; asOf?:string }[]; parentSources:AiSource[]; memory?:MemoryItem[]; pages?:SourcePage[]; findings?:StoredFinding[]; founderMaterial?:import("@/lib/domain/intake-api").FounderMaterial; intake?:{id:string;inputHash:string;result:unknown;promptVersion:string;model:string}; founderLanguage?:"en"|"ru"|"kk" };
 export type LeasedRun = { id: string; token: string; snapshot: AiSnapshot; mode: AiRun["mode"]; brief: string };
 export function revisionVector(workspace: Workspace, evidence: AiEvidence[], memory:MemoryItem[]=[]): Vector {
   const profile = { ...currentProfile(workspace.startup), preferences: undefined };
@@ -95,6 +95,7 @@ export class AiStore {
         parent = [...new Map([...inherited,...rows.map(r => ({role:r.role as AiRole,result:r.result as AiResult,runId:String(r.run_id),stepId:String(r.id),asOf:iso(r.completed_at)}))].map(item=>[item.role,item])).values()];
         parentSources=parentRun.sources as AiSource[];
       }
+      if(p.mode==="review"&&!parent.some(p=>p.role!=="critic"))throw new AppError("AI_REVIEW_EMPTY","The selected run has no completed specialist work to review.",422);
       const memory=await this.analysis.memory(id,tx);
       const findingIds=new Set([...referenceIds(memory.map(m=>m.data)),...referenceIds(parent.map(p=>p.result)),...parent.flatMap(p=>p.result.analysis?.findings.map(f=>f.id!)||[])]);
       const findings=(await this.analysis.findings(id,tx)).filter(f=>findingIds.has(f.id!));
@@ -110,7 +111,7 @@ export class AiStore {
         await tx.query("UPDATE ai_intakes SET startup_id=$2 WHERE id=$1",[p.intakeId,id]);
         intake={id:p.intakeId,inputHash:String(record.input_hash),result:record.result,promptVersion:String(record.prompt_version),model:String(record.model)};
       }
-      const snapshot: AiSnapshot = { workspace,evidence,parent,parentSources,memory,findings,pages,...(p.material?{founderMaterial:p.material}:{}),...(intake?{intake}: {}) };
+      const snapshot: AiSnapshot = { workspace,evidence,parent,parentSources,memory,findings,pages,...(p.material?{founderMaterial:p.material}:{}),...(intake?{intake}: {}),founderLanguage:p.locale??"en" };
       if(p.parentRunId&&!snapshot.founderMaterial){const [pr]=await tx.query("SELECT input_snapshot FROM ai_runs WHERE id=$1 AND startup_id=$2",[p.parentRunId,id]);snapshot.founderMaterial=(pr?.input_snapshot as AiSnapshot)?.founderMaterial;snapshot.intake??=(pr?.input_snapshot as AiSnapshot)?.intake;}
       if (Buffer.byteLength(JSON.stringify(snapshot)) > 500000) throw new AppError("AI_CONTEXT_LIMIT","This workspace is too large for one run. Export its history and use a focused working copy.",422);
       const runId = randomUUID(); const vector = revisionVector(workspace,evidence,memory);
@@ -230,7 +231,9 @@ export class AiStore {
       // Same lock order as settlement: shared day before the run row.
       const r=await this.fence(tx,run);
       const [calls]=await tx.query("SELECT count(*) AS count FROM ai_calls WHERE run_id=$1",[run.id]);
-      if(Number(calls.count)>=18 || Number(r.input_tokens)+Number(r.output_tokens)>=300000 || Number(r.estimated_micros)+Number(r.reserved_micros)+reservation>Number(r.max_micros) || Number(budget.charged_micros)+Number(budget.reserved_micros)+reservation>c.dailyBudgetUsd*1000000) throw new AppError("AI_BUDGET","The next call exceeds the configured token, run or shared daily budget. Completed work is preserved; start a smaller follow-up or ask the owner to review limits.",429);
+      // Six research searches and repeated source inspections can exceed the old 300k
+      // aggregate before the critic starts. Keep the independent USD/call limits intact.
+      if(Number(calls.count)>=18 || Number(r.input_tokens)+Number(r.output_tokens)>=600000 || Number(r.estimated_micros)+Number(r.reserved_micros)+reservation>Number(r.max_micros) || Number(budget.charged_micros)+Number(budget.reserved_micros)+reservation>c.dailyBudgetUsd*1000000) throw new AppError("AI_BUDGET","The next call exceeds the configured token, run or shared daily budget. Completed work is preserved; start a smaller follow-up or ask the owner to review limits.",429);
       await tx.query("UPDATE ai_budget_days SET reserved_micros=reserved_micros+$2 WHERE day=$1",[day,reservation]);
       await tx.query("UPDATE ai_runs SET reserved_micros=reserved_micros+$2 WHERE id=$1",[run.id,reservation]);
       await tx.query("INSERT INTO ai_calls(id,run_id,step_id,budget_day,model,reserved_micros) VALUES($1,$2,$3,$4,$5,$6)",[id,run.id,step.id,day,model,reservation]);

@@ -1,4 +1,8 @@
+> Current release evidence and deployment state: [RELEASE-2026-10-17.md](RELEASE-2026-10-17.md). The narrative below records earlier milestones and must not be used as the final release status.
+
 # Orbit GTM Studio submission
+
+**Current source: v4 review candidate on `claude/studio-v4`, pending owner approval for production deployment.** The live links below describe the previously deployed release. Current v4 checks and remaining release steps are recorded in [V4-COMPLETION.md](V4-COMPLETION.md); historical test totals below do not certify v4. Candidate archives are written to a separate directory so the previous submission remains intact.
 
 Initially released through [PR #12](https://github.com/Eye172/dev-test-assignment-1/pull/12), merged as `f5faa8a108f1e49ff98cf79451bdf0f509e0f7dd` on 17 October 2026. The owner's subsequent failure report exposed missing verification of the primary AI journey. Repair `77f7f3e` is deployed on the public alias; it connects Continue to actual interpretation, contextual follow-up questions and the selected specialist run. Current and historical evidence are distinguished below.
 

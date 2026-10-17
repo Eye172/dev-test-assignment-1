@@ -54,34 +54,14 @@ test("Back and Forward recover profile edits without altering the saved profile"
   await navigate(page, "Overview");
   await page.getByRole("button", { name: "Edit profile", exact: true }).click();
   const draft = "Unsaved profile: a flexible pilot for seasonal teams";
-  await page.getByLabel(/^Description/).fill(draft);
+  await page.getByLabel(/^Short description/).fill(draft);
   await page.goBack();
   await expect(page.getByRole("heading", { name: "30-day roadmap", exact: true })).toBeVisible();
   await page.goForward();
   await expect(page.getByRole("heading", { name: ws.startup.name, exact: true })).toBeVisible();
-  if (!await page.getByLabel(/^Description/).isVisible()) await page.getByRole("button", { name: "Edit profile", exact: true }).click();
-  await expect(page.getByLabel(/^Description/)).toHaveValue(draft);
+  if (!await page.getByLabel(/^Short description/).isVisible()) await page.getByRole("button", { name: "Edit profile", exact: true }).click();
+  await expect(page.getByLabel(/^Short description/)).toHaveValue(draft);
   expect((await savedWorkspace(page, ws.startup.id)).startup.description).toBe(ws.startup.description);
-});
-
-test("Back and Forward recover an unsaved dashboard arrangement", async ({ page }) => {
-  const ws = await copyDemo(page); const base = `/startups/${ws.startup.id}`;
-  await page.goto(base);
-  await navigate(page, "Dashboard");
-  await page.getByRole("button", { name: "Customize", exact: true }).click();
-  const order = () => page.locator("[data-plate-id]").evaluateAll(nodes => nodes.map(node => node.getAttribute("data-plate-id")));
-  const original = await order();
-  await page.getByRole("button", { name: "Move Next actions earlier", exact: true }).click();
-  await expect.poll(order).not.toEqual(original);
-  const draftOrder = await order();
-  await page.goBack();
-  await expect(page.getByRole("heading", { name: ws.startup.name, exact: true })).toBeVisible();
-  await page.goForward();
-  await expect(page.getByRole("heading", { name: "Dashboard", exact: true })).toBeVisible();
-  if (await page.getByRole("button", { name: "Customize", exact: true }).isVisible()) await page.getByRole("button", { name: "Customize", exact: true }).click();
-  await expect.poll(order).toEqual(draftOrder);
-  await expect(page.getByRole("button", { name: "Done", exact: true })).toBeVisible();
-  expect((await savedWorkspace(page, ws.startup.id)).startup.preferences.dashboardLayout).toEqual(ws.startup.preferences.dashboardLayout);
 });
 
 test("a slow failed task week change retains the editor, every field and a visible error", async ({ page }) => {
@@ -115,9 +95,10 @@ test("a slow failed task week change retains the editor, every field and a visib
 
 test("rapid week-panel intents never restore a stale revision over an acknowledged task", async ({ page }) => {
   const ws = await copyDemo(page); const id = ws.startup.id;
-  // The first task is the large focus action; exercise a remaining checkbox row.
+  // Overview keeps completed week rows visible; Dashboard's next-action queue
+  // intentionally removes them as soon as they are completed.
   const task = ws.tasks.filter(t => t.week === 1)[1]!;
-  await page.goto(`/startups/${id}/dashboard`);
+  await page.goto(`/startups/${id}`);
   const checkbox = page.getByRole("checkbox", { name: task.title, exact: true });
   const pending = await holdRequests(page, `**/api/startups/${id}/tasks/${task.id}`, "PATCH");
   await checkbox.check();
@@ -305,7 +286,7 @@ test("a recovered profile draft conflicts safely and Load latest remains current
   const draft = "My unsaved profile context"; const external = "Profile description revised by a collaborator";
   await page.goto(`/startups/${id}/roadmap`); await navigate(page, "Overview");
   await page.getByRole("button", { name: "Edit profile", exact: true }).click();
-  await page.getByLabel(/^Description/).fill(draft);
+  await page.getByLabel(/^Short description/).fill(draft);
   await page.goBack();
   await expect(page.getByRole("heading", { name: "30-day roadmap", exact: true })).toBeVisible();
   const advanced = await page.request.patch(`/api/startups/${id}`, {
@@ -313,45 +294,21 @@ test("a recovered profile draft conflicts safely and Load latest remains current
   });
   expect(advanced.status()).toBe(200);
   await page.goForward();
-  await expect(page.getByLabel(/^Description/)).toHaveValue(draft);
+  await expect(page.getByLabel(/^Short description/)).toHaveValue(draft);
   const conflict = page.waitForResponse(r => r.request().method() === "PATCH" && r.url().endsWith(`/startups/${id}`));
   await page.getByRole("button", { name: "Save profile", exact: true }).click();
   expect((await conflict).status()).toBe(409);
-  await expect(page.getByLabel(/^Description/)).toHaveValue(draft);
+  await expect(page.getByLabel(/^Short description/)).toHaveValue(draft);
   expect((await savedWorkspace(page, id)).startup.description).toBe(external);
   page.once("dialog", confirmation => confirmation.accept());
   await page.getByRole("button", { name: "Load latest", exact: true }).click();
-  await expect(page.getByLabel(/^Description/)).toHaveValue(external);
+  await expect(page.getByLabel(/^Short description/)).toHaveValue(external);
   await page.goBack();
   await expect(page.getByRole("heading", { name: "30-day roadmap", exact: true })).toBeVisible();
   await page.goForward();
   await expect(page.getByRole("heading", { name: ws.startup.name, exact: true })).toBeVisible();
-  if (!await page.getByLabel(/^Description/).isVisible()) await page.getByRole("button", { name: "Edit profile", exact: true }).click();
-  await expect(page.getByLabel(/^Description/)).toHaveValue(external);
-});
-
-test("a recovered dashboard arrangement cannot overwrite preferences advanced elsewhere", async ({ page }) => {
-  const ws = await copyDemo(page); const id = ws.startup.id;
-  await page.goto(`/startups/${id}`); await navigate(page, "Dashboard");
-  await page.getByRole("button", { name: "Customize", exact: true }).click();
-  await page.getByRole("button", { name: "Move Next actions earlier", exact: true }).click();
-  const order = () => page.locator("[data-plate-id]").evaluateAll(nodes => nodes.map(node => node.getAttribute("data-plate-id")));
-  const draftOrder = await order();
-  await page.goBack();
-  await expect(page.getByRole("heading", { name: ws.startup.name, exact: true })).toBeVisible();
-  const advanced = await page.request.patch(`/api/startups/${id}`, {
-    data: { expectedRevision: ws.startup.revision, patch: { preferences: { accent: "blue" } } },
-  });
-  expect(advanced.status()).toBe(200);
-  await page.goForward();
-  await expect(page.getByRole("button", { name: "Done", exact: true })).toBeVisible();
-  await expect.poll(order).toEqual(draftOrder);
-  const conflict = page.waitForResponse(r => r.request().method() === "PATCH" && r.url().endsWith(`/startups/${id}`));
-  await page.getByRole("button", { name: "Done", exact: true }).click();
-  expect((await conflict).status()).toBe(409);
-  await expect(page.getByText(/Couldn't save the layout/)).toBeVisible();
-  await expect.poll(order).toEqual(draftOrder);
-  expect((await savedWorkspace(page, id)).startup.preferences).toMatchObject({ accent: "blue", dashboardLayout: ws.startup.preferences.dashboardLayout });
+  if (!await page.getByLabel(/^Short description/).isVisible()) await page.getByRole("button", { name: "Edit profile", exact: true }).click();
+  await expect(page.getByLabel(/^Short description/)).toHaveValue(external);
 });
 
 test("an older delayed workspace read cannot replace a later acknowledged strategy save", async ({ page }) => {
@@ -379,13 +336,13 @@ test("an older delayed workspace read cannot replace a later acknowledged strate
   expect((await secondWrite).status()).toBe(200);
   await expect(page.getByRole("button", { name: "Save section", exact: true })).toBeEnabled();
   await navigate(page, "Dashboard");
-  await expect(page.locator(".decision-list")).toContainText(latest);
+  await expect(page.locator(".v4-decisions")).toContainText(latest);
   const staleResponse = page.waitForResponse(r => r.request().method() === "GET" && r.url().endsWith(`/api/startups/${id}`));
   await releaseOlderRead!();
   await (await staleResponse).finished();
   // Let the delivered read and its React update complete before assessing the dashboard.
   await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
-  await expect(page.locator(".decision-list")).toContainText(latest);
+  await expect(page.locator(".v4-decisions")).toContainText(latest);
   expect((await savedWorkspace(page, id)).sections.find(s => s.key === "icp")!.data).toMatchObject({ buyerType: latest });
 });
 

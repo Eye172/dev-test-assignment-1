@@ -161,6 +161,25 @@ describe("decision memory and one feasible active plan",()=>{
     expect((await ai.export(c.startup.id)).findings.some(f=>f.support==="does_not_support")).toBe(true);
     await ai.cancel(c.startup.id,child.id);
   });
+  it("sends mirrored proposed memory once while retaining its revision and full artifact",async()=>{
+    const c=await ready();
+    const created=await ai.create(c.startup.id,{mode:"review",brief:"Review saved proposals",requestId:randomUUID(),parentRunId:c.run.id});
+    const child=(await ai.lease(created.id))!,step=(await ai.steps(child.id))[0];
+    const input=await executionInput(ai,child,step,[]);
+    expect(input.snapshot.artifactMemoryRefs.length).toBeGreaterThan(0);
+    for(const ref of input.snapshot.artifactMemoryRefs){
+      expect(input.snapshot.pendingDecisions.some(m=>m.id===ref.id)).toBe(false);
+      expect(input.manifest.memory).toContainEqual({id:ref.id,revision:ref.revision,status:ref.status});
+      const proposals=input.snapshot.parentArtifacts.flatMap(p=>[...(p.result.analysis?.hypotheses||[]),...(p.result.analysis?.decisions||[])]);
+      const original=child.snapshot.memory!.find(m=>m.id===ref.id)!;
+      expect(proposals.find(p=>p.id===ref.id)).toEqual(original.data.proposal);
+    }
+    const researchView=await executionInput(ai,child,{...step,role:"researcher"},[]);
+    const hypothesisId=child.snapshot.parent.find(p=>p.role==="strategist")!.result.analysis!.hypotheses[0].id;
+    expect(researchView.snapshot.artifactMemoryRefs.some(m=>m.id===hypothesisId)).toBe(false);
+    expect(researchView.snapshot.pendingDecisions.some(m=>m.id===hypothesisId)).toBe(true);
+    await ai.cancel(c.startup.id,child.id);
+  });
   it("accepts linked decisions, reconciles plans, preserves human work and carries adverse evidence into a follow-up",async()=>{
     const c=await ready({custom:true});const strategist=c.specialist("strategist");
     for(const h of strategist.result!.analysis!.hypotheses)await ai.remember(c.startup.id,c.run.id,strategist.id,"hypothesis",h.key);
@@ -200,6 +219,18 @@ describe("decision memory and one feasible active plan",()=>{
     const overloaded=buildPlanPreview(ws,r,selection);expect(overloaded.blockers.some(x=>x.includes("minutes"))).toBe(true);expect(overloaded.blockers.some(x=>x.includes("budget"))).toBe(true);
     const changed=structuredClone(r);changed.experiments[0].contract!.dependsOn=["e6"];
     expect(buildPlanPreview(ws,changed).blockers.some(x=>x.includes("dependency"))).toBe(true);
+  });
+  it("includes additional delivery reserves in capacity, validates bounds and preserves them in the preview",async()=>{
+    const c=await ready(),ws=await store.workspace(c.startup.id),r=c.specialist("experimenter").result!;
+    const base=buildPlanPreview(ws,r);
+    expect(base.selection.weeklyReserves).toEqual([0,0,0,0]);
+    const selection={...base.selection,weeklyReserves:[0,90,90,90]};
+    const reserved=buildPlanPreview(ws,r,selection);
+    expect(reserved.weeks.map((w,i)=>w.minutes-base.weeks[i].minutes)).toEqual([0,90,90,90]);
+    expect(reserved.hash).not.toBe(base.hash);
+    const overloaded=buildPlanPreview(ws,r,{...selection,weeklyReserves:[10080,0,0,0]});
+    expect(overloaded.blockers.some(x=>x.includes("capacity"))).toBe(true);
+    expect(()=>buildPlanPreview(ws,r,{...selection,weeklyReserves:[-1,0,0,0]})).toThrow();
   });
   it("versions explicit founder changes, rejects stale edits and cross-workspace observation links",async()=>{
     const startup=await store.createStartup(demoProfile),payload={requestId:randomUUID(),id:null,expectedRevision:0,status:"active",data:{kind:"hypothesis",proposal:hypothesis("manual")},reason:"Founder records a testable starting belief"};

@@ -20,6 +20,7 @@ export const emptyDraft = (): IntakeDraft => ({
 const sentences = (text: string) => text.replace(/\s+/g, " ").split(/(?<=[.!?])\s+(?=[A-ZА-Я0-9"“])/).map(s => s.trim()).filter(Boolean);
 const clip = (s: string, n: number) => s.length > n ? `${s.slice(0, n - 1).trimEnd()}…` : s;
 const count = (text: string, words: RegExp) => (text.match(words) ?? []).length;
+const customerBenefit = (s: string) => !/(?:our|my|founder.s) (?:goal|target)|(?:цель|мақсат)|(?:привлечь|получить|найти)\s+(?:\S+\s+){0,3}(?:клиент|платящ)|(?:acquire|win|get)\s+(?:\S+\s+){0,3}(?:paying customers|paid clients)/iu.test(s);
 
 export const markets = ["Kazakhstan", "Uzbekistan", "Kyrgyzstan", "Central Asia", "Russia", "CIS", "Turkey", "UAE", "Saudi Arabia", "MENA", "India", "Indonesia", "Southeast Asia", "China", "Japan", "South Korea", "Germany", "France", "United Kingdom", "UK", "Europe", "DACH", "Nordics", "Poland", "United States", "US", "USA", "North America", "Canada", "Brazil", "Latin America", "Mexico", "Nigeria", "Kenya", "Africa", "Australia", "Global"];
 const marketRe = new RegExp(`\\b(${markets.map(m => m.replace(/ /g, "\\s+")).join("|")})\\b`, "gi");
@@ -77,13 +78,74 @@ export function extract(raw: string): IntakeDraft {
 
   const all = sentences(text);
   hint("painPoint", clip(all.find(s => /\b(problem|struggl|pain|waste|hard to|can'?t|frustrat|lose|losing|manual|scattered|slow)\w*/i.test(s)) ?? "", 300));
-  hint("outcome", clip(all.find(s => /\b(so that|saves?|reduc|increas|faster|cut|in minutes|without)\w*/i.test(s)) ?? "", 300));
+  hint("outcome", clip(all.find(s => customerBenefit(s) && /\b(so that|saves?|reduc|increas|faster|cut|in minutes|without)\w*/i.test(s)) ?? "", 300));
   hint("price", text.match(/\$\s?\d[\d,.]*\s*(?:k\b)?(?:\s*(?:\/|per)\s*\w+){0,2}/i)?.[0] ?? "");
   hint("pricingModel", text.match(/\b(subscription|freemium|one-?time|usage-based|per seat|commission|paid pilot|licen[cs]e)\b/i)?.[0] ?? "");
   const channelText = sentences(text).filter(s => !/\b(no|not|never|without|avoid|exclude|won.t|don.t)\b/i.test(s)).join(" ");
   const picked = channelWords.filter(([re]) => re.test(channelText)).map(([, name]) => name);
   hint("channels", picked.filter(n => !(n === "Partnerships" && picked.includes("Incubator partnerships"))).slice(0, 3));
+  const cyrillic = (text.match(/[А-Яа-яЁёӘәҒғҚқҢңӨөҰұҮүҺһІі]/g) ?? []).length;
+  if (cyrillic) {
+    // A mostly Cyrillic brief gets channel names in its own language instead of the English labels.
+    if (cyrillic > text.length * 0.3) { draft.hints.channels = []; delete draft.origin.channels; }
+    extractCyrillic(text, draft);
+  }
   return draft;
+}
+
+/* Russian and Kazakh briefs. JavaScript  is ASCII-only, so Cyrillic patterns use Unicode letter lookarounds.
+   Only fills what the English pass left empty; values stay in the founder's own words and language. */
+// %L stands for any Unicode letter inside the pattern strings below.
+const letters = (pattern: string) => pattern.replaceAll("%L", String.raw`\p{L}`);
+const word = (stem: string) => new RegExp(letters(`(?<!%L)${stem}`), "iu");
+const kazakh = (text: string) => /[ӘәҒғҚқҢңӨөҰұҮүҺһІі]/.test(text);
+const cyrMarkets: [RegExp, string, string][] = [
+  [word("казахстан%L*"), "Казахстан", "Қазақстан"], [word("қазақстан%L*"), "Казахстан", "Қазақстан"], [word("алмат%L*"), "Алматы", "Алматы"],
+  [word("астан%L*"), "Астана", "Астана"], [word("шымкент%L*"), "Шымкент", "Шымкент"], [word("караганд%L*|қарағанд%L*"), "Караганда", "Қарағанды"],
+  [word("узбекистан%L*|өзбекстан%L*"), "Узбекистан", "Өзбекстан"], [word("кыргызстан%L*|қырғызстан%L*"), "Кыргызстан", "Қырғызстан"],
+  [word("центральн%L* ази%L*|орталық азия%L*"), "Центральная Азия", "Орталық Азия"], [word("снг|тмд"), "СНГ", "ТМД"],
+  [word("росси%L*|ресей%L*"), "Россия", "Ресей"], [word("европ%L*|еуроп%L*"), "Европа", "Еуропа"], [word("сша|америк%L*|ақш"), "США", "АҚШ"],
+  [word("турци%L*|түркия%L*"), "Турция", "Түркия"], [word("оаэ|баә"), "ОАЭ", "БАӘ"],
+];
+const cyrChannels: [RegExp, string, string][] = [
+  [/instagram|инстаграм/iu, "Instagram", "Instagram"], [/whatsapp|ватсап|вотсап/iu, "WhatsApp", "WhatsApp"], [/telegram|телеграм/iu, "Сообщества и Telegram", "Қауымдастықтар және Telegram"],
+  [/kaspi|каспи/iu, "Маркетплейсы (Kaspi)", "Маркетплейстер (Kaspi)"], [/2gis|2гис/iu, "2GIS", "2GIS"], [word("сарафан%L*|рекомендац%L*|ұсыныс%L*"), "Рекомендации", "Ұсыныстар"],
+  [word("партн%L*|серікт%L*"), "Партнёрства", "Серіктестіктер"], [word("мероприят%L*|выставк%L*|конференц%L*|іс-шара%L*"), "Мероприятия", "Іс-шаралар"],
+  [word("холодн%L* (?:звон|письм|рассыл)%L*|прям%L* продаж%L*"), "Продажи силами основателя", "Негізін қалаушының сатуы"], [word("таргет%L*|реклам%L*|жарнам%L*"), "Реклама в соцсетях", "Әлеуметтік желідегі жарнама"],
+  [word("тендер%L*|госзакуп%L*"), "Госзакупки", "Мемлекеттік сатып алу"],
+];
+function extractCyrillic(text: string, draft: IntakeDraft) {
+  const kk = kazakh(text);
+  const set = <K extends keyof ProfileDraft>(k: K, v: ProfileDraft[K]) => { if (v && !draft.profile[k]) { draft.profile[k] = v; draft.origin[k] = "text"; } };
+  const hint = <K extends keyof StrategyHints>(k: K, v: StrategyHints[K]) => { if ((Array.isArray(v) ? v.length : v) && !(Array.isArray(draft.hints[k]) ? (draft.hints[k] as string[]).length : draft.hints[k])) { draft.hints[k] = v; draft.origin[k] = "text"; } };
+  const lower = text.toLowerCase();
+  const n = (re: string) => (lower.match(new RegExp(letters(`(?<!%L)(?:${re})`), "giu")) ?? []).length;
+  const scores: Record<Model, number> = {
+    B2G: n("акимат%L*|госорган%L*|министерств%L*|государствен%L*|муниципал%L*|әкімдік%L*|мемлекеттік") * 2,
+    B2B: n("компани%L*|бизнес%L*|предприят%L*|кафе|ресторан%L*|магазин%L*|клиник%L*|салон%L*|агентств%L*|стартап%L*|владельц%L*|мсб|кәсіпкер%L*|дүкен%L*|мейрамхана%L*|компания%L*"),
+    B2C: n("люд%L*|пользовател%L*|студент%L*|родител%L*|сем%L+|пациент%L*|школьник%L*|адамдар%L*|ата-ана%L*|оқушы%L*"),
+  };
+  const best = (Object.entries(scores) as [Model, number][]).sort((a, b) => b[1] - a[1])[0];
+  if (best[1] > 0) set("businessModel", best[0]);
+  if (/(?<!\p{L})(?:платящ\p{L}* клиент\p{L}*|выручк\p{L}*|продаж\p{L}* идут|төлейтін клиент\p{L}*|табыс\p{L}*)/iu.test(text)) set("stage", "Early Traction");
+  else if (/mvp|(?<!\p{L})(?:прототип\p{L}*|бета|пилот\p{L}*|запустил\p{L}*|первые пользовател\p{L}*|іске қос\p{L}*)/iu.test(text)) set("stage", "MVP");
+  else if (/(?<!\p{L})(?:иде\p{L}*|концепц\p{L}*|планиру\p{L}*|жоспарла\p{L}*)/iu.test(text)) set("stage", "Idea");
+  const markets = [...new Set(cyrMarkets.filter(([re]) => re.test(text)).map(([, ru, kz]) => kk ? kz : ru))];
+  // A city is more precise than its country: keep at most two, preferring the order in the brief.
+  set("targetMarket", markets.slice(0, 2).join(kk ? " және " : " и "));
+  const name = text.match(/^\s*[«"]?([\p{Lu}][\p{L}\d&.-]*(?:[ 	][\p{Lu}][\p{L}\d&.-]*){0,2})[»"]?[ 	]+(?:—|–|-|это|помогает|делает|—\s*это|көмектеседі|деген)[ 	]/mu)?.[1]
+    ?? text.match(/(?:называется|название:?|мы\s*[—–-]|атауы:?)\s*[«"]?([\p{Lu}][\p{L}\d&.-]*(?:[ 	][\p{Lu}][\p{L}\d&.-]*){0,2})/iu)?.[1] ?? "";
+  set("name", name);
+  const seg = text.match(/(?<!\p{L})(?:для|помогает)\s+((?:[\p{L}\d–-]+\s){0,7}?[\p{L}\d–-]+?)(?=[,.;:]|\s(?:в|во|на|чтобы|которые|с|и)\s)/iu)?.[1]
+    ?? text.match(/((?:[\p{L}\d–-]+\s){1,5}[\p{L}\d–-]+)\s+үшін/iu)?.[1];
+  if (seg) set("customerSegment", clip(seg.trim(), 200));
+  const all = sentences(text);
+  hint("painPoint", clip(all.find(s => /(?<!\p{L})(?:проблем|теря|потер|сложн|неудобн|вручную|долго|разброс|хаос|мучают|путаниц|қиын|жоғал|қолмен)/iu.test(s)) ?? "", 300));
+  hint("outcome", clip(all.find(s => customerBenefit(s) && /(?<!\p{L})(?:чтобы|экономит|сокращ|быстрее|без |увелич|үнемде|жылдам)/iu.test(s)) ?? "", 300));
+  hint("price", text.match(/\d[\d\s.,]*\s?(?:тенге|тг|₸|теңге|руб\p{L}*|₽|сум|сом|\$|usd|kzt)(?:\s*(?:в|за|\/|айына)\s*\p{L}+)?/iu)?.[0]?.trim() ?? "");
+  hint("pricingModel", text.match(/(?<!\p{L})(?:подписк\p{L}*|разов\p{L}*|комисси\p{L}*|freemium|платн\p{L}* пилот\p{L}*|жазылым\p{L}*)/iu)?.[0] ?? "");
+  const positive = all.filter(s => !/(?<!\p{L})(?:не |нет |без |никогда|емес|жоқ)/iu.test(s)).join(" ");
+  hint("channels", cyrChannels.filter(([re]) => re.test(positive)).map(([, ru, kz]) => kk ? kz : ru).slice(0, 3));
 }
 
 export function missing(draft: IntakeDraft): RequiredField[] {
@@ -115,10 +177,14 @@ export function nextQuestion(draft: IntakeDraft, asked: string[], limit = 7): Qu
 export function nextIntakeQuestion(draft: IntakeDraft, asked: string[], questions: Question[]): Question | null {
   if (asked.length >= 7) return null;
   const covered=questions.filter(q=>asked.includes(q.id)&&q.field!=="context").map(q=>q.field);
-  const question = questions.find(q => !asked.includes(q.id) && (q.field === "context" || !covered.includes(q.field)) && (q.field === "context" ||
-    (q.field in draft.profile ? !draft.profile[q.field as keyof ProfileDraft] :
-      q.field === "channels" ? !draft.hints.channels.length : !draft.hints[q.field as "painPoint" | "price"])));
-  return question ?? nextQuestion(draft,[...asked,...covered],Number.MAX_SAFE_INTEGER);
+  const question = questions.find(q => !asked.includes(q.id) && (!(q.field in draft.profile) || !draft.profile[q.field as keyof ProfileDraft]));
+  if (question) {
+    const populated = !(question.field in draft.profile) || !!draft.profile[question.field as keyof ProfileDraft];
+    // Generated questions can concern access or evidence for an existing field.
+    // Keep that answer in the journal instead of dropping it or overwriting facts.
+    return populated ? { ...question, field: "context" } : question;
+  }
+  return nextQuestion(draft,[...asked,...covered],Number.MAX_SAFE_INTEGER);
 }
 
 export function answer(draft: IntakeDraft, field: Question["field"], value: string | string[]): IntakeDraft {

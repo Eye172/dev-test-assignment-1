@@ -9,7 +9,7 @@ export const attachmentSchema = z.object({
 export type Attachment = z.infer<typeof attachmentSchema>;
 export const founderMaterialSchema=z.object({text:z.string().trim().max(16000),files:z.array(attachmentSchema).max(3),answers:z.array(z.object({question:z.string().min(1).max(500),answer:z.string().min(1).max(3000)}).strict()).max(7).optional()}).strict();
 export type FounderMaterial=z.infer<typeof founderMaterialSchema>;
-export const intakeInputSchema = founderMaterialSchema.extend({requestId:z.uuid()}).refine(v => v.text.length >= 20 || v.files.some(f => f.text.trim().length >= 20), "Describe your startup or attach readable material.");
+export const intakeInputSchema = founderMaterialSchema.extend({requestId:z.uuid(),locale:z.enum(["en","ru","kk"]).optional()}).refine(v => v.text.length >= 20 || v.files.some(f => f.text.trim().length >= 20), "Describe your startup or attach readable material.");
 export const intakeQuestionSchema = z.object({
   id:z.string().min(1).max(40).regex(/^[a-zA-Z0-9_-]+$/),
   field:z.enum(["name","description","businessModel","stage","targetMarket","customerSegment","painPoint","price","channels","context"]),
@@ -18,7 +18,7 @@ export const intakeQuestionSchema = z.object({
 }).strict();
 export const intakeOutputSchema = z.object({
   profile: z.object({ name: z.string().max(120), description: z.string().max(2000), businessModel: z.enum(["", "B2B", "B2C", "B2G"]), stage: z.enum(["", "Idea", "MVP", "Early Traction"]), targetMarket: z.string().max(200), customerSegment: z.string().max(500), websiteUrl: z.string().max(2000) }).strict(),
-  hints: z.object({ painPoint: z.string().max(3000), outcome: z.string().max(3000), price: z.string().max(500), pricingModel: z.string().max(500), channels: z.array(z.string().max(120)).max(3) }).strict(),
+  hints: z.object({ painPoint: z.string().max(3000), outcome: z.string().max(3000).describe("Only the explicitly stated result for the BUYER using this product. Never the founder's sales, revenue, launch or fundraising target. Empty when customer benefit is not stated."), price: z.string().max(500), pricingModel: z.string().max(500), channels: z.array(z.string().max(120)).max(3) }).strict(),
   uncertainties: z.array(z.string().max(500)).max(8),
   questions:z.array(intakeQuestionSchema).max(7),
 }).strict();

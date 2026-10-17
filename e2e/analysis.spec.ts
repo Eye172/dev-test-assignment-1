@@ -31,16 +31,24 @@ test("a new follow-up and an explicitly selected historical run survive refresh"
     return route.continue();
   });
   await page.getByRole("button",{name:"Follow up",exact:true}).click();
+  const reviewScope=page.getByRole("button",{name:"Review saved work",exact:true});
+  await reviewScope.click();
+  await page.getByRole("button",{name:"Clear",exact:true}).click();
+  await page.getByRole("button",{name:"New question",exact:true}).click();
+  await expect(reviewScope).toBeDisabled();
+  await expect(page.getByRole("button",{name:"Full team",exact:true})).toHaveAttribute("aria-pressed","true");
+  await page.getByRole("button",{name:"Follow up",exact:true}).click();
+  await reviewScope.click();
   await page.getByRole("textbox",{name:"Your brief",exact:true}).fill("Offline follow-up selection and recovery fixture");
   await page.getByRole("button",{name:"Start the team",exact:true}).click();
-  await expect(page.getByRole("combobox",{name:"Select run"})).toHaveValue(next.id);
+  await expect(page.getByRole("combobox",{name:"Run"})).toHaveValue(next.id);
   await expect(page).toHaveURL(new RegExp(`run=${next.id}`));
   await page.reload();
-  await expect(page.getByRole("combobox",{name:"Select run"})).toHaveValue(next.id);
-  await page.getByRole("combobox",{name:"Select run"}).selectOption(original.id);
+  await expect(page.getByRole("combobox",{name:"Run"})).toHaveValue(next.id);
+  await page.getByRole("combobox",{name:"Run"}).selectOption(original.id);
   await expect(page).toHaveURL(new RegExp(`run=${original.id}`));
   await page.reload();
-  await expect(page.getByRole("combobox",{name:"Select run"})).toHaveValue(original.id);
+  await expect(page.getByRole("combobox",{name:"Run"})).toHaveValue(original.id);
 });
 
 test("research, decision memory, reviewed plan and adverse observation form one persisted flow",async({page},info)=>{
@@ -72,12 +80,12 @@ test("research, decision memory, reviewed plan and adverse observation form one 
   await page.getByText("Specialist proposals and saved strategy changes",{exact:true}).click();
   await page.getByRole("group",{name:"Specialist results"}).getByRole("button",{name:/Strategy/}).click();
   for(const title of ["Ideal Customer Profile","Value Proposition","Acquisition Channels","Market Assumptions"]){
-    await page.getByRole("button",{name:`Review ${title}`,exact:true}).click();
+    await page.getByRole("button",{name:`Review: ${title}`,exact:true}).click();
     await page.getByRole("dialog").getByRole("button",{name:"Apply reviewed proposal",exact:true}).click();
     await expect(page.getByRole("dialog")).not.toBeVisible();
   }
   await page.getByRole("group",{name:"Specialist results"}).getByRole("button",{name:/Pricing/}).click();
-  await page.getByRole("button",{name:"Review Pricing & Revenue",exact:true}).click();
+  await page.getByRole("button",{name:"Review: Pricing & Revenue",exact:true}).click();
   await page.getByRole("dialog").getByRole("button",{name:"Apply reviewed proposal",exact:true}).click();
   await expect.poll(async()=>(await workspace(page,id)).completion.percentage).toBe(100);
   await page.getByRole("button",{name:"Review one active plan",exact:true}).click();
@@ -86,7 +94,7 @@ test("research, decision memory, reviewed plan and adverse observation form one 
   await dialog.getByLabel("Remaining USD cash for Founder-owned visit",{exact:true}).fill("0");
   await dialog.getByRole("button",{name:"Add currency budget",exact:true}).click();
   await expect(dialog.getByRole("button",{name:"Apply reviewed plan"})).toBeDisabled();
-  await dialog.getByRole("button",{name:"Remove USD budget",exact:true}).last().click();
+  await dialog.getByRole("button",{name:"Remove budget USD",exact:true}).last().click();
   await dialog.getByLabel("Combined work capacity per week (minutes)",{exact:true}).fill("30");
   await expect(dialog.getByText(/Week 1 needs 120 minutes/)).toBeVisible();
   await expect(dialog.getByRole("button",{name:"Apply reviewed plan"})).toBeDisabled();
@@ -142,4 +150,27 @@ test("unfinished manual hypotheses survive reload before any paid run exists",as
   await page.getByRole("button",{name:"Save with history",exact:true}).click();
   await expect(page.getByRole("dialog")).not.toBeVisible();
   const saved=await state(page,ws.startup.id);expect(saved.memory).toHaveLength(1);expect(saved.runs).toHaveLength(0);
+});
+
+test("memory risk keeps its saved enum while Russian and Kazakh labels change",async({page})=>{
+  const ws=(await (await page.request.post("/api/demo")).json()).data as Workspace;
+  await unlock(page,ws.startup.id);
+  await page.goto(`/startups/${ws.startup.id}/ai?lang=ru`);
+  await page.getByRole("button",{name:"Записать гипотезу",exact:true}).click();
+  const dialog=page.getByRole("dialog");
+  await dialog.locator('select').first().selectOption("high");
+  await expect(dialog.locator('select').first()).toHaveValue("high");
+  await dialog.locator('textarea').nth(0).fill("A saved high-risk hypothesis");
+  await dialog.locator('textarea').nth(1).fill("Three buyer refusals");
+  await dialog.locator('textarea').nth(2).fill("Founder assumption, no commercial proof");
+  await dialog.locator('textarea').nth(3).fill("Record before testing");
+  await dialog.getByRole("button",{name:"Сохранить с историей",exact:true}).click();
+  await expect(dialog).not.toBeVisible();
+  for(const locale of ["ru","kk"]){
+    await page.goto(`/startups/${ws.startup.id}/ai?lang=${locale}`);
+    await page.getByRole("button",{name:locale==="ru"?"Изменить / решить":"Өзгерту / шешу",exact:true}).first().click();
+    await expect(dialog.locator('select').first()).toHaveValue("high");
+    await dialog.getByRole("button",{name:locale==="ru"?"Закрыть":"Жабу",exact:true}).click();
+  }
+  expect((await state(page,ws.startup.id)).memory?.[0].data).toMatchObject({kind:"hypothesis",proposal:{risk:"high"}});
 });

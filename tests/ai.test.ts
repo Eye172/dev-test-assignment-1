@@ -25,6 +25,19 @@ async function ready(mode="full"){
   await ai.finish(run,"completed");return {startup,run,state:await ai.state(startup.id)};
 }
 describe("agent contracts and evidence boundaries",()=>{
+  it("reviews completed saved artifacts without scheduling duplicate paid specialists",async()=>{
+    const {startup,run}=await ready();
+    await expect(ai.create(startup.id,{mode:"review",brief:"Review only",requestId:randomUUID()})).rejects.toThrow();
+    const child=await ai.create(startup.id,{mode:"review",brief:"Review saved work",parentRunId:run.id,requestId:randomUUID()});
+    expect((await ai.steps(child.id)).map(s=>s.role)).toEqual(["critic"]);
+    const leased=(await ai.lease(child.id))!;
+    expect(leased.snapshot.parent.some(p=>p.role==="experimenter")).toBe(true);
+    expect(leased.snapshot.parent.some(p=>p.role==="strategist")).toBe(true);
+    await ai.cancel(startup.id,child.id);
+    const empty=await ai.create(startup.id,{mode:"research",brief:"No completed results",requestId:randomUUID()});
+    await ai.cancel(startup.id,empty.id);
+    await expect(ai.create(startup.id,{mode:"review",brief:"Cannot review nothing",parentRunId:empty.id,requestId:randomUUID()})).rejects.toMatchObject({code:"AI_REVIEW_EMPTY"});
+  });
   it("restricts role-owned drafts and rejects malformed experiments",()=>{
     const result=emptyResult();result.strategy.pricing=demoStrategy.pricing as AiResult["strategy"]["pricing"];
     expect(outputSchema("researcher").safeParse(result).success).toBe(false);
@@ -61,7 +74,7 @@ describe("persisted agent orchestration",()=>{
     const page=await ai.state(startup.id);expect(page.runs).toHaveLength(30);expect(page.nextCursor).toBeTruthy();const older=await ai.state(startup.id,{before:page.nextCursor!});expect(older.runs).toHaveLength(1);expect(older.nextCursor).toBeNull();expect((await ai.export(startup.id)).state.runs).toHaveLength(31);
   });
   it("freezes the complete effective prompt and rejects tampered or incompatible replay before paid work",async()=>{
-    const startup=await store.createStartup(demoProfile);const created=await ai.create(startup.id,{mode:"research",brief:"Prompt replay fixture",requestId:randomUUID()});const step=(await ai.steps(created.id))[0];const original=await ai.execution(step);expect(original.instructions).toContain("Return analysis.version=2");expect(original.settings).toMatchObject({store:false,retries:0});expect(original.settings.timeoutMs).toBe(step.role==="intake"?110000:200000);expect(step.promptVersion).toBe("orbit-council-2.0.11");
+    const startup=await store.createStartup(demoProfile);const created=await ai.create(startup.id,{mode:"research",brief:"Prompt replay fixture",requestId:randomUUID()});const step=(await ai.steps(created.id))[0];const original=await ai.execution(step);expect(original.instructions).toContain("Return analysis.version=2");expect(original.settings).toMatchObject({store:false,retries:0});expect(original.settings.timeoutMs).toBe(step.role==="intake"?110000:step.role==="researcher"?250000:200000);expect(step.promptVersion).toBe("orbit-council-3.0.1");
     await db.query("UPDATE ai_steps SET instructions=instructions || ' tampered' WHERE id=$1",[step.id]);await expect(ai.execution(step)).rejects.toMatchObject({code:"AI_VERSION_CHANGED"});const [count]=await db.query("SELECT count(*) AS count FROM ai_calls WHERE run_id=$1",[created.id]);expect(Number(count.count)).toBe(0);await ai.cancel(startup.id,created.id);
   });
   it("scopes request identifiers to workspace and rejects payload reuse",async()=>{
@@ -86,6 +99,19 @@ describe("persisted agent orchestration",()=>{
     const id=(calls.find(c=>c.status==="fulfilled") as PromiseFulfilledResult<string>).value;
     await ai.settle(id,100,50,700,"test-response",{});await ai.settle(id,100,50,700,"test-response",{});
     const [r]=await db.query("SELECT estimated_micros,reserved_micros,input_tokens FROM ai_runs WHERE id=$1",[run.id]);expect(Number(r.estimated_micros)).toBe(700);expect(Number(r.reserved_micros)).toBe(0);expect(Number(r.input_tokens)).toBe(100);
+    await ai.cancel(startup.id,run.id);
+  });
+  it("allows the expanded council to reach critique while retaining token and dollar caps",async()=>{
+    const startup=await store.createStartup(demoProfile);
+    const created=await ai.create(startup.id,{mode:"full",brief:"Expanded research budget regression",requestId:randomUUID()});
+    const run=(await ai.lease(created.id))!,step=(await ai.steps(run.id)).find(s=>s.role==="critic")!;
+    await ai.startStep(run,step);
+    await db.query("UPDATE ai_runs SET input_tokens=287080,output_tokens=27195,estimated_micros=1265598 WHERE id=$1",[run.id]);
+    const call=await ai.reserve(run,step,step.model,3000000);
+    await ai.settle(call,1000,500,35000,"critic-budget-fixture",{});
+    await expect(ai.reserve(run,step,step.model,6000000)).rejects.toMatchObject({code:"AI_BUDGET"});
+    await db.query("UPDATE ai_runs SET input_tokens=600000 WHERE id=$1",[run.id]);
+    await expect(ai.reserve(run,step,step.model,1000)).rejects.toMatchObject({code:"AI_BUDGET"});
     await ai.cancel(startup.id,run.id);
   });
   it("does not rebill a paid response lost between settlement and artifact checkpoint",async()=>{

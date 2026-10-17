@@ -32,7 +32,7 @@ test("PDF, DOCX and PPTX contribute actual bounded text; unread documents are di
   await expect(page.getByText(/Text read ·/)).toHaveCount(3);
   const saved=await page.evaluate(()=>JSON.parse(sessionStorage.getItem("orbit:onboarding:v1")!).files as {text:string}[]);
   expect(saved.map(f=>f.text).join(" ")).toContain("Synthetic PDF");expect(saved[1].text).toContain("eight hours");expect(saved[2].text).toContain("USD 300");
-  await page.getByRole("button",{name:"Remove notes.docx"}).click();
+  await page.getByRole("button",{name:"Remove: notes.docx"}).click();
   await page.locator('input[type="file"]').setInputFiles({name:"broken.docx",mimeType:"application/octet-stream",buffer:Buffer.from("not a zip")});
   await expect(page.getByText(/Not read ·/)).toBeVisible();
 });

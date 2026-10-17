@@ -1,12 +1,12 @@
 import { test,expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { writeFile } from "node:fs/promises";
-import type { Preferences, Startup,Workspace } from "../src/lib/domain/types";
+import type { Workspace } from "../src/lib/domain/types";
 
 // Automated checks complement the keyboard, reduced-motion and rendered reviews.
 // No excluded elements or suppressed rules: failures must be fixed or investigated.
 test("six routes and interactive editing states pass automated accessibility checks", async ({ page },testInfo) => {
-  test.setTimeout(120000);
+  test.setTimeout(240000);
   await page.emulateMedia({ reducedMotion: "reduce" });
   const response = await page.request.post("/api/demo");
   expect(response.status()).toBe(201);
@@ -43,30 +43,22 @@ test("six routes and interactive editing states pass automated accessibility che
   await expect(page.getByLabel(/^What do you believe is true/).first()).toBeVisible();
   await audit("assumptions-editor");
   await page.goto(`${base}/dashboard`);
-  await page.getByRole("button",{ name: "Customize",exact: true }).click();
-  await expect(page.getByRole("button",{ name: "Done",exact: true })).toBeVisible();
-  await audit("customization");
-  await page.getByRole("button",{ name: "Cancel",exact: true }).click();
   await page.getByRole("button",{ name: "Share and export",exact: true }).click();
   await expect(page.getByRole("menuitem",{ name: "Export workspace as JSON",exact: true })).toBeVisible();
   await audit("share-menu");
   await page.keyboard.press("Escape");
-  await page.getByRole("button",{ name: "Workspace preferences",exact: true }).click();
-  await expect(page.getByRole("dialog",{ name: "Workspace preferences",exact: true })).toBeVisible();
-  await audit("preferences-dialog");
-  await page.getByRole("dialog").getByRole("button",{ name: "Close",exact: true }).click();
-  const latest = await page.request.get(`/api/startups/${ws.startup.id}`);
-  let current = (await latest.json()).data.startup as Startup;
-  for (const theme of ["light","dark","system"] as const) {
-    for (const accent of ["green","lime","blue"] as const) {
-      if (theme === "system") await page.emulateMedia({ colorScheme: "light",reducedMotion: "reduce" });
-      const changed = await page.request.patch(`/api/startups/${ws.startup.id}`,{ data: { expectedRevision: current.revision,patch: { preferences: { theme,accent } satisfies Partial<Preferences> } } });
-      expect(changed.ok()).toBe(true);
-      current = (await changed.json()).data as Startup;
-      await page.reload();
-      if (theme === "system") await expect(page.locator("html")).toHaveAttribute("data-theme-system","");
+  await page.locator(".v4-chip-button").click();
+  await expect(page.getByRole("dialog",{ name: "Display",exact: true })).toBeVisible();
+  await audit("display-dialog");
+  await page.keyboard.press("Escape");
+  for (const version of ["observatory","ledger","flow"] as const) {
+    for (const theme of ["light","dark","system"] as const) {
+      await page.emulateMedia({ colorScheme: "light",reducedMotion: "reduce" });
+      await page.goto(`${base}/dashboard?ui=${version}&theme=${theme}&lang=en`);
+      await expect(page.locator("html")).toHaveAttribute("data-ui",version);
+      if (theme === "system") await expect(page.locator("html")).not.toHaveAttribute("data-theme");
       else await expect(page.locator("html")).toHaveAttribute("data-theme",theme);
-      await audit(`${theme}-${accent}-dashboard`);
+      await audit(`${version}-${theme}-dashboard`);
     }
   }
   expect(failures.map(v => ({ state: v.state,rule: v.rule,impact: v.impact,nodes: v.nodes.length })),"Automated accessibility violations by rendered state; complete details are attached").toEqual([]);

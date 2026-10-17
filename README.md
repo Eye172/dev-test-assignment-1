@@ -1,10 +1,12 @@
 # Orbit GTM Studio
 
-A founder workspace for a go-to-market strategy and a transparent 30-day action plan. Record five commercial decisions, see what is missing, run focused experiments, and retain your progress.
+A founder workspace for a go-to-market strategy and a transparent 30-day action plan. Record five commercial decisions, see them modelled (readiness, assumption map, channel bullseye, evidence ladder, positioning, sizing), run focused experiments, and retain your progress.
+
+**v4** ships three interfaces over one product — **Observatory** (instrument panel), **Ledger** (editorial dossier) and **Flow** (the Black Orbit loop as a graph) — in **English, Russian and Kazakh**. Switch both from the *Display* control in any header, or share `?ui=observatory|ledger|flow&lang=en|ru|kk`. The design contract and research are in [docs/design/CRAFT-PLAYBOOK.md](docs/design/CRAFT-PLAYBOOK.md).
 
 Independent developer-test implementation for the AI Startify ecosystem. All demonstration content is synthetic. Strategy completeness and completed tasks are not commercial validation.
 
-[Live review candidate](https://orbit-gtm-studio.vercel.app) · [Seeded Fieldnote profile](https://orbit-gtm-studio.vercel.app/startups/11111111-1111-4111-8111-111111111111). Delivery status is recorded in [SUBMISSION.md](docs/SUBMISSION.md).
+[Current production release](https://orbit-gtm-studio.vercel.app) · [Seeded Fieldnote profile](https://orbit-gtm-studio.vercel.app/startups/11111111-1111-4111-8111-111111111111). Final verification and deployment state: [release record](docs/RELEASE-2026-10-17.md). See [v4 completion evidence](docs/V4-COMPLETION.md) and [SUBMISSION.md](docs/SUBMISSION.md).
 
 ## Run locally
 
@@ -26,11 +28,13 @@ For a PostgreSQL/Supabase deployment, set `DATABASE_URL`. Production refuses to 
 
 ## Stack and structure
 
-Next.js App Router, React, strict TypeScript, Zod, PostgreSQL through `pg`, PGlite for local development/tests, Motion, Lucide, and self-hosted Inter/Space Grotesk. The optional owner-gated AI backend uses the official OpenAI Agents SDK and Responses API; the original rule-based workspace runs without a paid key.
+Next.js App Router, React, strict TypeScript, Zod, PostgreSQL through `pg`, PGlite for local development/tests, Motion, Lucide, and self-hosted Space Grotesk (headings), Montserrat (body, Cyrillic) and JetBrains Mono (data) — the Black Orbit type pair; Space Grotesk has no Cyrillic, so Russian/Kazakh headings fall back to Montserrat by design. The optional owner-gated AI backend uses the official OpenAI Agents SDK and Responses API; the original rule-based workspace runs without a paid key.
 
 ## AI specialists
 
 The owner's additional AI scope is implemented through six specialists: brief interpreter, researcher/comparator, GTM strategist, monetization specialist, experiment designer and evidence critic. They use structured artifacts, real web research, a scenario calculator, persistent messages, bounded critique/revision, usage accounting and explicit reviewed application. A rule-generated roadmap is never represented as an AI response.
+
+Agent contract 3.0 (v4) adds structured insights rendered as models in the AI team page: buyer **personas** with jobs-to-be-done, pains, gains, triggers, objections and budget owner; **positioning** by April Dunford's components with a category style; **channel scoring** over the Bullseye/Traction set (ICE, rings, first test, cost note, Kazakhstan channels such as Kaspi, Telegram, 2GIS, goszakup); **bottom-up sizing** (account unit, low/high accounts, annual value, serviceable share, year-one reach) where numbers stay null unless a captured source or the founder supports them; and **pricing research** (anchors from captured pages, tiers, Van Westendorp questions, one commitment test). Research covers competitors, substitutes and do-nothing, pricing pages, market statistics, buyer gathering places and local purchasing/regulation (6 searches, 9 captured pages). The founder answers the intake *before* a run; specialists never ask to fill fields afterwards — unknowns become explicit, testable assumptions. Every specialist writes in the founder's interface language.
 
 Set `OPENAI_API_KEY` and a long random `AI_ACCESS_CODE` server-side to enable paid work. Optional `OPENAI_MODEL`, `OPENAI_CRITIC_MODEL`, `AI_RUN_BUDGET_USD` and `AI_DAILY_BUDGET_USD` are documented in `.env.example`. No key or access code belongs in a browser bundle or shared URL. Public demo profiles and accepted strategy remain shared; AI briefs/observations/history are owner-gated. This is a single-owner gate, not commercial tenant authentication.
 
@@ -42,8 +46,9 @@ Font copyright and license notices are retained in [Inter OFL](docs/licenses/Int
 
 ```text
 src/app/             Next.js pages, layouts and API route handlers
-src/components/      Interactive frontend and workspace composition
-src/lib/domain/      Shared validation, types, completeness and roadmap rules
+src/ui/              v4 display layer: i18n (EN/RU/KK), versions, kit, visual models, screens, landing
+src/components/      Shared editors (strategy, roadmap, onboarding, AI team) and the workspace shell
+src/lib/domain/      Shared validation, types, completeness, roadmap rules and the insight engine
 src/server/          Database adapters, transactions, persistence and demo fixtures
 tests/               Domain, SQL persistence and HTTP integration tests
 e2e/                 Browser acceptance tests
@@ -71,20 +76,30 @@ Keep credentials in `.env.local` or the hosting environment. No database credent
 
 Five strategy sections: Ideal Customer Profile, Value Proposition, Acquisition Channels (up to three freely named channels), Pricing & Revenue, and three Market Assumptions. Empty strategy drafts can be saved. Completion is exactly `completed sections / 5 × 100%`, based on required saved inputs, including whitespace handling.
 
-The roadmap uses predefined rules to generate 8–10 current suggestions depending on saved fields and channels. Every suggestion includes a week, deliverable, rationale and status. Generation reconciles stable rule keys. It preserves statuses, founder edits, custom tasks and completed content; superseded suggestions remain in history. Eight dashboard plates can be rearranged, resized and hidden through validated database-backed preferences; the required summary remains visible.
+The roadmap uses predefined rules to generate 8–10 current suggestions depending on saved fields and channels. Every suggestion includes a week, deliverable, rationale and status. Generation reconciles stable rule keys. It preserves statuses, founder edits, custom tasks and completed content; superseded suggestions remain in history. Tasks are written in the founder's language (EN/RU/KK); refreshing in another language rewrites only untouched, unfinished suggestions.
+
+The **insight engine** (`src/lib/domain/insights.ts`) is deterministic and explainable — every score lists the rules behind it, and nothing is marked validated:
+readiness radar (six axes scored by specificity checks: a named role, a sized segment, a timed trigger, a measurable outcome, a named alternative, a typed proof, a threshold, a currency, a commitment test…), assumption map (importance × evidence; desirability/viability/feasibility after Bland, including assumptions the strategy implies but does not state), channel bullseye (Weinberg's rings with ICE scores and local notes), evidence ladder (opinion → interest → meeting → commitment → deposit → paid pilot → repeat, raised only by completed tests), positioning statement (Dunford's components from the founder's own words), bottom-up sizing (founder accounts × parsed annual price) and 30-day load.
 
 ## Using the workspace
 
-The interface is built as "paper and instruments": a light Black Orbit-inspired canvas (dark by preference) with dark instrument objects. Direction and the review of the previous version: [docs/design/REMAKE.md](docs/design/REMAKE.md).
+Three interface versions share data, routes and editors and differ in composition, navigation, density and motion ([playbook](docs/design/CRAFT-PLAYBOOK.md)):
+
+- **Observatory** — dark instrument panel: orbit-dial rail, readouts, radar and bullseye; landing with a ray-traced black hole (Schwarzschild-approximation lensing, photon ring, Doppler beaming) seen ~9° above the disk.
+- **Ledger** — light paper dossier: masthead tabs, ruled entries with margin notes, a dashboard written as chapters (§1–§11) with a scroll-spy contents rail, small multiples; landing with an engraved orbit plate.
+- **Flow** — operator board: the loop as a stage bar, the overview as a node graph (profile → decisions → assumptions → weeks → evidence → next decision) with drawn edges, a sticky inspector on the dashboard.
+
+Language, interface and theme are device preferences (cookies), rendered on the server with the correct `<html lang>`.
 
 - **Two ways to start** ([journey spec](docs/design/JOURNEY.md)). *Free form*: write in your own words; labelled local rules extract what they can. Optional owner-only AI interpretation reads the actual text before creation. Clarification asks only for required gaps, at most seven questions, and stops once they are filled. *Guided brief*: seven freely revisitable topics. Both paths read text from PDF/DOCX/PPTX/TXT/MD/CSV on the device (3 files, 5 MB each, up to 20,000 extracted characters each). PDF reading is capped at 30 pages; scans, images/charts and slide notes are not interpreted. The UI retains coverage, truncation and errors. All fields are confirmed before creation; saved profile edits supersede earlier extraction.
 - **Launch sequence** — real completion states for profile, material, unsaved drafts, rule plan and optional AI work. Paid specialists require an explicit choice; an unlocked cookie alone does not start them. Creation and AI attempts retain idempotency keys across network failures and reloads. The full guided answers and extracted material enter the private frozen AI input. "Open workspace now" remains available; a saved launch can resume or start another startup.
 - **AI specialists** (`/startups/:id/ai`) — owner-gated studio over the [AI backend](docs/AI-BACKEND.md): live progress by role, the critic's review, proposals compared side by side with the saved section and applied one section at a time, experiment plan added to the roadmap on request. Nothing is applied or called validated automatically.
 - **Orbit dial** — inner ring: the five strategy sections (filled when complete, dotted when drafted); outer ring: the 30 plan days lit by finished work; satellite: today's plan day, counted from when the plan was generated. Each ring segment on Overview links to its section.
 - **Strategy** is a writing surface: autosave after a pause in typing (switchable per device; conflicts stop it and ask), a live list of missing inputs that jumps to the field, and optional clearly-labelled synthetic examples with a one-click "Use".
-- **Dashboard** — drag a plate by its grip, drag its right edge to resize (snaps to its allowed sizes), hide plates into a tray, or apply a preset (Default, Focus, Planning, Everything). Rows always fill; every pointer action has a button and keyboard equivalent. Saved in the database.
+- **Dashboard** — completion (formula shown), saved decisions, field-level gaps, suggested next steps ranked by how many readiness points each would add, then every model with its explanation and provenance chip (`rules`, `founder`, `AI`).
 - **Roadmap** — a four-week board: drag a task to another week, tick its ring to mark it done, or switch to a compact list. Phones get a stacked timeline.
-- **Ctrl/⌘ K** opens a command menu for every screen, section, open task and action; `G` then `O`/`S`/`D`/`R`/`A` switches screens; `?` opens preferences (theme, accent, density, motion).
+- **Ctrl/⌘ K** opens a command menu for every screen, section, open task, interface version and language; `G` then `O`/`S`/`D`/`R`/`A` switches screens.
+- **Rules understand Russian and Kazakh briefs** without AI: name, who pays, stage, city/country, segment, price in tenge, channels such as Instagram, WhatsApp, Telegram, Kaspi and 2GIS.
 - Motion respects the operating-system reduced-motion setting and the workspace "reduced" preference; content is server-rendered and readable before JavaScript.
 
 ## Routes

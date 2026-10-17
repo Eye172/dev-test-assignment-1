@@ -12,6 +12,7 @@ export const memoryDraftSchema = z.discriminatedUnion("kind", [
 ]);
 const edit = planSelectionSchema.shape.experimentEdits.unwrap().element;
 export const planDraftSchema = planSelectionSchema.extend({
+  weeklyReserves: z.array(draftNumber).length(4).default([0,0,0,0]),
   limits: planLimitsSchema.extend({ weeklyMinutes: draftNumber.nullable(), basis: draftText, budgets: z.array(draftMoney).max(5) }),
   retainedEstimates: z.array(planSelectionSchema.shape.retainedEstimates.element.extend({ effortMinutes: draftNumber.nullable(), costs: z.array(draftMoney).max(5) })).max(500),
   experimentEdits: z.array(edit.extend({ title: draftText.optional(), deliverable: draftText.optional(), method: draftText.optional(), week: draftNumber.optional(), effortMinutes: draftNumber.nullable().optional(), costs: z.array(draftMoney).max(5).optional(), reason: draftText, measurement: edit.shape.measurement.unwrap().extend({ deadlineDay: draftNumber }).optional() })).max(10),
