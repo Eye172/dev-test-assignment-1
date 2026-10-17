@@ -2,7 +2,7 @@
 import { useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { motion } from "motion/react";
+import { motion, useReducedMotion } from "motion/react";
 import { ArrowUpRight, Pencil, Sparkles } from "lucide-react";
 import { useWorkspace } from "@/components/workspace";
 import { OrbitDial, DialLegend, useOrbitModel } from "@/components/orbit";
@@ -38,9 +38,12 @@ function ObservatoryOverview() {
   const { startup } = workspace;
   const model = useOrbitModel(workspace);
   const hydrated = useHydrated();
+  const deviceReducedMotion = useReducedMotion();
+  const reducedMotion = deviceReducedMotion !== false || startup.preferences.motion === "reduced";
+  const animateEntry = hydrated && reducedMotion === false;
   const [editing, setEditing] = useState(false);
   const plan = useGeneratePlan();
-  const enter = (i: number) => ({ initial: hydrated ? { opacity: 0, y: 12 } : false as const, animate: { opacity: 1, y: 0 }, transition: { duration: 0.5, ease, delay: 0.06 * i } });
+  const enter = (i: number) => ({ initial: animateEntry ? { opacity: 0, y: 12 } : false as const, animate: { opacity: 1, y: 0 }, transition: { duration: reducedMotion ? 0 : 0.5, ease, delay: reducedMotion ? 0 : 0.06 * i } });
   const testFirst = insights.assumptions.filter(a => a.quadrant === "test_first").length;
   return <div className="obs-page obs-overview">
     <section className="obs-hero" aria-labelledby="startup-name">
@@ -53,7 +56,7 @@ function ObservatoryOverview() {
           <button type="button" className="v4-button" disabled={!hydrated} onClick={() => setEditing(true)}><Pencil size={15} aria-hidden/>{t("ov.editProfile")}</button>
         </div>
       </motion.div>
-      <motion.div className="obs-dial" initial={hydrated ? { opacity: 0, scale: 0.94, rotate: -6 } : false} animate={{ opacity: 1, scale: 1, rotate: 0 }} transition={{ type: "spring", duration: 1.1, bounce: 0.15 }}>
+      <motion.div className="obs-dial" initial={animateEntry ? { opacity: 0, scale: 0.94, rotate: -6 } : false} animate={{ opacity: 1, scale: 1, rotate: 0 }} transition={{ type: "spring", duration: reducedMotion ? 0 : 1.1, bounce: 0.15 }}>
         <OrbitDial model={model} size={300} base={base} interactive/>
         <DialLegend model={model}/>
       </motion.div>

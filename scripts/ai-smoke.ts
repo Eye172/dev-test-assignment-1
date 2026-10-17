@@ -10,6 +10,7 @@ import { sectionKeys } from "../src/lib/domain/schemas";
 import type { PlanPreview } from "../src/lib/domain/analysis";
 
 async function main(){
+  if(process.env.AI_SMOKE_RUN_FOLLOWUP==="true"&&process.env.AI_ALLOW_PAID_TESTS!=="true"){console.error("Paid follow-up not started: set AI_ALLOW_PAID_TESTS=true explicitly.");process.exitCode=1;return;}
   const base=process.env.AI_SMOKE_BASE_URL||"http://127.0.0.1:3000",startupId=process.env.AI_SMOKE_STARTUP_ID;
   assert(startupId&&process.env.AI_ACCESS_CODE,"Set the synthetic working copy ID and owner access code locally.");
   const endpoint=`${base}/api/startups/${startupId}/ai`;let cookie="";

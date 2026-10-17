@@ -1,3 +1,5 @@
+> Current navigation: [product README](../README.md), [status](STATUS.md), [cost profile](AI-COSTS.md). Historical results below belong to their named source revisions.
+
 # Evidence, decision memory and AI execution
 
 Owner-authorized expansion, 17 October 2026. The original assignment remains usable without paid AI: six required screens, five independently saved sections, exactly three market assumptions, up to three channels, saved-section completion, PostgreSQL persistence and a deterministic 30-day roadmap. `/startups/:id/ai` adds the private evidence workspace; `/agents` redirects there.
@@ -30,7 +32,7 @@ The brief interpreter identifies the next commercial decision and constraints. T
 
 Agents exchange typed persisted artifacts through the orchestrator. Recorded message kinds include task assignments, tool results and artifacts, with sender/recipients and IDs. This is an audit trail, not model chain-of-thought or simulated chat. Agents cannot write the startup, execute shell commands, read environment secrets or accept their own proposals. Targeted modes are research, strategy, pricing, experiments and review; `modeRoles` defines their graphs. Review requires a parent run with completed specialist artifacts and schedules only the independent critic, avoiding repeat paid research when a previous run stopped before critique. Identical proposed-memory content is sent once in the role view with explicit revision/status references; full stored artifacts and validator receipts remain unchanged.
 
-Default models are `gpt-6.1-sol` for specialists and `gpt-6-astra` for the critic. Tracing is disabled and Responses `store:false` is explicit. The snapshot, brief, observations and relevant preceding artifacts are sent to OpenAI. This is not a claim about zero retention under the provider account policy.
+All roles default to `gpt-6.1-sol`, including the critic; explicit server overrides remain available. Requests select Standard service. Extra repair rounds require `AI_AUTO_REPAIR=true`. Tracing is disabled and Responses `store:false` is explicit. The snapshot, brief, observations and relevant preceding artifacts are sent to OpenAI. This is not a claim about zero retention under the provider account policy.
 
 ## Comparison and evidence
 
@@ -99,7 +101,7 @@ Runs may be queued, running, paused, completed, needs_attention, failed or cance
 
 Fenced leases prevent competing workers or late cancelled results from publishing. Each invocation pauses before the 300-second Vercel window. `after()` is not a durable queue: closing the browser at a checkpoint may require a later Resume. The client automatically resumes checkpoints for its newly started run and backs off polling when idle or hidden.
 
-Limits include 18 model calls, 600,000 accumulated tokens before another call, one repair round, bounded searches/captures and no automatic provider retries. Intake timeout is 110 seconds; other roles have 200 seconds. Output allowance includes reasoning tokens. Settings and model rates live in prompts.ts/config.ts and are frozen per step.
+Limits include 18 model calls, 600,000 accumulated tokens before another call, at most one explicitly enabled repair round, bounded searches/captures and no automatic provider retries. Intake timeout is 110 seconds; the researcher has 250 seconds and other roles have 200 seconds. Output allowance includes reasoning tokens. Settings and model rates live in prompts.ts/config.ts and are frozen per step.
 
 Shared daily and per-run estimates are reserved transactionally before calls. Confirmed usage settles the reservation, including reported usage from incomplete Responses that the Agents SDK rejects. Uncertain interrupted calls retain their reservation and are never described as free. Application estimates are not provider invoices or account-wide spending guarantees. Defaults are $7/run and $15/day UTC; unknown model rates are rejected.
 
@@ -121,7 +123,7 @@ Current release verification and real-call outcomes are recorded in ACCEPTANCE.m
 
 The optional preflight uses frozen `orbit-preflight-1.0.0` instructions, low reasoning, at most 4,000 output tokens, a 95-second provider timeout and zero retries. Usage/reservations share `ai_budget_days` with specialist runs. `ai_intakes` and `ai_intake_calls` retain private inputs, instructions, result and actual usage. Duplicate workers can claim only queued work. An interrupted running attempt becomes failed after 150 seconds; its uncertain reservation remains. Re-dispatching queued work preserves its ID. Terminal failure requires an explicit new paid interpretation; an ambiguous HTTP retry preserves the original request ID.
 
-Clarification is deterministic after extraction, asks only required gaps and stops at completion or seven questions. No additional paid conversation is needed to record an answer. Pending answers, guided topics and confirmation edits have validated per-tab recovery. A completed AI interpretation's unknowns stay unknown until founder input; an old file cannot silently fill them. The saved profile is authoritative over earlier extraction. Profile creation supports a UUID `Idempotency-Key`; identical retries return the same startup and changed retries expose a recoverable conflict.
+AI preflight returns case-specific discovery questions from the actual brief. The local rules-only reader highlights required gaps. Questions and answers are retained with context and confirmed profile edits. No additional paid conversation is needed to record an answer. Pending answers, guided topics and confirmation edits have validated per-tab recovery. A completed AI interpretation's unknowns stay unknown until founder input; an old file cannot silently fill them. The saved profile is authoritative over earlier extraction. Profile creation supports a UUID `Idempotency-Key`; identical retries return the same startup and changed retries expose a recoverable conflict.
 
 Full specialist creation additionally accepts `intakeId?` and `material?:{text,files}`. Its immutable private snapshot retains the full readable material, guided answers and clarification answers; each role receives a bounded view with visible truncation limits. A completed intake binds to one startup. Prompt instructions explicitly prefer confirmed saved values over earlier material and treat document claims as founder-provided context, not verified external evidence. Public exports exclude this material; owner export includes linked intake/call history.
 

@@ -4,6 +4,17 @@ import type { AiStore, LeasedRun } from "./store";
 import { fingerprint } from "./identity";
 import { CONTRACT_VALIDATOR_VERSION, prepareAnalysis } from "./quality";
 
+/** UI explanations are retained in the snapshot, but need not be repaid by every specialist. */
+export function compactIntakeContext(result:unknown):unknown {
+  if(!result||typeof result!=="object"||Array.isArray(result))return result;
+  const record=result as Record<string,unknown>;
+  if(!Array.isArray(record.questions))return result;
+  return {...record,questions:record.questions.map(question=>{
+    if(!question||typeof question!=="object"||Array.isArray(question))return question;
+    return Object.fromEntries(Object.entries(question).filter(([key])=>key!=="why"&&key!=="placeholder"));
+  })};
+}
+
 /** Role views select from a frozen snapshot. Live business edits never enter an existing run. */
 export async function executionInput(store:AiStore,run:LeasedRun,step:AiStep,completed:AiStep[]){
   const startupId=run.snapshot.workspace.startup.id;
@@ -61,7 +72,7 @@ export async function executionInput(store:AiStore,run:LeasedRun,step:AiStep,com
   const founderMaterial=material?{text:material.text,answers:material.answers||[],files:material.files.map(f=>({...f,text:f.text.slice(0,textLimit),coverage:f.coverage+(f.text.length>textLimit?`; this role sees the first ${textLimit} characters; full extraction retained in private snapshot`:"")}))}:undefined;
   return {
     asOf:new Date().toISOString(),role:step.role,round:step.round,brief:run.brief,outputLanguage:run.snapshot.founderLanguage??"en",
-    snapshot:{workspace:{...workspace,tasks},evidence,currentDecisions,historicalDecisions,pendingDecisions:pending.filter(m=>!mirrored.has(m.id)),artifactMemoryRefs:pending.filter(m=>mirrored.has(m.id)).map(m=>({id:m.id,revision:m.revision,status:m.status,kind:m.data.kind,content:"Exact proposal supplied in preceding/parent artifacts; not accepted"})),parentArtifacts,priorArtifactProposals,founderMaterial,intakeInterpretation:run.snapshot.intake?{id:run.snapshot.intake.id,result:run.snapshot.intake.result}:undefined},
+    snapshot:{workspace:{...workspace,tasks},evidence,currentDecisions,historicalDecisions,pendingDecisions:pending.filter(m=>!mirrored.has(m.id)),artifactMemoryRefs:pending.filter(m=>mirrored.has(m.id)).map(m=>({id:m.id,revision:m.revision,status:m.status,kind:m.data.kind,content:"Exact proposal supplied in preceding/parent artifacts; not accepted"})),parentArtifacts,priorArtifactProposals,founderMaterial,intakeInterpretation:run.snapshot.intake?{id:run.snapshot.intake.id,result:compactIntakeContext(run.snapshot.intake.result)}:undefined},
     precedingArtifacts:upstream,sourceLedger:step.role==="researcher"?r.sources:(r.sources as {url:string}[]).filter(s=>pages.some(p=>p.url===s.url)),capturedPages,findings,openIssues,normalizationLedger,contractValidationLedger,
     referencePolicy:"Completed and inherited artifacts contain server-normalized task UUIDs. task_N aliases are an input convenience, never a required stored representation. Judge existingTaskIds by membership in the immutable snapshot. A UUID matching the supplied task is correct. The normalization ledger records exact original aliases when a conversion occurred. A workspace_record finding describes its originating snapshotAt, not today's administrative state. Read the supplied current workspace for current sections, tasks and acceptance. Findings are immutable historical records: propose new findings and decision revisions when their interpretation changes; never demand an in-place rewrite under an old finding UUID.",
     manifest:{snapshotHash:fingerprint(run.snapshot),memory:memory.map(m=>({id:m.id,revision:m.revision,status:m.status})),evidenceIds:evidence.map(e=>e.id),artifactIds:completed.map(s=>s.id),pageVersions:pages.map(p=>({id:p.id,contentHash:p.contentHash,accessedAt:p.accessedAt})),taskView:fullTasks?"full":"summary"},

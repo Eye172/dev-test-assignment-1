@@ -1,3 +1,5 @@
+> Current navigation: [product README](../README.md), [status](STATUS.md), [cost profile](AI-COSTS.md). Historical results below belong to their named source revisions.
+
 # Orbit GTM Studio — final submission
 
 The v4 solution is published on Vercel through [PR13](https://github.com/Eye172/dev-test-assignment-1/pull/13), merged as `ecf3e225d52a067b067d82225f561273ff604cd1`. The full application tree was verified at `780bdd893714004e178811d3f0a6d3d7187f1afa`. Current evidence and limitations are in [the final release record](RELEASE-2026-10-17.md); earlier milestone documents remain historical.

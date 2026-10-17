@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import type { IntakeRecord } from "../src/lib/domain/intake-api";
 async function main(){
+  if(process.env.AI_ALLOW_PAID_TESTS!=="true"){console.error("Paid HTTP evaluation not started: set AI_ALLOW_PAID_TESTS=true explicitly. This uses the server's configured budget.");process.exitCode=1;return;}
   const base=process.env.AI_SMOKE_BASE_URL||"http://127.0.0.1:3001";let cookie="";
   async function request<T>(path:string,body?:unknown,status=200):Promise<T>{const r=await fetch(base+path,{method:body?"POST":"GET",headers:{"Content-Type":"application/json",...(cookie?{Cookie:cookie}:{}),...(body?{Origin:new URL(base).origin}:{})},...(body?{body:JSON.stringify(body)}:{}),signal:AbortSignal.timeout(20000)});assert.equal(r.status,status,`Unexpected HTTP ${r.status}`);if(r.headers.get("set-cookie"))cookie=r.headers.get("set-cookie")!.split(";")[0];return(await r.json()).data;}
   assert.equal((await request<{authorized:boolean}>("/api/intake")).authorized,false);

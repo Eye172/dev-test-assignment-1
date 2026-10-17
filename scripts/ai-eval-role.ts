@@ -9,6 +9,9 @@ import { AiStore } from "../src/server/ai/store";
 import { executeSpecialist,safeAiError } from "../src/server/ai/runtime";
 import { receiptFetch,type ProviderReceipt } from "../src/server/ai/provider-receipts";
 
+const ceiling=Number(process.env.AI_EVAL_MAX_USD);
+if(process.env.AI_ALLOW_PAID_TESTS!=="true"||!Number.isFinite(ceiling)||ceiling<=0||ceiling>7)throw new Error("Paid diagnostic not started: set AI_ALLOW_PAID_TESTS=true and AI_EVAL_MAX_USD explicitly (0 < USD <= 7).");
+process.env.AI_RUN_BUDGET_USD=String(Math.min(ceiling,Number(process.env.AI_RUN_BUDGET_USD)||7));
 const db=await getDatabase(),ai=new AiStore(db);
 const receipts:{current:ProviderReceipt|null}={current:null};
 const provider=new OpenAIProvider({openAIClient:new OpenAI({maxRetries:0,timeout:200000,fetch:receiptFetch(r=>{receipts.current=r;})}),useResponses:true});

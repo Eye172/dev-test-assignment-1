@@ -13,7 +13,7 @@ export function aiConfig() {
   return {
     configured: !!process.env.OPENAI_API_KEY && !!process.env.AI_ACCESS_CODE,
     model: process.env.OPENAI_MODEL || "gpt-6.1-sol",
-    criticModel: process.env.OPENAI_CRITIC_MODEL || "gpt-6-astra",
+    criticModel: process.env.OPENAI_CRITIC_MODEL || process.env.OPENAI_MODEL || "gpt-6.1-sol",
     runBudgetUsd: dollars(process.env.AI_RUN_BUDGET_USD, 7, 30),
     dailyBudgetUsd: dollars(process.env.AI_DAILY_BUDGET_USD, 15, 100),
   };
