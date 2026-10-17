@@ -42,7 +42,7 @@ export function outputSchema(role: AiRole) {
 }
 /** New model calls always use the rich contract; stored v1 artifacts remain readable. */
 export function modelOutputSchema(role:AiRole){
-  return outputSchema(role).extend({analysis:analysisSchema.extend({
+  return outputSchema(role).extend({experiments:z.array(aiResultSchema.shape.experiments.element.extend({contract:experimentContractSchema.extend({existingTaskIds:z.array(z.string().min(1).max(100)).max(10)}).nullable()})).max(10),analysis:analysisSchema.extend({
     research:role==="researcher"?analysisSchema.shape.research:z.null(),
     hypotheses:["strategist","monetizer","experimenter"].includes(role)?analysisSchema.shape.hypotheses:analysisSchema.shape.hypotheses.max(0),
     decisions:["strategist","monetizer","experimenter"].includes(role)?analysisSchema.shape.decisions:analysisSchema.shape.decisions.max(0),

@@ -63,7 +63,7 @@ test("lost creation acknowledgement recovers one workspace; latest consent and c
   let paidStarts=0;await page.route("**/api/startups/*/ai",async route=>{if(route.request().method()==="POST"&&route.request().postDataJSON().action==="create")paidStarts++;await route.continue();});
   await page.goto("/startups/new");await expect.poll(()=>page.evaluate(()=>JSON.parse(sessionStorage.getItem("orbit:onboarding:v1")||"{}").sessionId)).toBeTruthy();await page.evaluate(s=>sessionStorage.setItem("orbit:onboarding:v1",JSON.stringify(s)),initialSession());await page.reload();
   await page.getByLabel(/^Primary customer segment/).fill("Confirmed independent courier managers");
-  await page.getByRole("button",{name:/Create and launch/}).click();await expect(page.getByRole("alert").filter({hasText:"Can't reach the server"})).toBeVisible();
+  await page.getByRole("button",{name:/Create and launch/}).click();await expect(page.locator(".error-notice").filter({hasText:"Can't reach the server"})).toBeVisible();
   await page.getByLabel(/Run the AI specialists after creation/).check();
   await page.getByRole("button",{name:/Create and launch/}).click();await expect.poll(()=>writes).toBe(2);
   await page.getByLabel(/Run the AI specialists after creation/).uncheck();release!();

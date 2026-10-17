@@ -115,8 +115,8 @@ export function ProfileForm({ initial, seed, origins, onSaved, onCancel, onReloa
   const tag = (k: keyof Draft) => origins?.[k] && data[k] === start[k] ? <span className="origin-tag">{originText[origins[k]!] ?? origins[k]}</span> : null;
   const invalid = fieldOrder.filter(k => fields[k]);
   return <form onSubmit={save} ref={form} noValidate className="profile-form">
-    {error && <div ref={summary} tabIndex={-1} className="error-summary" role="alert">
-      {error instanceof ClientError&&error.code==="CREATION_CHANGED"&&error.fields?.createdStartupId&&<button type="button" className="button small" onClick={async()=>{const ws=await api<Workspace>(`/api/startups/${error.fields!.createdStartupId}`);if(onSaved)await onSaved(ws.startup);else router.push(`/startups/${ws.startup.id}`);}}>Open the workspace already created</button>}
+    {error && <div ref={summary} tabIndex={-1} className="error-summary">
+      {error instanceof ClientError&&error.code==="CREATION_CHANGED"&&error.fields?.createdStartupId&&<button type="button" className="button small" onClick={async()=>{try{const ws=await api<Workspace>(`/api/startups/${error.fields!.createdStartupId}`);if(onSaved)await onSaved(ws.startup);else router.push(`/startups/${ws.startup.id}`);}catch(err){setError(err as Error);}}}>Open the workspace already created</button>}
       <ErrorNotice error={conflict ? "This profile changed in another tab or by someone else. Load the latest version, or copy your draft first." : error}
         onReload={conflict ? () => void loadLatest() : undefined}
         onCopy={conflict ? () => void navigator.clipboard.writeText(JSON.stringify({ ...data, customFields: Object.fromEntries(custom) }, null, 2)) : undefined}/>

@@ -4,13 +4,14 @@ import { createDatabase, type Database } from "@/server/database";
 import { Store } from "@/server/store";
 import { AiStore } from "@/server/ai/store";
 import { demoProfile } from "@/server/demo";
-import { aiResultSchema, modelOutputSchema } from "@/lib/domain/ai";
+import { aiResultSchema, modelOutputSchema, outputSchema } from "@/lib/domain/ai";
 import { defaultAnalysisLayout } from "@/lib/domain/analysis";
 import { executionInput } from "@/server/ai/context";
 import { buildPlanPreview } from "@/server/ai/plans";
 import { pageText, publicAddress } from "@/server/ai/sources";
 import { seedAnalysisCase, hypothesis, result } from "./fixtures/analysis-case";
 import { prepareAnalysis } from "@/server/ai/quality";
+import { resolveTaskHandles } from "@/server/ai/references";
 
 let db:Database,store:Store,ai:AiStore;
 beforeAll(async()=>{process.env.OPENAI_API_KEY="offline-fixture-no-provider-calls";process.env.AI_ACCESS_CODE="offline-fixture-code";db=await createDatabase(process.env.TEST_DATABASE_URL||"memory://");store=new Store(db);ai=new AiStore(db);});
@@ -49,6 +50,48 @@ describe("captured research, provenance and review",()=>{
 });
 
 describe("decision memory and one feasible active plan",()=>{
+  it("freezes accepted option support and a referenced pending hypothesis without a parent run",async()=>{
+    const c=await ready(),memory=await ai.analysis.memory(c.startup.id),h=memory.find(m=>m.data.kind==="hypothesis")!,d=memory.find(m=>m.data.kind==="decision")!,finding=(await ai.analysis.findings(c.startup.id))[0],optionFinding={...finding,id:randomUUID(),key:"option_support",statement:"The synthetic list price uses an account payment unit"};
+    await db.query("INSERT INTO ai_findings(id,startup_id,run_id,step_id,data) VALUES($1,$2,$3,$4,$5::jsonb)",[optionFinding.id,c.startup.id,c.run.id,c.specialist("researcher").id,JSON.stringify(optionFinding)]);
+    const pending=structuredClone(h.data);pending.proposal.findingRefs=[finding.id!];await ai.analysis.saveMemory(c.startup.id,{requestId:randomUUID(),id:h.id,expectedRevision:h.revision,status:"proposed",data:pending,reason:"Keep the hypothesis unaccepted pending new observations"});
+    const accepted=structuredClone(d.data);if(accepted.kind!=="decision")throw new Error("fixture");accepted.proposal.findingRefs=[];accepted.proposal.hypothesisRefs=[h.id];accepted.proposal.options[0].findingRefs=[optionFinding.id];
+    await ai.analysis.saveMemory(c.startup.id,{requestId:randomUUID(),id:d.id,expectedRevision:d.revision,status:"accepted",data:accepted,reason:"Founder chooses an experiment, without accepting its market hypothesis"});
+    const created=await ai.create(c.startup.id,{mode:"experiments",brief:"Fresh continuation from accepted memory only",requestId:randomUUID()}),run=(await ai.lease(created.id))!,step=(await ai.steps(run.id))[0];
+    expect(run.snapshot.findings?.map(f=>f.id)).toEqual(expect.arrayContaining([finding.id,optionFinding.id]));
+    const view=await executionInput(ai,run,step,[]);expect(view.snapshot.pendingDecisions.some(m=>m.id===h.id)).toBe(true);expect(view.findings.map(f=>f.id)).toEqual(expect.arrayContaining([finding.id,optionFinding.id]));expect(view.capturedPages.some(p=>p.id===c.captured.id&&p.passages.length>0)).toBe(true);
+    await ai.cancel(c.startup.id,run.id);
+  });
+  it("resolves exact task handles without accepting guessed identifiers or another workspace's task",async()=>{
+    const c=await ready(),r=structuredClone(c.specialist("experimenter").result!),task=(await store.workspace(c.startup.id)).tasks[0];
+    r.experiments[0].contract!.existingTaskIds=["task_1"];
+    expect(modelOutputSchema("experimenter").safeParse(r).success).toBe(true);expect(outputSchema("experimenter").safeParse(r).success).toBe(false);
+    expect(resolveTaskHandles(r,[task]).experiments[0].contract!.existingTaskIds).toEqual([task.id]);expect(r.experiments[0].contract!.existingTaskIds).toEqual(["task_1"]);
+    r.experiments[0].contract!.existingTaskIds=["task_999"];expect(outputSchema("experimenter").safeParse(resolveTaskHandles(r,[task])).success).toBe(false);
+    r.experiments[0].contract!.existingTaskIds=[randomUUID()];expect(prepareAnalysis(r,c.specialist("experimenter"),{memory:await ai.analysis.memory(c.startup.id),findings:[],pages:[],evidence:[],taskIds:[task.id]}).issues.some(i=>i.topic==="Contract: Experiment task")).toBe(true);
+  });
+  it("carries a referenced earlier-round decision and its hypothesis into the final critic's context",async()=>{
+    const c=await ready(),created=await ai.create(c.startup.id,{mode:"experiments",brief:"Counter-evidence continuation",requestId:randomUUID(),parentRunId:c.run.id}),run=(await ai.lease(created.id))!;
+    const initial=await ai.steps(run.id),step=initial.find(s=>s.role==="experimenter")!,intake=initial.find(s=>s.role==="intake")!;
+    await ai.startStep(run,intake);await ai.completeStep(run,intake,result(),[]);
+    const first=structuredClone(c.specialist("experimenter").result!);first.analysis!.hypotheses=[hypothesis("operational")];first.analysis!.decisions=[{...structuredClone(c.specialist("strategist").result!.analysis!.decisions[0]),id:null,key:"sequence",hypothesisRefs:["operational"]}];first.experiments.forEach(e=>{e.contract!.decisionRefs=["sequence"];e.contract!.hypothesisRefs=["operational"];});
+    await ai.startStep(run,step);await ai.completeStep(run,step,first,[]);
+    const saved=(await ai.steps(run.id)).find(s=>s.id===step.id)!.result!;
+    await ai.scheduleRepair(run,["experimenter"]);const repair=(await ai.steps(run.id)).find(s=>s.role==="experimenter"&&s.round===1)!;
+    const second=structuredClone(saved);second.analysis!.hypotheses=[];second.analysis!.decisions=[];await ai.startStep(run,repair);await ai.completeStep(run,repair,second,[]);
+    const all=await ai.steps(run.id),critic=all.find(s=>s.role==="critic"&&s.round===1)!;
+    const view=await executionInput(ai,run,critic,[all.find(s=>s.id===intake.id)!,all.find(s=>s.id===repair.id)!]);
+    const retained=view.snapshot.priorArtifactProposals;
+    expect(retained.some(p=>p.data.kind==="decision"&&p.data.proposal.id===saved.analysis!.decisions[0].id)).toBe(true);expect(retained.some(p=>p.data.kind==="hypothesis"&&p.data.proposal.id===saved.analysis!.hypotheses[0].id)).toBe(true);expect(retained.every(p=>p.status.includes("not accepted"))).toBe(true);
+    await ai.cancel(c.startup.id,run.id);
+  });
+  it("keeps a specialist's proposed resolution open until independent critique",async()=>{
+    const c=await ready(),issueId=randomUUID(),experimenter=c.specialist("experimenter"),critic=c.specialist("critic");
+    await db.query("INSERT INTO ai_quality_issues(id,run_id,step_id,severity,target,topic,reason,correction,deterministic) VALUES($1,$2,$3,'material','experimenter','Outcome precedence','Branches overlap','Separate failure and unknown outcomes',false)",[issueId,c.run.id,critic.id]);
+    const revised=result();revised.analysis!.resolutions=[{issueId,outcome:"resolved",reason:"Specialist proposes corrected precedence",findingRefs:[]}];
+    expect(modelOutputSchema("experimenter").safeParse({...revised,experiments:experimenter.result!.experiments}).success).toBe(true);
+    await db.transaction(tx=>ai.analysis.registerIssues(c.run.id,experimenter,revised,tx));expect((await ai.analysis.issues(c.run.id)).find(i=>i.id===issueId)?.status).toBe("open");
+    await db.transaction(tx=>ai.analysis.registerIssues(c.run.id,critic,revised,tx));expect((await ai.analysis.issues(c.run.id)).find(i=>i.id===issueId)?.status).toBe("resolved");
+  });
   it("cannot overwrite a founder-edited proposed memory record with the earlier AI body",async()=>{
     const c=await ready(),step=c.specialist("strategist"),h=step.result!.analysis!.hypotheses[0];
     const before=(await ai.analysis.memory(c.startup.id)).find(m=>m.id===h.id)!;

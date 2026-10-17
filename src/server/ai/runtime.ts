@@ -2,7 +2,7 @@ import "server-only";
 import OpenAI from "openai";
 import { Agent, OpenAIProvider, Runner, setTracingDisabled, tool, webSearchTool, type Model, type ModelResponse } from "@openai/agents";
 import { z } from "zod";
-import { agentCatalog, modeRoles, modelOutputSchema, safeSourceUrl, type AiEvidence, type AiResult, type AiRole, type AiSource, type AiStep } from "@/lib/domain/ai";
+import { agentCatalog, modeRoles, modelOutputSchema, outputSchema, safeSourceUrl, type AiEvidence, type AiResult, type AiRole, type AiSource, type AiStep } from "@/lib/domain/ai";
 import { getDatabase } from "../database";
 import { AppError } from "../errors";
 import { estimatedCost, requireConfiguration } from "./config";
@@ -11,6 +11,7 @@ import { capturePage } from "./sources";
 import { executionInput } from "./context";
 import { receiptFetch, type ProviderReceipt } from "./provider-receipts";
 import { wireSchema } from "./wire-schema";
+import { resolveTaskHandles } from "./references";
 
 setTracingDisabled(true);
 type JsonObject = Record<string, unknown>;
@@ -111,7 +112,12 @@ export async function executeSpecialist(store:AiStore,run:LeasedRun,step:AiStep,
   if(!result.finalOutput)throw new AppError("AI_EMPTY_OUTPUT","This specialist returned no usable proposal.",502);
   const validation=modelOutputSchema(step.role).safeParse(result.finalOutput);
   if(!validation.success){await store.recordTool(run,step,"artifact_validation",{schema:execution.settings.artifactVersion},{rejectedArtifact:result.finalOutput,issues:validation.error.issues});throw new AppError("AI_ARTIFACT_INVALID","The specialist response did not meet its data contract. Reported usage and the rejected proposal remain in private history; nothing was applied.",422);}
-  const parsed=validation.data;
+  const parsed=resolveTaskHandles(validation.data,run.snapshot.workspace.tasks);
+  const stored=outputSchema(step.role).safeParse(parsed);
+  if(!stored.success){await store.recordTool(run,step,"artifact_validation",{schema:execution.settings.artifactVersion},{rejectedArtifact:result.finalOutput,issues:stored.error.issues});throw new AppError("AI_REFERENCE_INVALID","The specialist used a reference that is absent from this snapshot. The proposal remains in private history and was not applied.",422);}
+  const originalRefs=validation.data.experiments.map(e=>({key:e.contract?.key,references:e.contract?.existingTaskIds||[]}));
+  const storedRefs=parsed.experiments.map(e=>({key:e.contract?.key,references:e.contract?.existingTaskIds||[]}));
+  if(JSON.stringify(originalRefs)!==JSON.stringify(storedRefs))await store.recordTool(run,step,"resolve_task_references",originalRefs,storedRefs);
   if(step.role==="experimenter"&&parsed.experiments.length<6)throw new AppError("AI_PLAN_INVALID","The experiment designer returned fewer than six tasks. Start a focused experiment follow-up.",422);
   await store.completeStep(run,step,checkCitations(parsed,[...priorSources,...found],step.role,run.snapshot.evidence),found);
 }

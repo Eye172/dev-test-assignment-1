@@ -12,6 +12,7 @@ import { AnalysisStore, type StoredFinding } from "./analysis-store";
 import { prepareAnalysis } from "./quality";
 import type { MemoryData, MemoryItem, SourcePage, PlanSelection } from "@/lib/domain/analysis";
 import { buildPlanPreview, applyExperimentPlan } from "./plans";
+import { referenceIds } from "./references";
 
 type Row = Record<string, unknown>;
 const iso = (v: unknown) => v instanceof Date ? v.toISOString() : String(v);
@@ -95,7 +96,7 @@ export class AiStore {
         parentSources=parentRun.sources as AiSource[];
       }
       const memory=await this.analysis.memory(id,tx);
-      const findingIds=new Set([...memory.flatMap(m=>m.data.proposal.findingRefs),...parent.flatMap(p=>p.result.analysis?.findings.map(f=>f.id!)||[])]);
+      const findingIds=new Set([...referenceIds(memory.map(m=>m.data)),...referenceIds(parent.map(p=>p.result)),...parent.flatMap(p=>p.result.analysis?.findings.map(f=>f.id!)||[])]);
       const findings=(await this.analysis.findings(id,tx)).filter(f=>findingIds.has(f.id!));
       const pageIds=new Set(findings.flatMap(f=>f.passageIds.map(p=>p.split(":")[0])));
       const pageRows=await tx.query("SELECT DISTINCT run_id FROM ai_source_pages WHERE startup_id=$1 AND id=ANY($2::uuid[])",[id,`{${[...pageIds].join(",")}}`]);

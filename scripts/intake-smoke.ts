@@ -1,0 +1,15 @@
+/** Explicitly paid, synthetic pre-creation HTTP evaluation. Never runs in CI. */
+import assert from "node:assert/strict";
+import { randomUUID } from "node:crypto";
+import type { IntakeRecord } from "../src/lib/domain/intake-api";
+async function main(){
+  const base=process.env.AI_SMOKE_BASE_URL||"http://127.0.0.1:3001";let cookie="";
+  async function request<T>(path:string,body?:unknown,status=200):Promise<T>{const r=await fetch(base+path,{method:body?"POST":"GET",headers:{"Content-Type":"application/json",...(cookie?{Cookie:cookie}:{}),...(body?{Origin:new URL(base).origin}:{})},...(body?{body:JSON.stringify(body)}:{}),signal:AbortSignal.timeout(20000)});assert.equal(r.status,status,`Unexpected HTTP ${r.status}`);if(r.headers.get("set-cookie"))cookie=r.headers.get("set-cookie")!.split(";")[0];return(await r.json()).data;}
+  assert.equal((await request<{authorized:boolean}>("/api/intake")).authorized,false);
+  await request("/api/intake",{action:"unlock",payload:{code:process.env.AI_ACCESS_CODE}});
+  const payload={requestId:randomUUID(),text:"Synthetic case. Dispatch Note is a B2B idea for operations managers at independent courier companies with 5–20 drivers in Almaty, Kazakhstan. We have no paying customers and no revenue. Current stage: Idea. It will turn voice messages into dispatch records. Drivers remain in WhatsApp and Telegram. Eight hours a week is available for sales only; delivery capacity is unknown. Total experiment budget is USD 300; that is not our selling price. We explicitly will not use paid ads or LinkedIn. The attached deck is old; current statements override it.",files:[{name:"older-deck-text.txt",size:160,kind:"text",text:"An old draft speculated about Early Traction and USD 99 subscriptions. These were assumptions, not actual customer or payment evidence.",coverage:"Plain text; synthetic fixture",error:""}]};
+  const first=await request<IntakeRecord>("/api/intake",{action:"analyze",payload},202),same=await request<IntakeRecord>("/api/intake",{action:"analyze",payload},202);assert.equal(first.id,same.id);
+  for(let i=0;i<60;i++){const r=await request<IntakeRecord>(`/api/intake?id=${first.id}`);if(r.status==="completed"){assert.equal(r.draft?.profile.stage,"Idea");assert.equal(r.draft?.profile.businessModel,"B2B");assert(!r.draft?.hints.channels.some(x=>/paid ads|linkedin/i.test(x)));assert(!/300/.test(r.draft?.hints.price||""),"Budget was confused with price");assert(r.inputTokens>0&&r.outputTokens>0);console.log(JSON.stringify({event:"intake_http_acceptance",id:r.id,status:r.status,idempotent:true,confirmedStagePreserved:true,excludedChannelsPreserved:true,budgetNotPrice:true,inputTokens:r.inputTokens,outputTokens:r.outputTokens,costUsd:r.estimatedMicros/1e6}));return;}assert.notEqual(r.status,"failed",r.error||"Interpretation failed");await new Promise(resolve=>setTimeout(resolve,2000));}
+  throw new Error("Interpretation remains saved; evaluation timeout");
+}
+main().catch(()=>{console.error("Pre-creation HTTP evaluation failed; inspect the private intake record. No secrets or provider payload were printed.");process.exitCode=1;});
