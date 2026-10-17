@@ -8,7 +8,7 @@
 
 ![Orbit landing and animated black hole](docs/verification/final-2026-10-17/18-production-home.jpg)
 
-Built for the AI Startify developer assignment, Orbit brings startup context, strategy, visual models and execution into one persistent workspace. The original assignment workflow works without an AI subscription. Optional AI assistance interprets briefs, researches alternatives and proposes changes for the founder to review.
+Orbit brings startup context, strategy, visual models and execution into one persistent workspace. The core workflow is available without an AI subscription. Optional AI assistance interprets briefs, researches alternatives and proposes changes for the founder to review.
 
 ## Product journey
 
@@ -30,7 +30,7 @@ Built for the AI Startify developer assignment, Orbit brings startup context, st
 | Pricing & Revenue | Revenue model, price hypothesis and willingness-to-pay test |
 | Market Assumptions | Three assumptions, associated risk and validation method |
 
-Each section has its own saved draft and completion state. **Completeness = completed sections ÷ 5 × 100%.** Empty drafts are allowed. Completed forms and tasks describe progress rather than proving market demand.
+Each section has its own saved draft and completion state. **Completeness = completed sections ÷ 5 × 100%.** Start with an empty draft and develop it at your own pace. Track strategy completion and execution progress, then validate demand through market experiments.
 
 ## Visual models
 
@@ -45,7 +45,7 @@ Each section has its own saved draft and completion state. **Completeness = comp
 | Bottom-up sizing | Account and price assumptions with their limitations |
 | 30-day workload | Planned actions and available execution capacity |
 
-Scores derived from saved fields are deterministic and inspectable. AI proposals and founder inputs retain their origin; unsupported claims remain hypotheses.
+Scores derived from saved fields are deterministic and inspectable. AI proposals and founder inputs retain their origin. Evidence tracking distinguishes hypotheses from supported findings.
 
 ## A plan that retains your work
 
@@ -88,7 +88,7 @@ Share a display with `?ui=observatory&lang=ru`, `?ui=ledger&lang=en` or `?ui=flo
 
 Guided and free-form onboarding accept **PDF, DOCX, PPTX, TXT, Markdown and CSV**. Text is extracted on the device: three files, 5 MB per file and 20,000 extracted characters per file. PDF extraction covers up to 30 pages. Coverage, truncation and errors are shown before confirmation; extraction does not perform OCR.
 
-The original brief and confirmed profile remain distinct. Optional AI interpretation reads supplied material. A local rules-only reader is available without a key. The founder confirms fields before creation.
+The original brief and confirmed profile remain distinct. Optional AI interpretation reads supplied material. A local rule-based reader is available without an API key. The founder confirms fields before creation.
 
 ## Run locally
 
@@ -149,4 +149,4 @@ CI uses PostgreSQL 17 and desktop/mobile Chromium. Paid evaluations are excluded
 
 [Assignment mapping](docs/ASSIGNMENT-CHECK.md) · [API/data contract](docs/CONTRACT.md) · [Design playbook](docs/design/CRAFT-PLAYBOOK.md) · [AI backend](docs/AI-BACKEND.md) · [Deployment](docs/DEPLOYMENT.md) · [Submission](docs/SUBMISSION.md) · [Changelog](CHANGELOG.md)
 
-The implementation preserves the original six-screen assignment and rule-based workflow. The [documentation index](docs/README.md) separates current guides from historical handoff records. Asset provenance and font notices are retained in the design and license documents.
+Developed for the AI Startify developer assignment, Orbit covers all six required screens and the complete rule-based workflow. The [documentation index](docs/README.md) separates current guides from historical handoff records. Asset provenance and font notices are retained in the design and license documents.
