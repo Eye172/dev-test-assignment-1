@@ -1,3 +1,5 @@
+> Historical coordination board. Current delivery: [status](../docs/STATUS.md).
+
 # Orbit GTM Studio delivery board
 
 The human owner's latest allocation supersedes earlier role proposals. GPT is the technical lead, backend developer and final integrator. Claude researches the official visual reference, designs AND IMPLEMENTS the frontend, and evaluates the implemented experience. An independent critique agent reports to GPT. The owner requests Opus 5.5 at full available effort for Claude Code; confirm the actual session model rather than merely naming it. English is the working language.

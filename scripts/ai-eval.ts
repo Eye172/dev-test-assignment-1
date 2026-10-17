@@ -10,6 +10,9 @@ import { validatedProposal, type AiResult } from "../src/lib/domain/ai";
 import { sectionKeys } from "../src/lib/domain/schemas";
 
 async function main(){
+  const ceiling=Number(process.env.AI_EVAL_MAX_USD);
+  if(process.env.AI_ALLOW_PAID_TESTS!=="true"||!Number.isFinite(ceiling)||ceiling<=0||ceiling>7){console.error("Paid evaluation not started: set AI_ALLOW_PAID_TESTS=true and AI_EVAL_MAX_USD explicitly (0 < USD <= 7).");process.exitCode=1;return;}
+  process.env.AI_RUN_BUDGET_USD=String(Math.min(ceiling,Number(process.env.AI_RUN_BUDGET_USD)||7));
   const db=await getDatabase(); const store=new Store(db),ai=new AiStore(db);
   try{
     const parentRunId=process.env.AI_EVAL_PARENT_RUN_ID;

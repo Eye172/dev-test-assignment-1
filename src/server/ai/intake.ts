@@ -87,7 +87,7 @@ export async function runIntake(id: string) {
     const schema = z.toJSONSchema(intakeOutputSchema,{io:"output"});
     const relax = (v:unknown):unknown => Array.isArray(v) ? v.map(relax) : v && typeof v === "object" ? Object.fromEntries(Object.entries(v).filter(([k]) => !["$schema","minLength","maxLength","minItems","maxItems"].includes(k)).map(([k,x])=>[k,relax(x)])) : v;
     const client = new OpenAI({apiKey:process.env.OPENAI_API_KEY,maxRetries:0,timeout:95000,fetch:receiptFetch(r=>{receipt=r;})});
-    const response = await client.responses.create({model,instructions:String(claimed.row.instructions),input:JSON.stringify(claimed.row.input),store:false,reasoning:{effort:"low"},max_output_tokens:4000,text:{format:{type:"json_schema",name:"orbit_intake",strict:true,schema:relax(schema) as Record<string,unknown>}}});
+    const response = await client.responses.create({model,instructions:String(claimed.row.instructions),input:JSON.stringify(claimed.row.input),service_tier:"default",store:false,reasoning:{effort:"low"},max_output_tokens:4000,text:{format:{type:"json_schema",name:"orbit_intake",strict:true,schema:relax(schema) as Record<string,unknown>}}});
     const usage=response.usage;
     if(usage)await store.settle(claimed.callId,{inputTokens:usage.input_tokens,outputTokens:usage.output_tokens,cost:estimatedCost(model,usage.input_tokens,usage.output_tokens),metadata:{responseId:response.id,status:response.status}});
     if(response.status!=="completed"||!response.output_text)throw new AppError("AI_INTAKE_INCOMPLETE","The interpretation was incomplete. Usage is retained; continue with local reading or explicitly start a new analysis.",422);

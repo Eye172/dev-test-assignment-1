@@ -1,6 +1,6 @@
 import "server-only";
 import OpenAI from "openai";
-import { Agent, OpenAIProvider, Runner, setTracingDisabled, tool, webSearchTool, type Model, type ModelResponse } from "@openai/agents";
+import { Agent, OpenAIProvider, Runner, setTracingDisabled, tool, webSearchTool, type Model, type ModelResponse, type ModelSettings } from "@openai/agents";
 import { z } from "zod";
 import { agentCatalog, modeRoles, modelOutputSchema, outputSchema, safeSourceUrl, type AiEvidence, type AiResult, type AiRole, type AiSource, type AiStep } from "@/lib/domain/ai";
 import { getDatabase } from "../database";
@@ -12,6 +12,7 @@ import { executionInput } from "./context";
 import { receiptFetch, type ProviderReceipt } from "./provider-receipts";
 import { wireSchema } from "./wire-schema";
 import { resolveTaskHandles } from "./references";
+import type { executionConfig } from "./prompts";
 
 setTracingDisabled(true);
 type JsonObject = Record<string, unknown>;
@@ -64,6 +65,9 @@ export function safeAiError(error:unknown) {
 function latest(steps:AiStep[]) {
   const map=new Map<AiRole,AiStep>();for(const s of steps)if(s.status==="completed")map.set(s.role,s);return [...map.values()];
 }
+export function specialistModelSettings(role:AiRole,settings:ReturnType<typeof executionConfig>):ModelSettings {
+  return {reasoning:{effort:settings.reasoningEffort},maxTokens:settings.maxTokens,parallelToolCalls:true,store:settings.store,retry:{maxRetries:settings.retries},providerData:{service_tier:"default",...(role==="researcher"?{include:["web_search_call.action.sources"],max_tool_calls:settings.webSearchCalls}:{})}};
+}
 export async function executeSpecialist(store:AiStore,run:LeasedRun,step:AiStep,provider:OpenAIProvider,receipts:{current:ProviderReceipt|null}) {
   const execution=await store.execution(step);
   const completed=latest(await store.steps(run.id));
@@ -105,7 +109,7 @@ export async function executeSpecialist(store:AiStore,run:LeasedRun,step:AiStep,
     },
     async *getStreamedResponse() { throw new AppError("AI_STREAM_UNSUPPORTED","This worker uses metered non-streaming calls.",500); },
   };
-  const agent=new Agent({name:agentCatalog[step.role].name,model:metered,instructions:execution.instructions,outputType:wireSchema(step.role),tools:step.role==="researcher"?[webSearchTool({searchContextSize:execution.settings.searchContextSize}),inspect]:step.role==="critic"?[inspect]:step.role==="monetizer"?[calculator(store,run,step)]:[],modelSettings:{reasoning:{effort:execution.settings.reasoningEffort},maxTokens:execution.settings.maxTokens,parallelToolCalls:true,store:execution.settings.store,retry:{maxRetries:execution.settings.retries},providerData:step.role==="researcher"?{include:["web_search_call.action.sources"],max_tool_calls:execution.settings.webSearchCalls}:{}}});
+  const agent=new Agent({name:agentCatalog[step.role].name,model:metered,instructions:execution.instructions,outputType:wireSchema(step.role),tools:step.role==="researcher"?[webSearchTool({searchContextSize:execution.settings.searchContextSize}),inspect]:step.role==="critic"?[inspect]:step.role==="monetizer"?[calculator(store,run,step)]:[],modelSettings:specialistModelSettings(step.role,execution.settings)});
   const input=await executionInput(store,run,step,completed);await store.saveInput(run,step,input);const payload=JSON.stringify(input);
   const runner=new Runner({modelProvider:provider,tracingDisabled:true,traceIncludeSensitiveData:false});
   const result=await runner.run(agent,payload,{maxTurns:execution.settings.maxTurns,signal:AbortSignal.timeout(execution.settings.timeoutMs)});
@@ -136,7 +140,7 @@ export async function runAiJob(id:string) {
       if(!pending.length) {
         const review=latest(steps).find(s=>s.role==="critic");
         const serious=[...(review?.result?.issues||[]),...(await store.analysis.issues(id)).filter(i=>i.status==="open")].filter(i=>i.severity!=="minor");
-        if(!steps.some(s=>s.round===1)&&serious.length) {
+        if(review&&(await store.execution(review)).settings.autoRepair&&!steps.some(s=>s.round===1)&&serious.length) {
           // At most two targeted specialists, plus downstream experiment refresh and final critique.
           const roles=[...new Set(serious.map(i=>i.target as AiRole))].filter(r=>r!=="critic"&&r!=="intake"&&order.includes(r)).slice(0,2);
           if(roles.length) {

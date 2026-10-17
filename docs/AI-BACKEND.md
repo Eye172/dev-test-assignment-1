@@ -1,3 +1,5 @@
+> Current navigation: [product README](../README.md), [status](STATUS.md), [cost profile](AI-COSTS.md). Historical results below belong to their named source revisions.
+
 # Evidence, decision memory and AI execution
 
 Owner-authorized expansion, 17 October 2026. The original assignment remains usable without paid AI: six required screens, five independently saved sections, exactly three market assumptions, up to three channels, saved-section completion, PostgreSQL persistence and a deterministic 30-day roadmap. `/startups/:id/ai` adds the private evidence workspace; `/agents` redirects there.
