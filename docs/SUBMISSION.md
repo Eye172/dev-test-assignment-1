@@ -10,6 +10,8 @@ Released through [PR #12](https://github.com/Eye172/dev-test-assignment-1/pull/1
 
 ## Delivered behavior
 
+Owner-requested branding update, 17 October: the shared header now renders the original blackorbit.site light/dark PNG wordmarks rather than the approximate SVG, including the original symbol in compact phone workspace headers. The favicon is the official site's SVG. Source URLs and PNG hashes are in docs/design/REFERENCE.md. After this change, npm run verify passes (lint, types, all 65 domain/SQL tests and production build), as do all six focused desktop/phone accessibility, input-hydration and welcome-page checks. Direct rendered review confirmed both theme assets, the 390px phone header and the compact workspace theme switch.
+
 The required six-screen application preserves five independently saved GTM sections, exactly three market assumptions, up to three channels, honest completion and a persistent rule-based 30-day plan. Personal fields, movable/resizable dashboard plates, appearance/motion preferences, keyboard navigation, optional strategy autosave and task history remain available.
 
 The owner's expansion adds six real OpenAI specialists, captured-source comparisons against relevant substitutes and current workflow, hypothesis/decision memory, explicit evidence and reopening conditions, independent critique and a reviewed resource/dependency plan. Free/guided onboarding reads actual PDF/DOCX/PPTX/text material with disclosed limits, offers optional pre-creation interpretation, confirms the profile and preserves idempotent launch/reload recovery. Paid work requires an explicit choice. One current AI plan reconciles earlier suggestions and retained human work.

@@ -9,11 +9,10 @@
 
 /* Brand */
 .brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; color: var(--ink); min-height: 44px; flex: none; }
-.brand-word { font-family: var(--font-display); font-weight: 700; font-size: 1rem; letter-spacing: -0.02em; display: inline-flex; align-items: baseline; gap: 8px; text-transform: uppercase; }
-.brand-sub { font-family: var(--font-sans); font-size: 0.6875rem; letter-spacing: 0.14em; font-weight: 600; color: var(--muted); }
-.mark { flex: none; }
-.mark-core { transition: transform 900ms var(--ease-out); }
-.brand:hover .mark-core { transform: rotate(90deg); }
+/* Original wordmark, byte-identical to blackorbit.site; fixed dimensions prevent layout shifts.
+   Compact workspace headers show its original symbol by clipping the wordmark's left square. */
+.brand-logo { display: block; flex: none; width: 146px; height: 48px; background: var(--brand-logo-image) left center / auto 100% no-repeat; }
+.brand-sub { font-family: var(--font-sans); font-size: 0.625rem; letter-spacing: 0.14em; font-weight: 600; text-transform: uppercase; color: var(--muted); }
 
 /* Top bar: identity, save state, search, settings. Navigation lives elsewhere. */
 .topbar, .site-header {
@@ -105,7 +104,8 @@ summary.demo-tag { cursor: pointer; }
   .header-context { max-width: 14ch; font-size: 0.875rem; }
 }
 @media (max-width: 599px) {
-  .topbar .brand-word, .topbar-slash { display: none; }
+  .brand-sub, .topbar-slash { display: none; }
+  .topbar .brand-logo { width: 32px; height: 32px; }
   .topbar .demo-details { display: none; }
   .topbar-actions { gap: 0; }
 }

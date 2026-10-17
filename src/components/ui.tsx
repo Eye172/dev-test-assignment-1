@@ -3,17 +3,8 @@ import { useEffect, useId, useRef, useSyncExternalStore, type ReactNode } from "
 import { AlertCircle, ArrowUpRight, Check, Circle, CircleDashed, FlaskConical, X } from "lucide-react";
 import Link from "next/link";
 
-const blade = "M0 0 C 6 -11 16 -16 8 -28 C 14 -16 10 -6 0 0";
-/** The Black Orbit mark (from blackorbit.site): an open orbit around an eight-blade core. Theme-aware. */
-export function Mark({ size = 30 }: { size?: number }) {
-  return <svg className="mark" width={size} height={size} viewBox="-50 -50 100 100" fill="none" aria-hidden="true">
-    <path className="mark-orbit" d="M-31.6 7.3 A 42 42 0 1 1 -14.4 39.5" stroke="currentColor" strokeWidth="9" strokeLinecap="butt"/>
-    <g className="mark-core">{[0, 45, 90, 135, 180, 225, 270, 315].map(r => <path key={r} d={blade} fill="var(--accent-mark, var(--accent))" transform={`rotate(${r})`}/>)}
-      <circle r="4.5" fill="var(--accent-mark, var(--accent))"/></g>
-  </svg>;
-}
 export function Brand() {
-  return <Link href="/" className="brand"><Mark/><span className="brand-word">Black Orbit <span className="brand-sub">GTM Studio</span></span><span className="sr-only">, home</span></Link>;
+  return <Link href="/" className="brand" aria-label="Black Orbit GTM Studio, home"><span className="brand-logo" aria-hidden="true"/><span className="brand-sub" aria-hidden="true">GTM Studio</span></Link>;
 }
 export function ArrowLink({ href, children, className = "" }: { href: string; children: ReactNode; className?: string }) {
   return <Link href={href} className={`button primary ${className}`}>{children}<ArrowUpRight size={17} aria-hidden/></Link>;

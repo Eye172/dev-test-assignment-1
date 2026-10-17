@@ -4,6 +4,14 @@ Owner: Claude · Captured 2026-10-16 from https://www.blackorbit.site (page titl
 
 Purpose: understand the visual language of the ecosystem so Orbit GTM Studio feels like a sibling product **without copying** Black Orbit's page, code, copy, logo or illustrations. Everything below is observation; what we adopt is decided in [SPEC.md](SPEC.md).
 
+17 October owner override: the owner explicitly requested the original website logo. The shared header now uses the original PNG wordmarks rather than the approximate SVG, with an independent GTM Studio label. This supersedes the historical logo-exclusion notes below, in SPEC.md and REMAKE.md. The official page's header image and theme switch were inspected directly; the existing local PNGs were confirmed byte-identical to the current source assets:
+
+- [White wordmark for dark backgrounds](https://www.blackorbit.site/brand/logo-light.png), local public/brand/blackorbit-logo-light.png, SHA-256 `fed9d2d7157c1ef5ed58a393bf54a4e0ea721484a8be51de5047aaf5c9721624`.
+- [Black wordmark for light backgrounds](https://www.blackorbit.site/brand/logo-dark.png), local public/brand/blackorbit-logo-dark.png, SHA-256 `640e2299209662d50289f07358acb2ace4aca813825af2764127758b675be191`.
+- [Official favicon](https://www.blackorbit.site/favicon.svg), copied to public/icon.svg.
+
+Images are served locally without altering their pixels. Theme tokens select the appropriate asset; the welcome hero always uses the white wordmark. On narrow workspace headers, CSS clips the same image to its left symbol so navigation controls remain available. The home link retains its full accessible product name.
+
 ## 1. Typography (computed styles)
 
 | Role | Family | Size / weight / line-height | Tracking | Evidence |

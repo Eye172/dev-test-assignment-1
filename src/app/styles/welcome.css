@@ -8,6 +8,7 @@
 
 /* ---------- Hero: a dark instrument field in both themes ---------- */
 .hero {
+  --brand-logo-image: url('/brand/blackorbit-logo-light.png');
   position: relative; isolation: isolate; overflow: hidden;
   min-height: 100svh; display: grid; grid-template-rows: auto 1fr auto;
   background: #050605; color: #f2f5f2;

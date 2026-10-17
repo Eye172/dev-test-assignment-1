@@ -2,6 +2,7 @@
    dark inverts the paper. Instrument objects stay dark in both themes. */
 :root {
   color-scheme: light;
+  --brand-logo-image: url('/brand/blackorbit-logo-dark.png');
   --bg: #f4f7f4;
   --bg-raise: #eef3ef;
   --surface: #ffffff;
@@ -44,6 +45,7 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     color-scheme: dark;
+    --brand-logo-image: url('/brand/blackorbit-logo-light.png');
     --bg: #070807; --bg-raise: #0b0e0c; --surface: #101412; --surface-2: #161b18; --surface-3: #1d241f;
     --ink: #f5f7f5; --muted: #97a098; --faint: #829087; --line: #222a25; --line-strong: #5e6b62;
     --accent: #20fa80; --on-accent: #04140c; --accent-ink: #20fa80; --accent-soft: rgb(32 250 128 / 0.12); --accent-glow: rgb(32 250 128 / 0.25);
@@ -57,6 +59,7 @@
 }
 [data-theme="dark"] {
   color-scheme: dark;
+  --brand-logo-image: url('/brand/blackorbit-logo-light.png');
   --bg: #070807; --bg-raise: #0b0e0c; --surface: #101412; --surface-2: #161b18; --surface-3: #1d241f;
   --ink: #f5f7f5; --muted: #97a098; --faint: #829087; --line: #222a25; --line-strong: #5e6b62;
   --accent: #20fa80; --on-accent: #04140c; --accent-ink: #20fa80; --accent-soft: rgb(32 250 128 / 0.12); --accent-glow: rgb(32 250 128 / 0.25);
@@ -67,7 +70,7 @@
   --grid-dot: rgb(255 255 255 / 0.05);
   --inst-body: #0c100e; --inst-surface: #131916; --inst-line: #26302a;
 }
-[data-theme="light"] { color-scheme: light; }
+[data-theme="light"] { color-scheme: light; --brand-logo-image: url('/brand/blackorbit-logo-dark.png'); }
 
 /* Accent preference. Neon stays a fill; text uses an ink variant that passes contrast. */
 [data-accent="lime"] { --accent: #c8f53c; --accent-ink: #4a6b00; --accent-soft: #f1fcd0; --inst-accent: #c8f53c; --inst-mint: #e2ff8a; --accent-glow: rgb(170 220 40 / 0.25); }
