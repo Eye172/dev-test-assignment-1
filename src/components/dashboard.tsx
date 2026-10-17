@@ -98,10 +98,11 @@ export function Dashboard() {
       return { ...d, plates: [...nextVis, ...d.plates.filter(p => p.hidden)] };
     });
   }, []);
-  const moveTo = useCallback((id: DashboardPlateId, targetId: DashboardPlateId) => {
+  const moveTo = useCallback((id: DashboardPlateId, targetIndex: number) => {
     setDraft(d => {
       const vis = d.plates.filter(p => !p.hidden);
-      const from = vis.findIndex(p => p.id === id); const to = vis.findIndex(p => p.id === targetId);
+      const from = vis.findIndex(p => p.id === id);
+      const to = Math.max(0, Math.min(vis.length - 1, targetIndex));
       if (from < 0 || to < 0 || from === to) return d;
       const nextVis = [...vis]; const [item] = nextVis.splice(from, 1); nextVis.splice(to, 0, item);
       return { ...d, plates: [...nextVis, ...d.plates.filter(p => p.hidden)] };
@@ -158,15 +159,19 @@ export function Dashboard() {
     e.preventDefault();
     const pointerId = e.pointerId;
     const origin = { x: e.clientX, y: e.clientY }; let active = false; let last = origin;
-    // Hysteresis: after a swap the neighbour animates through the pointer; wait for the spring to settle.
-    let lastTarget: string | undefined; let settledAt = 0;
+    // Hit-test stable document slots, not cards animating through the pointer after a reorder.
+    const slots = [...(grid.current?.querySelectorAll<HTMLElement>("[data-plate-id]") || [])].map(el => {
+      const r = el.getBoundingClientRect();
+      return { id: el.dataset.plateId, left: r.left + window.scrollX, right: r.right + window.scrollX,
+        top: r.top + window.scrollY, bottom: r.bottom + window.scrollY };
+    });
+    let lastTarget = slots.findIndex(slot => slot.id === id);
     const retarget = (x: number, y: number) => {
-      const over = document.elementsFromPoint(x, y).map(el => el.closest<HTMLElement>("[data-plate-id]")).find(el => el && el.dataset.plateId !== id);
-      const target = over?.dataset.plateId;
-      const now = performance.now();
-      if (!target || now < settledAt || target === lastTarget && now < settledAt + 250) return;
-      lastTarget = target; settledAt = now + 280;
-      moveTo(id, target as DashboardPlateId);
+      const px = x + window.scrollX, py = y + window.scrollY;
+      const target = slots.findIndex(slot => px >= slot.left && px <= slot.right && py >= slot.top && py <= slot.bottom);
+      if (target < 0 || target === lastTarget) return;
+      lastTarget = target;
+      moveTo(id, target);
     };
     const edge = 72;
     const scroller = window.setInterval(() => {
@@ -247,9 +252,9 @@ export function Dashboard() {
     <LayoutGroup>
       <div className="plate-grid" ref={grid}>
         {visible.map((p, i) => <motion.div layout="position" key={p.id} data-plate-id={p.id} data-size={p.size} style={{ "--span-w": spansWide[i], "--span-m": spansMid[i] } as React.CSSProperties}
-          initial={hydrated ? { opacity: 0, y: 16 } : false} animate={{ opacity: 1, y: 0, scale: lifted === p.id ? 1.015 : 1, rotate: lifted === p.id ? -0.4 : 0 }}
+          initial={false} animate={{ opacity: 1 }}
           exit={{ opacity: 0, scale: 0.94 }}
-          transition={{ layout: spring, scale: spring, rotate: spring, opacity: { duration: 0.3, delay: Math.min(i, 6) * 0.05 }, y: { duration: 0.45, ease: easeOut, delay: Math.min(i, 6) * 0.05 } }}
+          transition={{ layout: { duration: 0.16, ease: easeOut }, opacity: { duration: 0.12 } }}
           className={`plate-frame ${editing ? "editing" : ""} ${lifted === p.id ? "lifted" : ""} ${resizing?.id === p.id ? "resizing" : ""}`}>
           <PlateBody id={p.id} workspace={workspace} toolbar={editing ? <div className="plate-toolbar" role="group" inert={saving} aria-label={`${plateCatalog[p.id].title} layout controls`}>
             <button type="button" className="icon-button drag-handle" aria-roledescription="sortable plate" aria-describedby="drag-help" aria-pressed={lifted === p.id}
