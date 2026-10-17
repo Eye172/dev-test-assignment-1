@@ -118,3 +118,54 @@
 .v4-load-ruler span.is-past { background: var(--line-strong); }
 .v4-load-ruler span.is-today { background: var(--accent-signal); height: 14px; margin-top: -3px; box-shadow: 0 0 0 2px var(--bg); }
 .v4-load-caption { margin-top: 10px; font: 500 12px var(--font-mono); color: var(--muted); }
+
+/* AI insights */
+.ai-ins { display: grid; gap: 22px; padding: 24px; margin: 18px 0; border: 1px solid var(--line); border-radius: var(--panel-radius, 12px); background: var(--surface); }
+.ai-ins-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.ai-ins-head h2 { font-size: 22px; letter-spacing: -0.02em; }
+.ai-ins-head p { flex-basis: 100%; font-size: 13.5px; max-width: 72ch; }
+.ai-ins-empty { margin: 14px 0; font-size: 13.5px; }
+.ai-ins-block { display: grid; gap: 14px; padding-top: 18px; border-top: 1px solid var(--line); }
+.ai-ins-block h3 { font-size: 17px; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.ai-ins-block h4 { font-size: 14px; }
+.ai-cat { font-size: 11px; color: var(--accent-ink); }
+.ai-personas { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+.ai-persona { display: grid; gap: 10px; padding: 16px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); }
+.ai-persona header { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: baseline; }
+.ai-persona header strong { font: 600 16px var(--font-display); }
+.ai-persona header .mono { color: var(--faint); font-size: 11.5px; }
+.ai-basis { margin-left: auto; font: 500 10.5px var(--font-mono); padding: 2px 8px; border-radius: var(--r-pill); border: 1px solid var(--line); color: var(--faint); }
+.ai-basis.is-reported { color: var(--info); border-color: color-mix(in srgb, var(--info) 40%, transparent); }
+.ai-basis.is-founder { color: var(--accent-ink); border-color: var(--accent-line); }
+.ai-persona dl { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; }
+.ai-persona dl .is-wide { grid-column: 1 / -1; }
+.ai-persona dt { font: 500 11px var(--font-mono); color: var(--faint); margin-bottom: 3px; }
+.ai-persona dd { font-size: 13px; line-height: 1.45; }
+.ai-persona ul { display: grid; gap: 4px; }
+.ai-persona li { padding-left: 12px; position: relative; }
+.ai-persona li::before { content: ""; position: absolute; left: 0; top: 0.6em; width: 5px; height: 1.5px; background: var(--line-strong); }
+.ai-pos-grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+.ai-pos-grid .mono { display: block; font-size: 11px; color: var(--faint); margin-bottom: 4px; }
+.ai-pos-grid ul, .ai-pos-grid p { font-size: 13px; line-height: 1.45; margin-bottom: 8px; }
+.ai-pos-grid li + li { margin-top: 4px; }
+.ai-channel-tests { display: grid; gap: 8px; counter-reset: c; }
+.ai-channel-tests li { display: grid; gap: 2px; padding: 10px 12px; border-left: 0; border: 1px solid var(--line); border-radius: 8px; font-size: 13.5px; }
+.ai-funnel { display: grid; gap: 6px; justify-items: center; }
+.ai-funnel-row { width: var(--w); display: grid; grid-template-columns: 52px 1fr; gap: 2px 12px; align-items: baseline; padding: 12px 16px; border-radius: 8px; background: var(--accent-soft); border: 1px solid var(--accent-line); }
+.ai-funnel-row:nth-child(2) { background: color-mix(in srgb, var(--accent) 20%, transparent); }
+.ai-funnel-row:nth-child(3) { background: color-mix(in srgb, var(--accent) 34%, transparent); }
+.ai-funnel-row strong { font: 600 22px var(--font-display); }
+.ai-funnel-row small { grid-column: 2; font-size: 12px; color: var(--muted); }
+.ai-sizing-basis { display: grid; gap: 8px; }
+.ai-sizing-basis > div { display: grid; grid-template-columns: 180px 1fr; gap: 12px; font-size: 13px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.ai-sizing-basis dt { font: 500 11.5px var(--font-mono); color: var(--faint); }
+@media (max-width: 640px) { .ai-sizing-basis > div { grid-template-columns: 1fr; } }
+.ai-gaps { display: grid; gap: 4px; font-size: 12.5px; color: var(--warn); }
+.ai-tiers { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+.ai-tiers article { display: grid; gap: 6px; padding: 14px; border: 1px solid var(--line); border-radius: 10px; }
+.ai-tiers .num { font: 600 20px var(--font-display); color: var(--accent-ink); }
+.ai-tiers small { color: var(--muted); font-size: 12px; }
+.ai-tiers ul { font-size: 12.5px; display: grid; gap: 3px; }
+.ai-wtp { display: grid; gap: 6px; padding-left: 18px; list-style: decimal; font-size: 13.5px; }
+.ai-test { display: grid; gap: 4px; padding: 12px 14px; border-radius: 8px; background: var(--accent-soft); font-size: 14px; }
+.ai-test .mono { font-size: 11px; color: var(--accent-ink); }

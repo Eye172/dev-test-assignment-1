@@ -37,7 +37,7 @@ function seedDrafts(startup: Startup, d: IntakeDraft, note: string): {seeded:Sec
   return {seeded,invalid};
 }
 
-type Attempt={seeded?:boolean;planReady?:boolean;runId?:string;payload?:{mode:"full";brief:string;requestId:string;intakeId?:string;material:import("@/lib/domain/intake-api").FounderMaterial}};
+type Attempt={seeded?:boolean;planReady?:boolean;runId?:string;payload?:{mode:"full";brief:string;requestId:string;intakeId?:string;locale?:"en"|"ru"|"kk";material:import("@/lib/domain/intake-api").FounderMaterial}};
 const attemptKey=(id:string)=>`orbit:launch:v2:${id}`;
 function readAttempt(id:string):Attempt {try{const v=JSON.parse(sessionStorage.getItem(attemptKey(id))||"{}");return v&&typeof v==='object'?v:{};}catch{return {};}}
 function saveAttempt(id:string,p:Attempt){try{sessionStorage.setItem(attemptKey(id),JSON.stringify(p));}catch{/* Current component keeps the attempt if storage is unavailable. */}}
@@ -78,7 +78,7 @@ export function LaunchSequence({ startup, draft, brief,materialText,answers, fil
       const state = await api<AiStudioState>(`/api/startups/${startup.id}/ai`);
       if (!state.configured || !state.authorized) { setNeedsCode(state.configured); set("ai", "fail", state.configured ? t("ln.aiLocked") : t("ln.aiNotConfigured")); setFinished(true); return; }
       setNeedsCode(false);
-      if(!attempt.current.payload)updateAttempt({payload:{mode:"full",brief:brief.slice(0,6000),requestId:crypto.randomUUID(),...(intakeId?{intakeId}:{}),material:{text:materialText,files,answers:answers.map(x=>({question:x.q,answer:x.a}))}}});
+      if(!attempt.current.payload)updateAttempt({payload:{mode:"full",locale,brief:brief.slice(0,6000),requestId:crypto.randomUUID(),...(intakeId?{intakeId}:{}),material:{text:materialText,files,answers:answers.map(x=>({question:x.q,answer:x.a}))}}});
       const created = await api<{ id: string }>(`/api/startups/${startup.id}/ai`, { method: "POST", body: JSON.stringify({ action: "create", payload: attempt.current.payload }) });
       updateAttempt({runId:created.id});
       setRun((await api<AiStudioState>(`/api/startups/${startup.id}/ai`)).runs.find(r=>r.id===created.id)||null);

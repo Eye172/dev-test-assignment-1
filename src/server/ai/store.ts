@@ -24,7 +24,7 @@ function canonical(v:unknown):unknown {
 }
 export const hash = (v: unknown) => createHash("sha256").update(JSON.stringify(canonical(v))).digest("hex");
 type Vector = { profile: string; sections: Record<string, number>; tasks: Record<string, number>; evidence: string[]; memory?:Record<string,string> };
-export type AiSnapshot = { workspace: Workspace; evidence: AiEvidence[]; parent: { role: AiRole; result: AiResult; runId?:string; stepId?:string; asOf?:string }[]; parentSources:AiSource[]; memory?:MemoryItem[]; pages?:SourcePage[]; findings?:StoredFinding[]; founderMaterial?:import("@/lib/domain/intake-api").FounderMaterial; intake?:{id:string;inputHash:string;result:unknown;promptVersion:string;model:string} };
+export type AiSnapshot = { workspace: Workspace; evidence: AiEvidence[]; parent: { role: AiRole; result: AiResult; runId?:string; stepId?:string; asOf?:string }[]; parentSources:AiSource[]; memory?:MemoryItem[]; pages?:SourcePage[]; findings?:StoredFinding[]; founderMaterial?:import("@/lib/domain/intake-api").FounderMaterial; intake?:{id:string;inputHash:string;result:unknown;promptVersion:string;model:string}; founderLanguage?:"en"|"ru"|"kk" };
 export type LeasedRun = { id: string; token: string; snapshot: AiSnapshot; mode: AiRun["mode"]; brief: string };
 export function revisionVector(workspace: Workspace, evidence: AiEvidence[], memory:MemoryItem[]=[]): Vector {
   const profile = { ...currentProfile(workspace.startup), preferences: undefined };
@@ -110,7 +110,7 @@ export class AiStore {
         await tx.query("UPDATE ai_intakes SET startup_id=$2 WHERE id=$1",[p.intakeId,id]);
         intake={id:p.intakeId,inputHash:String(record.input_hash),result:record.result,promptVersion:String(record.prompt_version),model:String(record.model)};
       }
-      const snapshot: AiSnapshot = { workspace,evidence,parent,parentSources,memory,findings,pages,...(p.material?{founderMaterial:p.material}:{}),...(intake?{intake}: {}) };
+      const snapshot: AiSnapshot = { workspace,evidence,parent,parentSources,memory,findings,pages,...(p.material?{founderMaterial:p.material}:{}),...(intake?{intake}: {}),founderLanguage:p.locale??"en" };
       if(p.parentRunId&&!snapshot.founderMaterial){const [pr]=await tx.query("SELECT input_snapshot FROM ai_runs WHERE id=$1 AND startup_id=$2",[p.parentRunId,id]);snapshot.founderMaterial=(pr?.input_snapshot as AiSnapshot)?.founderMaterial;snapshot.intake??=(pr?.input_snapshot as AiSnapshot)?.intake;}
       if (Buffer.byteLength(JSON.stringify(snapshot)) > 500000) throw new AppError("AI_CONTEXT_LIMIT","This workspace is too large for one run. Export its history and use a focused working copy.",422);
       const runId = randomUUID(); const vector = revisionVector(workspace,evidence,memory);

@@ -1,5 +1,7 @@
 import { en2 } from "./en2";
 import { en3 } from "./en3";
+import { en4 } from "./en4";
+import { en5 } from "./en5";
 /** English source dictionary. Russian and Kazakh must provide every key (checked in tests). */
 const en1 = {
   // Brand & chrome
@@ -381,5 +383,5 @@ const en1 = {
   "err.demo": "The demo could not be opened. Please retry.",
 } as const;
 
-export const en = { ...en1, ...en2, ...en3 } as const;
+export const en = { ...en1, ...en2, ...en3, ...en4, ...en5 } as const;
 export type MessageKey = keyof typeof en;

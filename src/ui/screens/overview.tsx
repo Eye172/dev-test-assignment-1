@@ -161,6 +161,10 @@ function LedgerOverview() {
 
 /* ───────── V3 Flow ───────── */
 type Edge = [string, string];
+function Node({ id, k, title, value, state, href, children }: { id: string; k?: string; title: string; value?: string; state?: string; href?: string; children?: React.ReactNode }) {
+  const body = <><span className="flow-node-port" aria-hidden/><span className="flow-node-kicker">{k}</span><strong>{title}</strong>{value && <span className="flow-node-value">{value}</span>}{children}</>;
+  return href ? <Link href={href} data-node={id} className={`flow-node is-${state ?? "idle"}`}>{body}</Link> : <div data-node={id} className={`flow-node is-${state ?? "idle"}`}>{body}</div>;
+}
 function FlowOverview() {
   const { t } = useDisplay();
   const { workspace, insights, base, active, week, weekTasks, next, sections } = useOverviewData();
@@ -191,10 +195,6 @@ function FlowOverview() {
     return () => ro.disconnect();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [week, workspace]);
-  const Node = ({ id, k, title, value, state, href, children }: { id: string; k?: string; title: string; value?: string; state?: string; href?: string; children?: React.ReactNode }) => {
-    const body = <><span className="flow-node-port" aria-hidden/><span className="flow-node-kicker">{k}</span><strong>{title}</strong>{value && <span className="flow-node-value">{value}</span>}{children}</>;
-    return href ? <Link href={href} data-node={id} className={`flow-node is-${state ?? "idle"}`}>{body}</Link> : <div data-node={id} className={`flow-node is-${state ?? "idle"}`}>{body}</div>;
-  };
   const sectionNode = (key: "icp" | "value" | "channels" | "pricing") => <Node id={key} k={t(`section.short.${key}`)} title={byKey[key].headline || t("common.notSet")} state={byKey[key].state}
     value={byKey[key].state === "complete" ? t("common.complete") : t("dash.sectionMissing", { n: byKey[key].missing })} href={`${base}/strategy?section=${key}`}/>;
   const assumptions = insights.assumptions.filter(a => a.source === "stated");

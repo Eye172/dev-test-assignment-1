@@ -8,7 +8,7 @@ import { api } from "@/lib/client-api";
 import { mergeWorkspace } from "@/lib/client-workspace";
 import { computeInsights, type Insights } from "@/lib/domain/insights";
 import type { Preferences, Startup, Workspace } from "@/lib/domain/types";
-import { confirmLeave } from "./ui";
+import { confirmLeave, useHydrated } from "./ui";
 import { OrbitDial, useOrbitModel } from "./orbit";
 import { CommandPalette } from "./command-palette";
 import { useDisplay } from "@/ui/display";
@@ -46,12 +46,12 @@ export function WorkspaceShell({ initial, serverNow, children }: { initial: Work
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [inFlight, setInFlight] = useState(0);
   const [lastSaved, setLastSaved] = useState<number | null>(null);
-  const [now, setNow] = useState(() => new Date(serverNow));
   const pathname = usePathname(); const router = useRouter();
   const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const base = `/startups/${workspace.startup.id}`;
-  useEffect(() => { setNow(new Date()); }, []);
-  const insights = useMemo(() => computeInsights(workspace, now), [workspace, now]);
+  // Server render and hydration use the server clock; afterwards the device clock (plan day can differ across midnight).
+  const hydrated = useHydrated();
+  const insights = useMemo(() => computeInsights(workspace, hydrated ? new Date() : new Date(serverNow)), [workspace, hydrated, serverNow]);
 
   const refresh = useCallback(async () => {
     const latest = await api<Workspace>(`/api/startups/${initial.startup.id}`);

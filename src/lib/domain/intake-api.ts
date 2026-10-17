@@ -9,7 +9,7 @@ export const attachmentSchema = z.object({
 export type Attachment = z.infer<typeof attachmentSchema>;
 export const founderMaterialSchema=z.object({text:z.string().trim().max(16000),files:z.array(attachmentSchema).max(3),answers:z.array(z.object({question:z.string().min(1).max(500),answer:z.string().min(1).max(3000)}).strict()).max(7).optional()}).strict();
 export type FounderMaterial=z.infer<typeof founderMaterialSchema>;
-export const intakeInputSchema = founderMaterialSchema.extend({requestId:z.uuid()}).refine(v => v.text.length >= 20 || v.files.some(f => f.text.trim().length >= 20), "Describe your startup or attach readable material.");
+export const intakeInputSchema = founderMaterialSchema.extend({requestId:z.uuid(),locale:z.enum(["en","ru","kk"]).optional()}).refine(v => v.text.length >= 20 || v.files.some(f => f.text.trim().length >= 20), "Describe your startup or attach readable material.");
 export const intakeQuestionSchema = z.object({
   id:z.string().min(1).max(40).regex(/^[a-zA-Z0-9_-]+$/),
   field:z.enum(["name","description","businessModel","stage","targetMarket","customerSegment","painPoint","price","channels","context"]),

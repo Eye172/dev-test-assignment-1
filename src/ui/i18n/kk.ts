@@ -1,5 +1,7 @@
 import { kk2 } from "./kk2";
 import { kk3 } from "./kk3";
+import { kk4 } from "./kk4";
+import { kk5 } from "./kk5";
 import type { MessageKey } from "./en";
 
 const kk1: Partial<Record<MessageKey, string>> = {
@@ -366,4 +368,4 @@ const kk1: Partial<Record<MessageKey, string>> = {
   "err.demo": "Демо ашылмады. Қайталап көріңіз.",
 };
 
-export const kk: Partial<Record<MessageKey, string>> = { ...kk1, ...kk2, ...kk3 };
+export const kk: Partial<Record<MessageKey, string>> = { ...kk1, ...kk2, ...kk3, ...kk4, ...kk5 };

@@ -169,7 +169,7 @@ function ProgressTrack({ progress: p, tasks, activePlanCreatedAt }: { progress: 
           <span className="day-week-label">W{w}</span>
           <div className="day-cells">{Array.from({ length: n }, (_, i) => {
             const d = (w - 1) * 7 + i + 1;
-            return <span key={i} className={`day-cell ${i < lit ? "lit" : ""} ${day === d ? "today" : ""}`} style={{ transitionDelay: `${i * 30}ms` }}>{day === d && <motion.i layoutId="today" className="today-mark"/>}</span>;
+            return <span key={i} className={`day-cell ${i < lit ? "lit" : ""} ${day === d ? "today" : ""}`} style={{ transitionDelay: `${i * 30}ms` }}>{day === d && <motion.i layoutId="today" className="today-mark" data-label={t("rm.today")}/>}</span>;
           })}</div>
         </div>;
       })}

@@ -1,0 +1,64 @@
+/* Bridge: the reused editors (strategy, roadmap, onboarding, AI team) adopt the v4 system and each version's read. */
+
+/* ── Shared: no tracked capitals, instrument labels in mono sentence case ── */
+.v4-app :is(.badge, .label, .eyebrow, .dial-k, .dial-legend dt, .plate-head h2, .field-required, .g-sub.small, .origin-tag, .run-pill, .issue-tag, .cmp-row span, .rail-facts dt, .decision-title, .readout-stats dt, .day-week-label, .palette-group, .analysis-basis, .analysis-item-meta, .writing .field.prompt > label) {
+  text-transform: none; letter-spacing: 0; font-family: var(--font-mono); font-weight: 500;
+}
+.v4-app .writing .field.prompt > label { font-size: 12px; color: var(--faint); }
+.v4-app .eyebrow { color: var(--accent-ink); font-size: 11.5px; }
+.v4-app .today-mark::after { content: attr(data-label); text-transform: none; letter-spacing: 0; font-family: var(--font-mono); font-weight: 500; font-size: 10px; }
+.v4-app .page-heading { margin-bottom: 28px; }
+.v4-app .page-heading .lead { color: var(--muted); max-width: 64ch; }
+.v4-app :is(.button, .chip, .choose-card, .pick-card) { font-family: var(--font-sans); }
+.v4-app .button:active { transform: scale(0.97); }
+.v4-app .live-check { background: var(--surface-2); color: var(--ink); border: 1px solid var(--line); }
+.v4-app .live-check .label, .v4-app .live-check .field-help { color: var(--muted); }
+.v4-app :is(.instrument, .roadmap-readout) { --inst-body: var(--surface); --inst-surface: var(--surface-2); --inst-line: var(--line); --inst-ink: var(--ink); --inst-muted: var(--muted); --inst-accent: var(--accent); background: var(--surface); color: var(--ink); border: 1px solid var(--line); }
+.v4-app .day-cell.lit { box-shadow: none; }
+.v4-app .task-card, .v4-app .week-col, .v4-app .station-current, .v4-app .plate { box-shadow: none; }
+.v4-app .ai-console { border-radius: var(--panel-radius, 12px); }
+
+/* ── V1 Observatory: instrument hairlines, mono metrics ── */
+.is-observatory .editor-index { color: var(--accent-signal); }
+.is-observatory .week-col { background: transparent; border: 1px solid var(--line); border-radius: 10px; }
+.is-observatory .task-card { border-radius: 8px; background: var(--surface); }
+.is-observatory .station-current { border-radius: 10px; }
+
+/* ── V2 Ledger: paper document; ruled entries instead of boxes ── */
+.is-ledger .strategy-layout { gap: 48px; }
+.is-ledger .section-rail ol { border-left: 1px solid var(--line); gap: 0; }
+.is-ledger .station { border-radius: 0; padding-left: 16px; }
+.is-ledger .station-current { background: transparent; border: 0; border-left: 2px solid var(--ink); border-radius: 0; margin-left: -1px; }
+.is-ledger .station-num { border-radius: 2px; }
+.is-ledger .editor-head { border-bottom: 2px solid var(--ink); }
+.is-ledger .editor-index { color: var(--ink); font-size: 2.6rem; }
+.is-ledger .editor-head h2 { font-size: clamp(2rem, 1.4rem + 2vw, 3rem); }
+.is-ledger .writing .field.prompt input, .is-ledger .writing .field.prompt textarea { font-family: var(--font-display); font-size: 17px; letter-spacing: -0.005em; }
+.is-ledger .live-check { background: transparent; border: 0; border-top: 1px solid var(--line); border-radius: 0; padding: 14px 0 0; }
+.is-ledger .editor-footer { border-radius: 0; }
+.is-ledger .roadmap-readout { border-radius: 0; border-width: 0 0 2px; border-color: var(--ink); padding-left: 0; padding-right: 0; background: transparent; }
+.is-ledger .weeks.board { gap: 0; border-top: 1px solid var(--ink); }
+.is-ledger .week-col { background: transparent; border: 0; border-right: 1px solid var(--line); border-radius: 0; padding: 0 14px; }
+.is-ledger .week-col:last-child { border-right: 0; }
+.is-ledger .week-num { border-radius: 2px; }
+.is-ledger .task-list { gap: 0; }
+.is-ledger .task-card { background: transparent; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; padding: 14px 0; }
+.is-ledger .task-card:hover { background: var(--surface-2); }
+.is-ledger :is(.choose-card, .plate, .clarify-card, .compose-text, .pick-card, .chip) { border-radius: 2px; }
+.is-ledger .ai-console, .is-ledger .ai-composer, .is-ledger .ai-ins, .is-ledger .ai-persona { border-radius: 0; }
+
+/* ── V3 Flow: lanes and nodes with ports ── */
+.is-flow .section-rail ol { position: relative; gap: 10px; }
+.is-flow .section-rail ol::before { content: ""; position: absolute; left: 21px; top: 18px; bottom: 18px; width: 1px; background: var(--line-strong); }
+.is-flow .station { border: 1px solid var(--line-strong); border-radius: 10px; background: var(--bg); }
+.is-flow .station.complete { border-color: var(--accent-line); }
+.is-flow .station-current { background: var(--accent-soft); border: 0; border-radius: 10px; }
+.is-flow .weeks.board { gap: 18px; }
+.is-flow .week-col { position: relative; background: radial-gradient(circle at 1px 1px, var(--line) 1px, transparent 1.5px) 0 0 / 18px 18px, var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+.is-flow .week-col:not(:last-child)::after { content: ""; position: absolute; right: -15px; top: 30px; width: 12px; height: 1px; background: var(--line-strong); }
+.is-flow .task-card { border-radius: 10px; border-color: var(--line-strong); background: var(--bg); }
+.is-flow .task-card::before { content: ""; position: absolute; left: -5px; top: 22px; width: 8px; height: 8px; border-radius: 50%; background: var(--bg); border: 1.5px solid var(--line-strong); }
+.is-flow .task-card.status-done::before { background: var(--accent); border-color: var(--accent-ink); }
+.is-flow .task-card.status-in_progress::before { background: var(--warn); border-color: var(--warn); }
+.is-flow .editor-index { color: var(--accent-ink); }
+.v4-app .choice span { text-transform: none; }

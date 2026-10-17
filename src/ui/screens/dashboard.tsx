@@ -127,12 +127,6 @@ function LedgerDashboard() {
     return () => io.disconnect();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  const Chapter = ({ id, n, title, explain, prov = "rules", children }: { id: string; n: number; title: string; explain?: string; prov?: "rules" | "founder"; children: ReactNode }) =>
-    <section id={id} className="led-chapter" aria-labelledby={`${id}-title`}>
-      <header className="led-chapter-head"><span className="led-chapter-n mono">§{n}</span><h2 id={`${id}-title`}>{title}</h2><Provenance kind={prov}/></header>
-      {explain && <p className="led-chapter-explain">{explain}</p>}
-      <div className="led-chapter-body">{children}</div>
-    </section>;
   return <div className="led-page led-dashboard">
     <aside className="led-toc" aria-label={t("nav.contents")}>
       <p className="led-toc-title">{t("nav.contents")}</p>
@@ -164,6 +158,13 @@ function LedgerDashboard() {
       <p className="v4-honest">{t("ov.honest")}</p>
     </article>
   </div>;
+}
+function Chapter({ id, n, title, explain, prov = "rules", children }: { id: string; n: number; title: string; explain?: string; prov?: "rules" | "founder"; children: ReactNode }) {
+  return <section id={id} className="led-chapter" aria-labelledby={`${id}-title`}>
+    <header className="led-chapter-head"><span className="led-chapter-n mono">§{n}</span><h2 id={`${id}-title`}>{title}</h2><Provenance kind={prov}/></header>
+    {explain && <p className="led-chapter-explain">{explain}</p>}
+    <div className="led-chapter-body">{children}</div>
+  </section>;
 }
 function ReasonText({ code }: { code: string }) { const { tk } = useDisplay(); return <>{tk(`reason.${code}`)}</>; }
 
