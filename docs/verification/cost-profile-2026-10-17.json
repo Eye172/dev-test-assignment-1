@@ -1,0 +1,23 @@
+{
+  "date": "2026-10-17",
+  "scope": "One live monetization specialist; no fresh research; other roles deliberately cancelled by component diagnostic",
+  "runId": "e229e31b-0160-4db9-a797-89535633c50d",
+  "model": "gpt-6.1-sol",
+  "serviceTier": "default",
+  "reasoningEffort": "low",
+  "status": "completed",
+  "inputTokens": 26617,
+  "outputTokens": 2077,
+  "estimatedUsd": 0.074004,
+  "authorizedTestBudgetUsd": 2,
+  "invoiceReconciliation": false,
+  "browserResultInspected": true,
+  "checks": [
+    "Preserves 15000 KZT per cafe per month as untested price",
+    "Distinguishes paying owner and manager user",
+    "No invented payments or competitor sources",
+    "Unknown costs retained",
+    "Service capacity includes days after day 30"
+  ],
+  "fullTeamAcceptance": false
+}

@@ -20,3 +20,7 @@ Fresh full-team acceptance is tracked in [issue 14](https://github.com/Eye172/de
 [Production](https://orbit-gtm-studio.vercel.app/) runs on Vercel and Neon PostgreSQL. Public records are synthetic and shared/editable. AI materials, history and paid calls use an owner gate, not multi-tenant authentication. Secrets remain server-side.
 
 Physical-device frame rate, scanned-document OCR and Windows-host Docker execution are outside verified scope. Older milestone reports remain available in the [index](README.md).
+
+## Reduced-cost live diagnostic
+
+On 17 October, one explicitly authorized monetization diagnostic completed on `gpt-6.1-sol` Standard with 26,617 input and 2,077 output tokens, estimated **$0.074004** against a $2 test allowance. It preserved the synthetic founder's 15,000 KZT café/month price hypothesis, distinguished owner from user, kept unknown costs unknown and proposed no new research or invented payments. The saved result was inspected in the browser. Other roles were deliberately cancelled by the component diagnostic; this is not full-team acceptance. [Machine-readable record](verification/cost-profile-2026-10-17.json).
