@@ -3,8 +3,18 @@ import { memoryDraftSchema, planDraftSchema } from "@/lib/domain/analysis-drafts
 import { memoryDataSchema, planSelectionSchema, reviewedExperiments, experimentContractSchema } from "@/lib/domain/analysis";
 import { receiptFetch, type ProviderReceipt } from "@/server/ai/provider-receipts";
 import { hypothesis, result } from "./fixtures/analysis-case";
+import { wireSchema } from "@/server/ai/wire-schema";
 
 describe("unfinished analysis drafts and provider receipts",()=>{
+  it("keeps role permissions in the provider schema while relaxing verbosity bounds",()=>{
+    type Wire = {schema:{properties:{analysis:{properties:{sourceChecks:{maxItems?:number};hypotheses:{maxItems?:number}}}}}};
+    const experimenter=wireSchema("experimenter") as unknown as Wire;
+    const researcher=wireSchema("researcher") as unknown as Wire;
+    const critic=wireSchema("critic") as unknown as Wire;
+    expect(experimenter.schema.properties.analysis.properties.sourceChecks.maxItems).toBe(0);
+    expect(researcher.schema.properties.analysis.properties.hypotheses.maxItems).toBe(0);
+    expect(critic.schema.properties.analysis.properties.sourceChecks.maxItems).toBeUndefined();
+  });
   it("restores unfinished memory without relaxing the save contract",()=>{
     const draft={kind:"hypothesis",proposal:{...hypothesis("draft"),statement:"",rationale:"",reviewWhen:""}};
     expect(memoryDraftSchema.parse(draft)).toEqual(draft);

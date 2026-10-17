@@ -80,8 +80,9 @@ function LedgerHero() {
         <circle cx="260" cy="260" r="58" className="led-plate-halo" pathLength={1}/>
         {labels.map((l, i) => {
           const a = (-90 + i * 72) * Math.PI / 180, x = 260 + Math.cos(a) * 232, y = 260 + Math.sin(a) * 196;
+          const side = x > 262 ? 1 : x < 258 ? -1 : 0;
           return <g key={l} className="led-plate-mark" style={{ animationDelay: `${900 + i * 120}ms` }}>
-            <circle cx={x} cy={y} r="5"/><text x={x + (x > 260 ? 12 : -12)} y={y + 4} textAnchor={x > 262 ? "start" : x < 258 ? "end" : "middle"}>{`${i + 1} · ${l}`}</text>
+            <circle cx={x} cy={y} r="5"/><text x={x - side * 12} y={y > 360 ? y + (side > 0 ? 26 : -14) : side ? y + 4 : y - 14} textAnchor={side > 0 ? "end" : side < 0 ? "start" : "middle"}>{`${i + 1} · ${l}`}</text>
           </g>;
         })}
       </svg>
@@ -113,7 +114,7 @@ function Chain() {
   const { t } = useDisplay();
   return <section className="land-section land-chain" id="chain" aria-labelledby="chain-title">
     <div className="land-section-head"><h2 id="chain-title">{t("land.chain.title")}</h2><p>{t("land.chain.lede")}</p></div>
-    <ol className="land-steps">{steps.map((s, i) => <motion.li key={s} initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-60px" }} transition={{ duration: 0.5, delay: i * 0.06, ease }}>
+    <ol className="land-steps">{steps.map((s, i) => <motion.li key={s} initial={false} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-60px" }} transition={{ duration: 0.24, delay: i * 0.04, ease }}>
       <span className="land-step-n mono">{String(i + 1).padStart(2, "0")}</span>
       <h3>{t(`land.step.${s}`)}</h3>
       <p>{t(`land.step.${s}.t`)}</p>
@@ -137,7 +138,7 @@ function Team() {
   const { t } = useDisplay();
   return <section className="land-section land-team" id="team" aria-labelledby="team-title">
     <div className="land-section-head"><h2 id="team-title">{t("land.ai.title")}</h2><p>{t("land.ai.lede")}</p></div>
-    <ol className="land-agents">{aiRoles.map((role, i) => <motion.li key={role} initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ duration: 0.4, delay: i * 0.05 }} style={{ "--i": i } as CSSProperties}>
+    <ol className="land-agents">{aiRoles.map((role, i) => <motion.li key={role} initial={false} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ duration: 0.24, delay: i * 0.04 }} style={{ "--i": i } as CSSProperties}>
       <span className="land-agent-orbit" aria-hidden/>
       <h3>{t(`agent.${role}.name`)}</h3><p>{t(`agent.${role}.desc`)}</p>
     </motion.li>)}</ol>

@@ -62,3 +62,8 @@
 .is-flow .task-card.status-in_progress::before { background: var(--warn); border-color: var(--warn); }
 .is-flow .editor-index { color: var(--accent-ink); }
 .v4-app .choice span { text-transform: none; }
+.v4-app .roadmap-bar { margin-top: 10px; display: grid; gap: 6px; }
+.v4-app .roadmap-bar .progress { height: 6px; border-radius: 3px; background: var(--surface-3); overflow: hidden; }
+.v4-app .roadmap-bar .progress span { display: block; height: 100%; background: var(--accent); border-radius: inherit; transition: none; }
+.v4-app .roadmap-bar-label { display: flex; flex-wrap: wrap; gap: 4px 12px; font: 500 11.5px var(--font-mono); color: var(--muted); }
+.flow-plan-bar { margin: -6px 0 18px; max-width: 520px; }

@@ -122,7 +122,9 @@ export function Readout({ label, value, unit, meaning, children, className = "" 
 
 /** Five segments: one per strategy section. */
 export function SectionMeter({ states, labels }: { states: ("complete" | "draft" | "empty")[]; labels?: string[] }) {
-  return <div className="v4-meter" role="img" aria-label={labels ? labels.map((l, i) => `${l}: ${states[i]}`).join(", ") : undefined}>
+  const { t } = useDisplay();
+  const stateLabel = { complete: t("common.complete"), draft: t("band.draft"), empty: t("common.notSet") };
+  return <div className="v4-meter" role="img" aria-label={labels ? labels.map((l, i) => `${l}: ${stateLabel[states[i]]}`).join(", ") : undefined}>
     {states.map((s, i) => <span key={i} className={`v4-meter-seg is-${s}`} style={{ transitionDelay: `${i * 50}ms` }}/>)}
   </div>;
 }

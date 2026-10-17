@@ -37,7 +37,7 @@ export function RoadmapBar({ progress }: { progress: RoadmapProgress }) {
   const actionable = progress.total - progress.skipped;
   return <div className="roadmap-bar">
     <div className="progress" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress.percentage}
-      aria-label={`${progress.percentage}%: ${t("ov.tasksDone", { done: progress.done, total: actionable })}`}>
+      aria-label={`${t("rm.progress")} ${progress.percentage}%: ${t("ov.tasksDone", { done: progress.done, total: actionable })}`}>
       <span style={{ width: `${progress.percentage}%` }}/>
     </div>
     <p className="roadmap-bar-label num"><span>{t("ov.tasksDone", { done: progress.done, total: actionable })} · {progress.percentage}%</span>{progress.skipped > 0 && <span className="faint">{t("rm.skippedNote", { n: progress.skipped })}</span>}</p>

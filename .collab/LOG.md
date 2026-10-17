@@ -135,3 +135,9 @@ The owner asked Claude directly to tear down and rebuild the frontend, deepen th
 - Agent contract 3.0: `analysis.insights` (personas/JTBD, positioning, channel scores, market sizing, pricing research), wider research coverage, questions only before a run, `outputLanguage` from the run snapshot (`founderLanguage`). Prompt 3.0.0, preflight 1.2.0.
 - Tests: 80 domain/SQL/API checks pass; lint and types clean. Old dashboard plates and their e2e specs are obsolete with v4.
 Merging to main deploys production; the owner decides. blocking: no.
+
+## 2026-10-17 UTC+5 — Codex — v4 completion candidate
+
+Continued Claude's `docs/HANDOFF-V4.md` in the existing `claude/studio-v4` checkout, preserving its pending frontend changes. Completed acceptance repairs for all three interfaces and EN/RU/KK, locale-safe SSR, mobile controls/accessibility, progress consistency, landing fallback and handover packaging. The shared AI API adds a parent-required `review` scope (critic only); the token ceiling is 600k with unchanged USD/call caps. Exact proposed-memory duplicates are omitted only when the same full content is already supplied in that role's artifact view. The tool contract is versioned 2.2.0.
+
+Live review completed over the preserved original specialist artifacts and returned substantive needs_attention concerns; no historical result was rewritten or applied automatically. Verification, real-run IDs/limits, screenshots and current delivery status are recorded in `docs/V4-COMPLETION.md`. The current production alias is not promoted by this work; merging to main remains the owner's explicit approval step.

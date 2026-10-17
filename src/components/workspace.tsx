@@ -12,7 +12,7 @@ import { confirmLeave, useHydrated } from "./ui";
 import { OrbitDial, useOrbitModel } from "./orbit";
 import { CommandPalette } from "./command-palette";
 import { useDisplay } from "@/ui/display";
-import { Brand, DemoTag, DisplayMenu, ease, useDismiss } from "@/ui/kit";
+import { Brand, DemoTag, DisplayMenu, ease } from "@/ui/kit";
 import type { MessageKey } from "@/ui/i18n/en";
 
 type WorkspaceContext = {
@@ -108,7 +108,7 @@ export function WorkspaceShell({ initial, serverNow, children }: { initial: Work
   const header = <>
     <SaveIndicator busy={inFlight > 0} savedAt={lastSaved}/>
     <div className="v4-header-actions">
-      <button type="button" className="v4-search" onClick={() => setPaletteOpen(true)} aria-keyshortcuts="Control+K Meta+K">
+      <button type="button" className="v4-search" onClick={() => setPaletteOpen(true)} aria-label={`${t("chrome.search")} ⌘K`} aria-keyshortcuts="Control+K Meta+K">
         <Search size={15} aria-hidden/><span className="v4-hide-sm">{t("chrome.search")}</span><kbd aria-hidden className="v4-hide-sm">⌘K</kbd>
       </button>
       <DemoTag/>
@@ -119,8 +119,8 @@ export function WorkspaceShell({ initial, serverNow, children }: { initial: Work
   const shellProps = { workspace, insights, nav, isActive, header, base };
 
   return <Context.Provider value={{ workspace, setWorkspace, refresh, notify, savePreferences, track, openPalette: () => setPaletteOpen(true), insights, base }}>
-    <MotionConfig reducedMotion="user" transition={spring}>
-      <div className={`v4-app v4-ws is-${version}`}>
+    <MotionConfig reducedMotion={workspace.startup.preferences.motion === "reduced" ? "always" : "user"} transition={spring}>
+      <div className={`v4-app v4-ws is-${version}`} data-motion={workspace.startup.preferences.motion}>
         {version === "observatory" ? <ObservatoryChrome {...shellProps}/> : version === "ledger" ? <LedgerChrome {...shellProps}/> : <FlowChrome {...shellProps}/>}
         <main id="content" className="v4-main">{children}</main>
         <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} workspace={workspace} base={base}
@@ -237,12 +237,33 @@ function SaveIndicator({ busy, savedAt }: { busy: boolean; savedAt: number | nul
 function ShareMenu({ startupId, onCopy }: { startupId: string; onCopy: () => void }) {
   const { t } = useDisplay();
   const [open, setOpen] = useState(false);
-  const ref = useDismiss<HTMLDivElement>(open, () => setOpen(false));
-  return <div className="v4-share" ref={ref}>
+  const root = useRef<HTMLDivElement>(null);
+  const close = (focusTrigger = true) => { setOpen(false); if (focusTrigger) root.current?.querySelector<HTMLButtonElement>("button")?.focus(); };
+  useEffect(() => {
+    if (!open) return;
+    const outside = (e: PointerEvent) => { if (!root.current?.contains(e.target as Node)) setOpen(false); };
+    // Menu keyboard model: arrows cycle, Home/End jump, Escape returns to the trigger, Tab leaves the menu.
+    const key = (e: KeyboardEvent) => {
+      if (e.key === "Escape") { e.preventDefault(); close(); return; }
+      if (!root.current?.contains(e.target as Node)) return;
+      if (e.key === "Tab") { setOpen(false); return; }
+      if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(e.key)) return;
+      e.preventDefault();
+      const items = Array.from(root.current.querySelectorAll<HTMLElement>("[role=menuitem]"));
+      const current = items.indexOf(document.activeElement as HTMLElement);
+      const index = e.key === "Home" ? 0 : e.key === "End" ? items.length - 1 : (current + (e.key === "ArrowDown" ? 1 : -1) + items.length) % items.length;
+      items[index]?.focus();
+    };
+    document.addEventListener("pointerdown", outside); document.addEventListener("keydown", key);
+    requestAnimationFrame(() => root.current?.querySelector<HTMLElement>("[role=menuitem]")?.focus());
+    return () => { document.removeEventListener("pointerdown", outside); document.removeEventListener("keydown", key); };
+
+  }, [open]);
+  return <div className="v4-share" ref={root}>
     <button type="button" className="v4-icon-button" aria-label={t("chrome.shareMenu")} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(o => !o)}><Share2 size={16}/></button>
     <AnimatePresence>{open && <motion.div role="menu" className="v4-popover v4-menu" initial={{ opacity: 0, y: -4, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, transition: { duration: 0.1 } }} transition={{ duration: 0.18, ease }}>
-      <button type="button" role="menuitem" onClick={() => { setOpen(false); onCopy(); }}><Link2 size={15} aria-hidden/>{t("chrome.share")}</button>
-      <a role="menuitem" href={`/api/startups/${startupId}/export`} download onClick={() => setOpen(false)}><ArrowDownToLine size={15} aria-hidden/>{t("chrome.export")}</a>
+      <button type="button" role="menuitem" tabIndex={-1} onClick={() => { close(); onCopy(); }}><Link2 size={15} aria-hidden/>{t("chrome.share")}</button>
+      <a role="menuitem" tabIndex={-1} href={`/api/startups/${startupId}/export`} download onClick={() => close()}><ArrowDownToLine size={15} aria-hidden/>{t("chrome.export")}</a>
     </motion.div>}</AnimatePresence>
   </div>;
 }

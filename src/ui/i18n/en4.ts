@@ -73,6 +73,8 @@ export const en4 = {
   "ai.mode.pricing.d": "Price anchors, offer tiers, a willingness-to-pay test",
   "ai.mode.experiments": "Experiments",
   "ai.mode.experiments.d": "Design the next 30 days from your saved decisions",
+  "ai.mode.review": "Review saved work",
+  "ai.mode.review.d": "Critique a saved run without repeating paid research or experiments; choose Follow up first",
   "ai.st.queued": "Queued",
   "ai.st.running": "Team working",
   "ai.st.paused": "Checkpoint saved",

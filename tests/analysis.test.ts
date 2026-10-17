@@ -161,6 +161,25 @@ describe("decision memory and one feasible active plan",()=>{
     expect((await ai.export(c.startup.id)).findings.some(f=>f.support==="does_not_support")).toBe(true);
     await ai.cancel(c.startup.id,child.id);
   });
+  it("sends mirrored proposed memory once while retaining its revision and full artifact",async()=>{
+    const c=await ready();
+    const created=await ai.create(c.startup.id,{mode:"review",brief:"Review saved proposals",requestId:randomUUID(),parentRunId:c.run.id});
+    const child=(await ai.lease(created.id))!,step=(await ai.steps(child.id))[0];
+    const input=await executionInput(ai,child,step,[]);
+    expect(input.snapshot.artifactMemoryRefs.length).toBeGreaterThan(0);
+    for(const ref of input.snapshot.artifactMemoryRefs){
+      expect(input.snapshot.pendingDecisions.some(m=>m.id===ref.id)).toBe(false);
+      expect(input.manifest.memory).toContainEqual({id:ref.id,revision:ref.revision,status:ref.status});
+      const proposals=input.snapshot.parentArtifacts.flatMap(p=>[...(p.result.analysis?.hypotheses||[]),...(p.result.analysis?.decisions||[])]);
+      const original=child.snapshot.memory!.find(m=>m.id===ref.id)!;
+      expect(proposals.find(p=>p.id===ref.id)).toEqual(original.data.proposal);
+    }
+    const researchView=await executionInput(ai,child,{...step,role:"researcher"},[]);
+    const hypothesisId=child.snapshot.parent.find(p=>p.role==="strategist")!.result.analysis!.hypotheses[0].id;
+    expect(researchView.snapshot.artifactMemoryRefs.some(m=>m.id===hypothesisId)).toBe(false);
+    expect(researchView.snapshot.pendingDecisions.some(m=>m.id===hypothesisId)).toBe(true);
+    await ai.cancel(c.startup.id,child.id);
+  });
   it("accepts linked decisions, reconciles plans, preserves human work and carries adverse evidence into a follow-up",async()=>{
     const c=await ready({custom:true});const strategist=c.specialist("strategist");
     for(const h of strategist.result!.analysis!.hypotheses)await ai.remember(c.startup.id,c.run.id,strategist.id,"hypothesis",h.key);

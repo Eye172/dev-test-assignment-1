@@ -48,7 +48,10 @@
 [data-ui="observatory"] { --page-max: 1320px; --panel-radius: 10px; --panel-pad: 22px; }
 [data-ui="ledger"] { --page-max: 1180px; --panel-radius: 0px; --panel-pad: 0px; --measure: 68ch; }
 [data-ui="flow"] { --page-max: 1440px; --panel-radius: 12px; --panel-pad: 20px; }
-[data-ui="flow"][data-theme="dark"], [data-ui="flow"]:not([data-theme]) { --bg: #090b0b; --surface: #101413; }
+[data-ui="flow"][data-theme="dark"] { --bg: #090b0b; --surface: #101413; }
+@media (prefers-color-scheme: dark) {
+  [data-ui="flow"]:not([data-theme]) { --bg: #090b0b; --surface: #101413; }
+}
 
 html { background: var(--bg); }
 body { font-family: var(--font-sans); font-size: 15px; line-height: 1.6; font-feature-settings: normal; letter-spacing: 0; }

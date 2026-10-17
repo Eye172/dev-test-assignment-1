@@ -31,16 +31,24 @@ test("a new follow-up and an explicitly selected historical run survive refresh"
     return route.continue();
   });
   await page.getByRole("button",{name:"Follow up",exact:true}).click();
+  const reviewScope=page.getByRole("button",{name:"Review saved work",exact:true});
+  await reviewScope.click();
+  await page.getByRole("button",{name:"Clear",exact:true}).click();
+  await page.getByRole("button",{name:"New question",exact:true}).click();
+  await expect(reviewScope).toBeDisabled();
+  await expect(page.getByRole("button",{name:"Full team",exact:true})).toHaveAttribute("aria-pressed","true");
+  await page.getByRole("button",{name:"Follow up",exact:true}).click();
+  await reviewScope.click();
   await page.getByRole("textbox",{name:"Your brief",exact:true}).fill("Offline follow-up selection and recovery fixture");
   await page.getByRole("button",{name:"Start the team",exact:true}).click();
-  await expect(page.getByRole("combobox",{name:"Select run"})).toHaveValue(next.id);
+  await expect(page.getByRole("combobox",{name:"Run"})).toHaveValue(next.id);
   await expect(page).toHaveURL(new RegExp(`run=${next.id}`));
   await page.reload();
-  await expect(page.getByRole("combobox",{name:"Select run"})).toHaveValue(next.id);
-  await page.getByRole("combobox",{name:"Select run"}).selectOption(original.id);
+  await expect(page.getByRole("combobox",{name:"Run"})).toHaveValue(next.id);
+  await page.getByRole("combobox",{name:"Run"}).selectOption(original.id);
   await expect(page).toHaveURL(new RegExp(`run=${original.id}`));
   await page.reload();
-  await expect(page.getByRole("combobox",{name:"Select run"})).toHaveValue(original.id);
+  await expect(page.getByRole("combobox",{name:"Run"})).toHaveValue(original.id);
 });
 
 test("research, decision memory, reviewed plan and adverse observation form one persisted flow",async({page},info)=>{
@@ -72,12 +80,12 @@ test("research, decision memory, reviewed plan and adverse observation form one 
   await page.getByText("Specialist proposals and saved strategy changes",{exact:true}).click();
   await page.getByRole("group",{name:"Specialist results"}).getByRole("button",{name:/Strategy/}).click();
   for(const title of ["Ideal Customer Profile","Value Proposition","Acquisition Channels","Market Assumptions"]){
-    await page.getByRole("button",{name:`Review ${title}`,exact:true}).click();
+    await page.getByRole("button",{name:`Review: ${title}`,exact:true}).click();
     await page.getByRole("dialog").getByRole("button",{name:"Apply reviewed proposal",exact:true}).click();
     await expect(page.getByRole("dialog")).not.toBeVisible();
   }
   await page.getByRole("group",{name:"Specialist results"}).getByRole("button",{name:/Pricing/}).click();
-  await page.getByRole("button",{name:"Review Pricing & Revenue",exact:true}).click();
+  await page.getByRole("button",{name:"Review: Pricing & Revenue",exact:true}).click();
   await page.getByRole("dialog").getByRole("button",{name:"Apply reviewed proposal",exact:true}).click();
   await expect.poll(async()=>(await workspace(page,id)).completion.percentage).toBe(100);
   await page.getByRole("button",{name:"Review one active plan",exact:true}).click();

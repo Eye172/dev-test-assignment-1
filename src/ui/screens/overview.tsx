@@ -11,6 +11,7 @@ import { useHydrated } from "@/components/ui";
 import { useDisplay } from "../display";
 import { Readout, SectionMeter, ease } from "../kit";
 import { LoadStrip, ReadinessRadar, useSectionStates } from "../viz";
+import { RoadmapBar } from "@/components/roadmap";
 import { GoLink, ProfileEditor, ProfileFacts, TaskRow, digests, useGeneratePlan, useNextUp } from "./shared";
 
 export function OverviewScreen() {
@@ -66,7 +67,7 @@ function ObservatoryOverview() {
     <motion.section className="obs-telemetry" aria-label={t("dash.models")} {...enter(2)}>
       <Readout label={t("dash.completion")} value={`${workspace.completion.percentage}%`} meaning={t("ov.sectionsDone", { n: workspace.completion.completed })}/>
       <Readout label={t("readiness.overall")} value={insights.readiness.overall} unit="/100" meaning={t(`band.${insights.readiness.band}`)}/>
-      <Readout label={t("ov.planProgress")} value={`${workspace.roadmapProgress.percentage}%`} meaning={active.length ? t("ov.tasksDone", { done: workspace.roadmapProgress.done, total: workspace.roadmapProgress.total - workspace.roadmapProgress.skipped }) : t("ov.noTasks")}/>
+      <Readout label={t("ov.planProgress")} value={`${workspace.roadmapProgress.percentage}%`} meaning={active.length ? undefined : t("ov.noTasks")}>{active.length > 0 && <RoadmapBar progress={workspace.roadmapProgress}/>}</Readout>
       <Readout label={t("common.day")} value={insights.load.planDay ?? "—"} unit="/30" meaning={insights.load.overdue ? t("load.overdue", { n: insights.load.overdue }) : t("ov.thisWeek") + ` · ${t("common.weekN", { n: week })}`}/>
       <Readout label={t("amap.test_first")} value={testFirst} meaning={t("amap.title")}/>
       <Readout label={t("ladder.title")} value={insights.ladder.reached ? insights.ladder.rungs.findIndex(r => r.rung === insights.ladder.reached) + 1 : 0} unit="/7" meaning={insights.ladder.reached ? t(`rung.${insights.ladder.reached}`) : t("ladder.none")}/>
@@ -138,7 +139,7 @@ function LedgerOverview() {
         <span className="led-entry-n mono">{i + 1}</span>
         <div className="led-entry-term"><Link href={`${base}/strategy?section=${s.key}`}>{t(`section.${s.key}`)}</Link><span className="led-entry-q">{t(`section.question.${s.key}`)}</span></div>
         <p className={`led-entry-text ${s.headline ? "" : "is-empty"}`}>{s.headline || t("common.notSet")}</p>
-        <aside className="led-margin mono"><span className={`v4-state is-${s.state}`}>{s.state === "complete" ? t("common.complete") : t("dash.sectionMissing", { n: s.missing })}</span>{s.updatedAt && <span>{date(s.updatedAt)}</span>}</aside>
+        <aside className="led-margin mono"><span className={`v4-state is-${s.state}`}>{s.state === "complete" ? t("common.complete") : t("dash.sectionMissing", { n: s.missing })}</span>{s.updatedAt && <time dateTime={s.updatedAt} title={s.updatedAt}>{date(s.updatedAt)}</time>}</aside>
       </li>)}</ol>
     </section>
 
@@ -152,6 +153,7 @@ function LedgerOverview() {
         {active.length > 0 && <aside className="led-margin mono">{t("ov.tasksDone", { done: workspace.roadmapProgress.done, total: workspace.roadmapProgress.total - workspace.roadmapProgress.skipped })}</aside>}</div>
       {active.length ? <ul className="v4-task-list">{weekTasks.map(task => <TaskRow key={task.id} task={task} base={base}/>)}</ul>
         : <p className="led-note">{t("load.noPlan")} <button type="button" className="v4-link" onClick={() => void plan.run()} disabled={plan.busy}>{t("ov.generate")}</button></p>}
+      {active.length > 0 && <RoadmapBar progress={workspace.roadmapProgress}/>}
       <p className="led-more"><GoLink href={`${base}/dashboard`}>{t("ov.openDashboard")}</GoLink></p>
     </section>
     <p className="v4-honest">{t("ov.honest")}</p>
@@ -237,6 +239,7 @@ function FlowOverview() {
         <div className="flow-panel-head"><h2 id="week-title">{t("ov.thisWeek")} · {t("common.weekN", { n: week })}</h2>{active.length > 0 && <GoLink href={`${base}/roadmap`}>{t("ov.openRoadmap")}</GoLink>}</div>
         {active.length ? <ul className="v4-task-list">{weekTasks.map(task => <TaskRow key={task.id} task={task} base={base}/>)}</ul>
           : <div className="v4-empty-block"><p>{t("load.noPlan")}</p><button type="button" className="v4-button is-primary" onClick={() => void plan.run()} disabled={plan.busy}>{t("ov.generate")}</button></div>}
+        {active.length > 0 && <RoadmapBar progress={workspace.roadmapProgress}/>}
       </section>
       <section className="flow-panel" aria-labelledby="radar-title">
         <div className="flow-panel-head"><h2 id="radar-title">{t("readiness.overall")} <span className="num">{insights.readiness.overall}</span></h2><Link className="v4-link" href={`${base}/ai`}><Sparkles size={14} aria-hidden/>{t("nav.ai")}</Link></div>

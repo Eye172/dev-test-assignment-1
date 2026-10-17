@@ -9,6 +9,7 @@ import { useWorkspace } from "@/components/workspace";
 import { useDisplay } from "../display";
 import { Provenance, Readout, SectionMeter, ease } from "../kit";
 import { AssumptionMap, ChannelBullseye, EvidenceLadder, LoadStrip, PositioningStatement, ReadinessRadar, SizingCalculator, useSectionStates } from "../viz";
+import { RoadmapBar } from "@/components/roadmap";
 import { GoLink, TaskRow, digests, savedAccounts, useFieldLabel, useNextUp, useSaveSizing } from "./shared";
 
 const axisSection: Record<AxisKey, SectionKey | "roadmap"> = { customer: "icp", value: "value", channels: "channels", pricing: "pricing", risk: "assumptions", execution: "roadmap" };
@@ -35,7 +36,7 @@ export function DashboardScreen() {
 
 function Panel({ id, title, prov = "rules", wide = false, explain, children, className = "" }: { id: string; title: string; prov?: "rules" | "ai" | "founder"; wide?: boolean; explain?: string; children: ReactNode; className?: string }) {
   return <motion.section id={id} className={`v4-panel ${wide ? "is-wide" : ""} ${className}`} aria-labelledby={`${id}-title`}
-    initial={{ opacity: 0, y: 14 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-40px" }} transition={{ duration: 0.5, ease }}>
+    initial={false} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-40px" }} transition={{ duration: 0.24, ease }}>
     <div className="v4-panel-head"><h2 id={`${id}-title`}>{title}</h2><Provenance kind={prov}/></div>
     {explain && <p className="v4-panel-explain">{explain}</p>}
     {children}
@@ -89,7 +90,7 @@ function ObservatoryDashboard() {
         <SectionMeter states={states} labels={data.sections.map(s => t(`section.${s.key}`))}/>
       </Readout>
       <Readout label={t("readiness.overall")} value={insights.readiness.overall} unit="/100" meaning={t(`band.${insights.readiness.band}`)}/>
-      <Readout label={t("ov.planProgress")} value={`${workspace.roadmapProgress.percentage}%`} meaning={t("ov.tasksDone", { done: workspace.roadmapProgress.done, total: workspace.roadmapProgress.total - workspace.roadmapProgress.skipped })}/>
+      <Readout label={t("ov.planProgress")} value={`${workspace.roadmapProgress.percentage}%`}><RoadmapBar progress={workspace.roadmapProgress}/></Readout>
       <Readout label={t("ov.gaps")} value={insights.missing.length} meaning={t("ov.sectionsDone", { n: workspace.completion.completed })}/>
     </section>
     <div className="v4-grid">
@@ -137,7 +138,8 @@ function LedgerDashboard() {
       <Chapter id="completion" n={1} title={t("dash.completion")}>
         <p className="led-figure"><span className="num">{workspace.completion.percentage}%</span><span className="mono">{t("dash.completionFormula")} · {t("ov.sectionsDone", { n: workspace.completion.completed })}</span></p>
         <SectionMeter states={states} labels={data.sections.map(s => t(`section.${s.key}`))}/>
-        <p className="led-figure is-small"><span className="num">{workspace.roadmapProgress.percentage}%</span><span className="mono">{t("ov.planProgress")} · {t("ov.tasksDone", { done: workspace.roadmapProgress.done, total: workspace.roadmapProgress.total - workspace.roadmapProgress.skipped })}</span></p>
+        <p className="led-figure is-small"><span className="num">{workspace.roadmapProgress.percentage}%</span><span className="mono">{t("ov.planProgress")}</span></p>
+        <RoadmapBar progress={workspace.roadmapProgress}/>
       </Chapter>
       <Chapter id="decisions" n={2} title={t("dash.saved")} prov="founder"><Decisions data={data} rich/></Chapter>
       <Chapter id="gaps" n={3} title={t("ov.gaps")}><Gaps data={data}/></Chapter>
@@ -183,6 +185,7 @@ function FlowDashboard() {
       {i > 0 && <span className="flow-pipe-edge" aria-hidden/>}
       <Link href={`${base}/strategy?section=${s.key}`}><span className="flow-pipe-dot" aria-hidden/><span className="mono">{t(`section.short.${s.key}`)}</span><strong>{s.state === "complete" ? t("common.complete") : t("dash.sectionMissing", { n: s.missing })}</strong></Link>
     </li>)}<li className="flow-pipe-total"><span className="num">{workspace.completion.percentage}%</span><span className="mono">{t("dash.completionFormula")}</span></li></ol>
+    <div className="flow-plan-bar"><RoadmapBar progress={workspace.roadmapProgress}/></div>
     <div className="flow-board">
       <div className="flow-board-main">
         <Panel id="assumptions" title={t("amap.title")} explain={t("amap.explain")}><AssumptionMap items={insights.assumptions}/></Panel>

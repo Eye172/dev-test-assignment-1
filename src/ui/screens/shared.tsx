@@ -85,7 +85,7 @@ export function TaskRow({ task, base, showWeek = false }: { task: Task; base: st
   const hydrated = useHydrated();
   const [error, setError] = useState<string | null>(null);
   return <li className={`v4-task is-${task.status}`}>
-    <StatusRing task={task} disabled={busy || !hydrated} label={`${t("status.done")}: ${task.title}`} onToggle={status => { setError(null); void update(task, { status }).catch(e => setError((e as Error).message)); }}/>
+    <StatusRing task={task} disabled={busy || !hydrated} label={task.title} onToggle={status => { setError(null); void update(task, { status }).catch(e => setError((e as Error).message)); }}/>
     <Link href={`${base}/roadmap#task-${task.id}`} className="v4-task-title">{task.title}</Link>
     <span className={`v4-status is-${task.status}`}>{showWeek ? `${t("common.weekN", { n: task.week })} · ` : ""}{t(`status.${task.status}`)}</span>
     {error && <span className="v4-error" role="alert">{error}</span>}

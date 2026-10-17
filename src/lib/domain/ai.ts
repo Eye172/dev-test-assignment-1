@@ -58,9 +58,9 @@ export function validatedProposal(key: SectionKey, result: AiResult) {
   if (!proposal) return null;
   return sectionSchemas[key].parse(proposal);
 }
-export const runModes = ["full", "research", "strategy", "pricing", "experiments"] as const;
+export const runModes = ["full", "research", "strategy", "pricing", "experiments", "review"] as const;
 export type RunMode = typeof runModes[number];
-export const createAiRunSchema = z.object({ mode: z.enum(runModes), brief: z.string().trim().max(6000), requestId: z.uuid(), parentRunId: z.uuid().nullable().optional(), intakeId:z.uuid().nullable().optional(), material:founderMaterialSchema.optional(), locale:z.enum(["en","ru","kk"]).optional() }).strict();
+export const createAiRunSchema = z.object({ mode: z.enum(runModes), brief: z.string().trim().max(6000), requestId: z.uuid(), parentRunId: z.uuid().nullable().optional(), intakeId:z.uuid().nullable().optional(), material:founderMaterialSchema.optional(), locale:z.enum(["en","ru","kk"]).optional() }).strict().refine(p=>p.mode!=="review"||!!p.parentRunId,{path:["parentRunId"],message:"Choose a saved run to review."});
 export const evidenceSchema = z.object({
   requestId: z.uuid(),
   taskId: z.uuid().nullable(), kind: z.enum(["interview", "commitment", "payment", "analytics", "other"]),
@@ -86,6 +86,7 @@ export const modeRoles: Record<RunMode, AiRole[]> = {
   strategy: ["intake", "researcher", "strategist", "experimenter", "critic"],
   pricing: ["intake", "researcher", "monetizer", "critic"],
   experiments: ["intake", "experimenter", "critic"],
+  review: ["critic"],
 };
 export function safeSourceUrl(value: string): string | null {
   try {

@@ -17,7 +17,7 @@ import { clearDraft, clearSubmittedDraft, useDraftRecovery } from "./draft-recov
 import { useDisplay } from "@/ui/display";
 import { AiInsightsPanel } from "@/ui/screens/ai-insights";
 
-const modes:Record<RunMode,{label:string;description:string}>={full:{label:"ai.mode.full",description:"ai.mode.full.d"},research:{label:"ai.mode.research",description:"ai.mode.research.d"},strategy:{label:"ai.mode.strategy",description:"ai.mode.strategy.d"},pricing:{label:"ai.mode.pricing",description:"ai.mode.pricing.d"},experiments:{label:"ai.mode.experiments",description:"ai.mode.experiments.d"}};
+const modes:Record<RunMode,{label:string;description:string}>={full:{label:"ai.mode.full",description:"ai.mode.full.d"},research:{label:"ai.mode.research",description:"ai.mode.research.d"},strategy:{label:"ai.mode.strategy",description:"ai.mode.strategy.d"},pricing:{label:"ai.mode.pricing",description:"ai.mode.pricing.d"},experiments:{label:"ai.mode.experiments",description:"ai.mode.experiments.d"},review:{label:"ai.mode.review",description:"ai.mode.review.d"}};
 const statusText:Record<AiRun["status"],string>={queued:"ai.st.queued",running:"ai.st.running",paused:"ai.st.paused",completed:"ai.st.completed",needs_attention:"ai.st.needs_attention",failed:"ai.st.failed",cancelled:"ai.st.cancelled"};
 const money=(micros:number)=>new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",minimumFractionDigits:2,maximumFractionDigits:3}).format(micros/1000000);
 const active=(run:AiRun)=>["queued","running","paused"].includes(run.status);
@@ -95,7 +95,7 @@ export function AiStudio() {
     const attemptId=requestId||crypto.randomUUID();setRequestId(attemptId);
     const submitted={mode,brief,parent,requestId:attemptId};
     const result=await perform({action:"create",payload:{mode:submitted.mode,brief:submitted.brief,requestId:submitted.requestId,parentRunId:submitted.parent,locale}}) as {id:string}|undefined;
-    if(result){autoResume.current=result.id;selectRun(result.id);setRole(modeRoles[submitted.mode][0]);setBrief(current=>current===submitted.brief?"":current);setParent(current=>current===submitted.parent?null:current);setRequestId(current=>current===submitted.requestId?null:current);notify(t("ai.started"));}
+    if(result){autoResume.current=result.id;selectRun(result.id);setRole(modeRoles[submitted.mode][0]);setBrief(current=>current===submitted.brief?"":current);setParent(current=>current===submitted.parent?null:current);setMode(current=>current==="review"?"full":current);setRequestId(current=>current===submitted.requestId?null:current);notify(t("ai.started"));}
   };
   const apply=async()=>{
     if(!run||!review)return;
@@ -119,9 +119,9 @@ export function AiStudio() {
         <div className="ai-composer-head"><div><h2 id="brief-title">{parent ? t("ai.buildOn") : t("ai.what")}</h2></div><span className="ai-model-tag">OpenAI · live agents</span></div>
         <form onSubmit={e=>{e.preventDefault();void start().catch(()=>{});}}>
           <Field name="ai-brief" label={t("ai.brief")} textarea value={brief} maxLength={6000} minRows={110} onChange={v=>{setBrief(v);setRequestId(null);}} placeholder={t("ai.briefPh")} help={t("ai.briefHelp")}/>
-          <div className="ai-mode-list" role="group" aria-label={t("ai.scope")}>{runModes.map(m=><button type="button" key={m} className={mode===m?"selected":""} aria-pressed={mode===m} disabled={busy} onClick={()=>{setMode(m);setRequestId(null);}}>{m==="full"&&<Users size={14} aria-hidden/>}{tk(modes[m].label)}</button>)}</div>
+          <div className="ai-mode-list" role="group" aria-label={t("ai.scope")}>{runModes.map(m=><button type="button" key={m} className={mode===m?"selected":""} aria-pressed={mode===m} disabled={busy||m==="review"&&!parent} onClick={()=>{setMode(m);setRequestId(null);}}>{m==="full"&&<Users size={14} aria-hidden/>}{tk(modes[m].label)}</button>)}</div>
           <div className="ai-composer-foot"><p className="field-help">{tk(modes[mode].description)}<br/>{t("ai.limits", { run: state.limits.runBudgetUsd, day: state.limits.dailyBudgetUsd })}</p><button className="button primary" disabled={busy||!!running||!state.configured} aria-busy={busy}>{busy?<Spinner/>:<Play size={15} aria-hidden/>}{running ? t("ai.inProgress") : t("ai.start")}<ArrowUpRight size={16} aria-hidden/></button></div>
-          {parent&&<p className="ai-followup-tag">{t("ai.followingUp")} <button type="button" className="text-link" onClick={()=>setParent(null)}>{t("ai.clear")}</button></p>}
+          {parent&&<p className="ai-followup-tag">{t("ai.followingUp")} <button type="button" className="text-link" onClick={()=>{setParent(null);if(mode==="review")setMode("full");}}>{t("ai.clear")}</button></p>}
         </form>
       </section>}
       {state.runs.length>0&&<div className="ai-run-toolbar"><label>{t("ai.run")} <select aria-label={t("ai.run")} value={run?.id} onChange={e=>selectRun(e.target.value)}>{state.runs.map((r,i)=><option key={r.id} value={r.id}>{i===0?`${t("ai.latest")} · `:""}{tk(modes[r.mode].label)} · {new Date(r.createdAt).toLocaleString()} · {tk(statusText[r.status])}</option>)}</select></label><span className="field-help">{t("ai.historyStays")}</span></div>}

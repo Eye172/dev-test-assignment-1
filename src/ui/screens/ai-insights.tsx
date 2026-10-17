@@ -29,7 +29,7 @@ export function AiInsightsPanel({ run }: { run: AiRun }) {
     ? <p className="v4-muted ai-ins-empty">{t("ai.ins.none")}</p> : null;
   const channels: ChannelEntry[] = (m.channels ?? []).map(c => ({ key: c.key, label: c.channel, custom: true, chosen: c.ring === "inner", ring: c.ring,
     impact: c.impact, confidence: c.confidence, ease: c.ease, ice: Math.round((c.impact + c.confidence + c.ease) / 3 * 10) / 10, signalDays: 14, localNote: null, reason: c.rationale }));
-  const money = (v: number, currency: string | null) => currency ? number(v, { style: "currency", currency, maximumFractionDigits: 0 }) : number(v, { maximumFractionDigits: 0 });
+  const money = (v: number, currency: string | null) => `${number(v, { maximumFractionDigits: 0 })}${currency ? ` ${currency}` : ""}`;
   const market = m.market;
   const tam = market && market.accounts.high !== null && market.annualValue.amount !== null ? market.accounts.high * market.annualValue.amount : null;
   const sam = tam !== null && market?.serviceablePercent !== null && market?.serviceablePercent !== undefined ? tam * market.serviceablePercent / 100 : null;

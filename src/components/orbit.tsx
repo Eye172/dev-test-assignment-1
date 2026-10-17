@@ -5,7 +5,7 @@ import { animate, motion, useMotionValue, useMotionValueEvent, useReducedMotion 
 import type { SectionKey } from "@/lib/domain/schemas";
 import type { Task, Workspace } from "@/lib/domain/types";
 import { useHydrated } from "./ui";
-import { rt } from "@/ui/i18n/runtime";
+import { useDisplay } from "@/ui/display";
 
 export type SectionState = "complete" | "draft" | "empty";
 export type OrbitSection = { key: SectionKey; title: string; state: SectionState; missing: number };
@@ -77,6 +77,7 @@ type DialProps = {
  * satellite = today's plan day. Interactive dials link each section to its editor.
  */
 export function OrbitDial({ model, size = 280, base, interactive = false, countFrom, center, label, className = "", idle = false }: DialProps) {
+  const { t } = useDisplay();
   const id = useId().replace(/:/g, "");
   const [hover, setHover] = useState<OrbitSection | null>(null);
   const reduce = useReducedMotion();
@@ -87,7 +88,7 @@ export function OrbitDial({ model, size = 280, base, interactive = false, countF
     return { day, lit: day - firstDay < lit, major: day === 1 || day === 8 || day === 15 || day === 22, angle: i * 12 + 6 };
   });
   const satellite = model.planDay ? (model.planDay - 1) * 12 + 6 : null;
-  const summary = label ?? `${rt("dash.completion")} ${model.completion}% · ${rt("ov.sectionsDone", { n: model.sections.filter(s => s.state === "complete").length })}. ${model.hasPlan ? rt("dial.planDone", { n: model.plan }) : rt("ov.noTasks")}`;
+  const summary = label ?? `${t("dash.completion")} ${model.completion}% · ${t("ov.sectionsDone", { n: model.sections.filter(s => s.state === "complete").length })}. ${model.hasPlan ? t("dial.planDone", { n: model.plan }) : t("ov.noTasks")}`;
   const segment = (s: OrbitSection, i: number) => {
     const from = i * span + gap / 2; const to = (i + 1) * span - gap / 2;
     const d = arc(60, from, to);
@@ -99,7 +100,7 @@ export function OrbitDial({ model, size = 280, base, interactive = false, countF
     </>;
     if (!interactive || !base) return <g key={s.key}>{path}</g>;
     return <Link key={s.key} href={`${base}/strategy?section=${s.key}`} className="dial-link"
-      aria-label={`${rt(`section.${s.key}`)}: ${s.state === "complete" ? rt("common.complete") : s.state === "draft" ? rt("dash.sectionMissing", { n: s.missing }) : rt("st.state.empty")}`}
+      aria-label={`${t(`section.${s.key}`)}: ${s.state === "complete" ? t("common.complete") : s.state === "draft" ? t("dash.sectionMissing", { n: s.missing }) : t("st.state.empty")}`}
       onMouseEnter={() => setHover(s)} onMouseLeave={() => setHover(null)} onFocus={() => setHover(s)} onBlur={() => setHover(null)}>
       <path d={d} className="dial-hit" />{path}
     </Link>;
@@ -132,11 +133,11 @@ export function OrbitDial({ model, size = 280, base, interactive = false, countF
     </svg>
     <div className="dial-center" aria-hidden="true">
       {hover ? <>
-        <span className="dial-k">{hover.state === "complete" ? rt("common.complete") : hover.state === "draft" ? rt("dash.sectionMissing", { n: hover.missing }) : rt("st.state.empty")}</span>
-        <span className="dial-hover-title">{rt(`section.short.${hover.key}`)}</span>
+        <span className="dial-k">{hover.state === "complete" ? t("common.complete") : hover.state === "draft" ? t("dash.sectionMissing", { n: hover.missing }) : t("st.state.empty")}</span>
+        <span className="dial-hover-title">{t(`section.short.${hover.key}`)}</span>
       </> : center ?? <>
         <span className="dial-value"><Counter value={model.completion} from={countFrom}/><small>%</small></span>
-        <span className="dial-k">{rt("nav.strategy")}</span>
+        <span className="dial-k">{t("nav.strategy")}</span>
       </>}
     </div>
   </div>;
@@ -144,9 +145,10 @@ export function OrbitDial({ model, size = 280, base, interactive = false, countF
 
 /** Compact legend that names what the rings mean. */
 export function DialLegend({ model }: { model: OrbitModel }) {
+  const { t } = useDisplay();
   return <dl className="dial-legend">
-    <div><dt><span className="lg-swatch inner"/>{rt("dial.inner")}</dt><dd>{rt("ov.sectionsDone", { n: model.sections.filter(s => s.state === "complete").length })}</dd></div>
-    <div><dt><span className="lg-swatch outer"/>{rt("dial.outer")}</dt><dd>{model.hasPlan ? rt("dial.planDone", { n: model.plan }) : rt("ov.noTasks")}</dd></div>
-    <div><dt><span className="lg-swatch sat"/>{rt("dial.sat")}</dt><dd>{model.planDay ? rt("load.today", { n: model.planDay }) : rt("dial.startsWithPlan")}</dd></div>
+    <div><dt><span className="lg-swatch inner"/>{t("dial.inner")}</dt><dd>{t("ov.sectionsDone", { n: model.sections.filter(s => s.state === "complete").length })}</dd></div>
+    <div><dt><span className="lg-swatch outer"/>{t("dial.outer")}</dt><dd>{model.hasPlan ? t("dial.planDone", { n: model.plan }) : t("ov.noTasks")}</dd></div>
+    <div><dt><span className="lg-swatch sat"/>{t("dial.sat")}</dt><dd>{model.planDay ? t("load.today", { n: model.planDay }) : t("dial.startsWithPlan")}</dd></div>
   </dl>;
 }

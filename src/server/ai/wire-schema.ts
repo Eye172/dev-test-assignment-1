@@ -11,7 +11,9 @@ export function wireSchema(role:AiRole):AgentOutputType {
   const relax=(value:unknown):unknown=>{
     if(Array.isArray(value))return value.map(relax);
     if(!value||typeof value!=="object")return value;
-    return Object.fromEntries(Object.entries(value).filter(([key])=>!["$schema","maxLength","minLength","maxItems","minItems"].includes(key)).map(([key,v])=>[key,relax(v)]));
+    // An empty-only array is a role permission, not a verbosity bound. Dropping
+    // it lets non-critics manufacture sourceChecks that the server must reject.
+    return Object.fromEntries(Object.entries(value).filter(([key,v])=>key==="maxItems"&&v===0||!["$schema","maxLength","minLength","maxItems","minItems"].includes(key)).map(([key,v])=>[key,relax(v)]));
   };
   return {type:"json_schema",name:`orbit_${role}_v2`,strict:true,schema:relax(schema)} as AgentOutputType;
 }

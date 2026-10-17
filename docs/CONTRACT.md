@@ -22,6 +22,10 @@ The AI endpoint adds `memory`, `remember`, `layout`, and `preview_plan` actions.
 
 ## Data and naming
 
+### v4 interface update (17 October)
+
+The public dashboard now has three authored compositions (Observatory, Ledger and Flow). Its former plate-rearrangement controls were retired. The version-1 `dashboardLayout` API below remains valid for stored-data compatibility; v4 does not expose a public plate editor. Private AI analysis displays retain their separate arrangement controls. Device cookies select EN/RU/KK, interface version and theme; the Display control changes them without changing saved business inputs. Saved reduced-motion preferences and the operating-system setting both apply. All original assignment requirements remain mandatory.
+
 Shared runtime schemas and TypeScript types live in src/lib/domain. JSON uses camelCase. IDs are UUIDs. All mutation responses include the updated record and revision. Dates are ISO strings.
 
 Startup: name, description, businessModel (B2B/B2C/B2G), stage (Idea/MVP/Early Traction), targetMarket, customerSegment, websiteUrl (optional valid http/https URL), context (optional), customFields (optional string map), preferences ({theme: dark/light/system, density: comfortable/compact, motion: full/reduced, accent: green/lime/blue, dashboardLayout: null | {version: 1, plates: [{id,size,hidden}]}}). Required profile fields must be valid on creation/update. Startup id, revision, createdAt, updatedAt are server-owned.

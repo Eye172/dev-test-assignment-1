@@ -1,5 +1,5 @@
 "use client";
-import { createContext, useCallback, useContext, useMemo, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import type { MessageKey } from "./i18n/en";
 import type { Dictionary } from "./i18n/dictionaries";
@@ -12,7 +12,7 @@ type DisplayContext = DisplayPrefs & {
   /** Translate a dynamic key (e.g. built from a code) with a visible fallback. */
   tk: (key: string, vars?: Vars, fallback?: string) => string;
   number: (n: number, options?: Intl.NumberFormatOptions) => string;
-  date: (iso: string, options?: Intl.DateTimeFormatOptions) => string;
+  date: (iso: string) => string;
   setLocale: (locale: Locale) => void;
   setVersion: (version: UiVersion) => void;
   setTheme: (theme: ThemeChoice) => void;
@@ -29,12 +29,19 @@ export function format(template: string, vars?: Vars) {
 
 export function DisplayProvider({ prefs, dict, children }: { prefs: DisplayPrefs; dict: Dictionary; children: ReactNode }) {
   const router = useRouter();
-  setRuntimeDictionary(dict);
+  // Only event handlers use the runtime dictionary. Never mutate a server-wide
+  // module during rendering: concurrent locale requests would share it.
+  useEffect(() => setRuntimeDictionary(dict), [dict]);
   const t = useCallback((key: MessageKey, vars?: Vars) => format(dict[key] ?? key, vars), [dict]);
   const tk = useCallback((key: string, vars?: Vars, fallback?: string) => format((dict as Record<string, string>)[key] ?? fallback ?? key, vars), [dict]);
   const tag = localeTags[prefs.locale];
-  const number = useCallback((n: number, options?: Intl.NumberFormatOptions) => new Intl.NumberFormat(tag, options).format(n), [tag]);
-  const date = useCallback((iso: string, options?: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat(tag, options ?? { day: "numeric", month: "short" }).format(new Date(iso)), [tag]);
+  // Russian and Kazakh use the same numeric separators. Older browser ICU data
+  // falls back to English for kk-KZ, so use the shared numeric format explicitly.
+  const numberTag = prefs.locale === "kk" ? "ru-RU" : tag;
+  const number = useCallback((n: number, options?: Intl.NumberFormatOptions) => new Intl.NumberFormat(numberTag, options).format(n), [numberTag]);
+  // ISO dates survive differing server/browser ICU month dictionaries (notably
+  // kk-KZ) and time zones without replacing the hydrated page.
+  const date = useCallback((iso: string) => new Date(iso).toISOString().slice(0, 10), []);
   const setLocale = useCallback((locale: Locale) => { writeCookie(prefCookies.locale, locale); document.documentElement.lang = locale; router.refresh(); }, [router]);
   const setVersion = useCallback((version: UiVersion) => {
     writeCookie(prefCookies.ui, version);

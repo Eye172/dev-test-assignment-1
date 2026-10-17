@@ -1,5 +1,7 @@
 # Acceptance map
 
+**v4 candidate evidence is in [V4-COMPLETION.md](V4-COMPLETION.md).** The release records below concern earlier versions and must not be used as v4 test results.
+
 Final assembly, 17 October 2026. The original assignment and the owner's AI expansion are assessed separately. The application remains a synthetic shared demo; saved inputs and completed tasks do not validate a market.
 
 The earlier release evidence below did not establish that the normal onboarding path used AI. Its browser cases exercised offline extraction or mocked provider responses, and its hosted real-provider check called the API directly. The owner reproduced that Continue bypassed AI and repeated fixed questions. Calling those checks full product verification was incorrect. Accessibility and reduced-motion screenshots also did not establish acceptable motion behavior.

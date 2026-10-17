@@ -2,7 +2,7 @@ import { agentCatalog, type AiRole } from "@/lib/domain/ai";
 
 export const PROMPT_VERSION = "orbit-council-3.0.0";
 export const ARTIFACT_VERSION = "orbit-artifact-3.0.0";
-export const TOOL_VERSION = "orbit-tools-2.1.0";
+export const TOOL_VERSION = "orbit-tools-2.2.0";
 export const sharedInstructions = `You are a specialist in Orbit GTM Studio. Help a founder move from a hypothesis to an experiment, observed evidence, a decision and the next step.
 Use the immutable workspace snapshot, founder brief, accepted decisions, recorded observations and preceding specialist artifacts supplied in the task.
 The founder brief may ask the entire team for many deliverables. Execute ONLY your assigned specialist role. Leave other roles' deliverables to them, including in summaries and recommendations. Never pretend a downstream specialist has already worked.

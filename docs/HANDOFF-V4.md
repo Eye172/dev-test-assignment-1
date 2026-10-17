@@ -2,6 +2,8 @@
 
 Written 2026-10-17 ~13:10 UTC+5 by Claude (Opus 5.5). Deadline for the test assignment: **2026-10-17 23:59 UTC+5**.
 
+**Continuation:** Codex's current repairs, verification and release status are recorded in [V4-COMPLETION.md](V4-COMPLETION.md). The original TODO list below is retained as the historical handoff.
+
 ## 1. Situation
 
 - Project: Orbit GTM Studio — developer test assignment (TZ: `D:\Ai_Startify_intership\Orbit_GTM_Studio_Developer_Test_Assignment.docx`). Next.js 16 + React 19 + TS + Zod + PostgreSQL/PGlite. Live prod (old v3): https://orbit-gtm-studio.vercel.app

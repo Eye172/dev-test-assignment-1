@@ -1,0 +1,110 @@
+[
+  {
+    "device": "desktop",
+    "ui": "observatory",
+    "screen": "home",
+    "lang": "ru",
+    "width": 1440,
+    "documentWidth": 1440,
+    "errors": []
+  },
+  {
+    "device": "desktop",
+    "ui": "observatory",
+    "screen": "dashboard",
+    "lang": "ru",
+    "width": 1440,
+    "documentWidth": 1440,
+    "errors": []
+  },
+  {
+    "device": "desktop",
+    "ui": "ledger",
+    "screen": "home",
+    "lang": "ru",
+    "width": 1440,
+    "documentWidth": 1440,
+    "errors": []
+  },
+  {
+    "device": "desktop",
+    "ui": "ledger",
+    "screen": "dashboard",
+    "lang": "ru",
+    "width": 1440,
+    "documentWidth": 1440,
+    "errors": []
+  },
+  {
+    "device": "desktop",
+    "ui": "flow",
+    "screen": "home",
+    "lang": "ru",
+    "width": 1440,
+    "documentWidth": 1440,
+    "errors": []
+  },
+  {
+    "device": "desktop",
+    "ui": "flow",
+    "screen": "dashboard",
+    "lang": "ru",
+    "width": 1440,
+    "documentWidth": 1440,
+    "errors": []
+  },
+  {
+    "device": "phone",
+    "ui": "observatory",
+    "screen": "home",
+    "lang": "kk",
+    "width": 390,
+    "documentWidth": 390,
+    "errors": []
+  },
+  {
+    "device": "phone",
+    "ui": "observatory",
+    "screen": "dashboard",
+    "lang": "kk",
+    "width": 390,
+    "documentWidth": 390,
+    "errors": []
+  },
+  {
+    "device": "phone",
+    "ui": "ledger",
+    "screen": "home",
+    "lang": "kk",
+    "width": 390,
+    "documentWidth": 390,
+    "errors": []
+  },
+  {
+    "device": "phone",
+    "ui": "ledger",
+    "screen": "dashboard",
+    "lang": "kk",
+    "width": 390,
+    "documentWidth": 390,
+    "errors": []
+  },
+  {
+    "device": "phone",
+    "ui": "flow",
+    "screen": "home",
+    "lang": "kk",
+    "width": 390,
+    "documentWidth": 390,
+    "errors": []
+  },
+  {
+    "device": "phone",
+    "ui": "flow",
+    "screen": "dashboard",
+    "lang": "kk",
+    "width": 390,
+    "documentWidth": 390,
+    "errors": []
+  }
+]

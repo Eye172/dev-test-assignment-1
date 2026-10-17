@@ -160,7 +160,9 @@ export function SizingCalculator({ price, market, initial, onSave }: { price: In
   const [saving, setSaving] = useState(false);
   const n = Number(accounts.replace(/\s/g, ""));
   const valid = Number.isFinite(n) && n > 0;
-  const money = (v: number) => price.currency ? number(v, { style: "currency", currency: price.currency, maximumFractionDigits: 0 }) : number(v, { maximumFractionDigits: 0 });
+  // Currency symbol placement differs between Node/browser CLDR releases for
+  // kk-KZ. An explicit ISO code keeps SSR and hydration identical.
+  const money = (v: number) => `${number(v, { maximumFractionDigits: 0 })}${price.currency ? ` ${price.currency}` : ""}`;
   const revenue = valid && price.annual !== null ? n * price.annual : null;
   return <div className="v4-sizing">
     <label className="v4-sizing-field"><span>{t("size.accounts")}</span>
@@ -187,7 +189,7 @@ export function LoadStrip({ load }: { load: Insights["load"] }) {
   return <div className="v4-load">
     {!hasPlan ? <p className="v4-empty">{t("load.noPlan")}</p> : <>
       <div className="v4-load-weeks">{load.weeks.map(w => <div key={w.week} className={`v4-load-week ${load.currentWeek === w.week ? "is-current" : ""}`}>
-        <div className="v4-load-stack" style={{ "--fill": `${w.total / max * 100}%` } as CSSProperties} aria-label={`${t("common.weekN", { n: w.week })}: ${w.done}/${w.total}`}>
+        <div className="v4-load-stack" role="img" style={{ "--fill": `${w.total / max * 100}%` } as CSSProperties} aria-label={`${t("common.weekN", { n: w.week })}: ${w.done}/${w.total}`}>
           {(["done", "inProgress", "todo", "skipped"] as const).map(k => w[k] ? <span key={k} className={`is-${k}`} style={{ flexGrow: w[k] }}/> : null)}
         </div>
         <span className="v4-load-label">{t("common.weekN", { n: w.week })}<span className="num mono">{w.done}/{w.total}</span></span>
