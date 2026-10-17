@@ -35,7 +35,7 @@ test("founder completes the six-screen flow with real persistence and an exporte
   // Free-form path: the founder writes; rules pick out what they can and ask only for the rest.
   await page.getByRole("button",{ name: /^Free form/ }).click();
   await page.getByLabel("Your startup in your own words").fill("Harbor pilot\nShared delivery coordination for small independent shops in Central Asia. We have an MVP.");
-  await page.getByRole("button",{ name: "Continue",exact: true }).click();
+  await page.getByRole("button",{ name: "Continue without AI",exact: true }).click();
   // At most seven questions, and only for what the text did not cover; each screen settles before the next action.
   const confirm = page.getByRole("heading",{ name: "Is this your startup?",exact: true });
   const skip = page.getByRole("button",{ name: "Skip",exact: true });
@@ -402,7 +402,7 @@ test("guided brief builds a complete profile from choices and short answers", as
   await page.getByRole("button",{ name: "Parents",exact: true }).click();
   await page.getByRole("button",{ name: "Next",exact: true }).click();
   await page.getByRole("button",{ name: "Next",exact: true }).click();
-  await page.getByRole("button",{ name: "Review profile",exact: true }).click();
+  await page.getByRole("button",{ name: "Review profile without AI",exact: true }).click();
   await expect(page.getByLabel(/^Primary customer segment/)).toHaveValue("Parents");
   await expect(page.getByRole("radio",{ name: "B2C",exact: true })).toBeChecked();
   await page.getByRole("button",{ name: /Create and launch/ }).click();

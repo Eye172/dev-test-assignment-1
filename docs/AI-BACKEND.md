@@ -134,3 +134,9 @@ Correction-round context retains transitive referenced earlier-round proposals a
 Accepted/active memory is traversed through option-level references and linked hypotheses before the snapshot and role view are assembled. Referenced unaccepted hypotheses remain labelled proposals. Exact alias-to-UUID conversion receipts accompany the critic context; canonical UUID storage is not an artifact defect.
 
 Findings also retain their originating snapshot timestamp. A workspace_record is an as-of administrative observation, not a claim that sections or decisions are still empty today. Historical findings remain immutable; an agent proposes a new finding or revised decision rather than rewriting provenance under an old finding UUID.
+
+## Preflight 1.1 discovery repair
+
+The primary onboarding action now requests real AI interpretation and zero to seven case-specific questions. Each question has id, field (including context), text, why, kind, options, placeholder and multi. Known profile/hint fields are filtered; generated IDs retain skip coverage so fallback questions cannot repeat them. Stage/model choices use canonical enums; other answers remain in the private journal. The optional material.answers array contains {question, answer} entries separately from the original 16,000-character text and is frozen and supplied to every specialist. Historical payloads without answers remain compatible.
+
+Owner unlock resumes the explicit pending analysis. Access-check failures stay visible and retryable. The local rules path is explicitly secondary. AI launch opens its actual run, defers the provisional rule plan and reports working/locked/failed states honestly. Existing active runs are adopted when they appear through loading, unlock or polling; bounded checkpoints continue while the studio is open, including background tabs. Serialized form exits, delayed essential hero controls and the large setup orbit were removed.

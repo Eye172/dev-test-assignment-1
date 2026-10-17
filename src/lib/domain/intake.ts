@@ -90,8 +90,8 @@ export function missing(draft: IntakeDraft): RequiredField[] {
   return requiredFields.filter(f => !draft.profile[f]);
 }
 
-export type Question = { id: string; field: RequiredField | "painPoint" | "price" | "channels"; text: string; why: string; kind: "choice" | "text"; options?: string[]; placeholder?: string; multi?: boolean };
-const bank: Record<Question["field"], Omit<Question, "id" | "field">> = {
+export type Question = { id: string; field: RequiredField | "painPoint" | "price" | "channels" | "context"; text: string; why: string; kind: "choice" | "text"; options?: string[]; placeholder?: string; multi?: boolean };
+const bank: Record<Exclude<Question["field"], "context">, Omit<Question, "id" | "field">> = {
   name: { text: "What is the startup called?", why: "It names your workspace and plan.", kind: "text", placeholder: "Fieldnote" },
   description: { text: "In one or two sentences: what do you build, and for whom?", why: "The plan uses this as its anchor.", kind: "text", placeholder: "A workspace that turns customer interviews into product decisions for small SaaS teams." },
   businessModel: { text: "Who pays you?", why: "Sales motion and pricing depend on it.", kind: "choice", options: ["B2B", "B2C", "B2G"] },
@@ -106,13 +106,26 @@ const bank: Record<Question["field"], Omit<Question, "id" | "field">> = {
 /** Stop as soon as the required profile is complete. Extra context remains optional. */
 export function nextQuestion(draft: IntakeDraft, asked: string[], limit = 7): Question | null {
   if (asked.length >= limit) return null;
-  const queue: Question["field"][] = [...missing(draft)];
+  const queue = [...missing(draft)];
   const field = queue.find(f => !asked.includes(f));
   return field ? { id: field, field, ...bank[field] } : null;
 }
 
+/** The model can ask about a business decision even when the six profile fields are complete. */
+export function nextIntakeQuestion(draft: IntakeDraft, asked: string[], questions: Question[]): Question | null {
+  if (asked.length >= 7) return null;
+  const covered=questions.filter(q=>asked.includes(q.id)&&q.field!=="context").map(q=>q.field);
+  const question = questions.find(q => !asked.includes(q.id) && (q.field === "context" || !covered.includes(q.field)) && (q.field === "context" ||
+    (q.field in draft.profile ? !draft.profile[q.field as keyof ProfileDraft] :
+      q.field === "channels" ? !draft.hints.channels.length : !draft.hints[q.field as "painPoint" | "price"])));
+  return question ?? nextQuestion(draft,[...asked,...covered],Number.MAX_SAFE_INTEGER);
+}
+
 export function answer(draft: IntakeDraft, field: Question["field"], value: string | string[]): IntakeDraft {
   const next: IntakeDraft = { profile: { ...draft.profile }, hints: { ...draft.hints, channels: [...draft.hints.channels] }, origin: { ...draft.origin } };
+  if (field === "context") return next; // Retained in the question/answer journal, never invented as a profile field.
+  if(field==="businessModel"&&!["B2B","B2C","B2G"].includes(String(value)))return next;
+  if(field==="stage"&&!["Idea","MVP","Early Traction"].includes(String(value)))return next;
   if (field === "channels") { next.hints.channels = (Array.isArray(value) ? value : [value]).filter(Boolean).slice(0, 3); next.origin.channels = "answer"; }
   else if (field === "painPoint" || field === "price") { next.hints[field] = String(value).trim(); next.origin[field] = "answer"; }
   else { (next.profile as Record<string, string>)[field] = String(value).trim(); next.origin[field] = "answer"; }

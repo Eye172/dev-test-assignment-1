@@ -60,20 +60,23 @@ export function AiStudio() {
   });
   const load=useCallback(async()=>{const data=await api<AiStudioState>(endpoint);setState(data);setLoaded(true);return data;},[endpoint]);
   useEffect(()=>{
-    const paused=state?.runs.find(r=>r.id===autoResume.current&&r.status==="paused");
+    if(!state?.authorized)return;
+    const current=state.runs.find(r=>r.id===autoResume.current&&active(r))||state.runs.find(active);
+    if(current)autoResume.current=current.id;
+    const paused=current?.status==="paused"?current:undefined;
     if(!paused)return;
     const checkpoint=`${paused.id}:${paused.updatedAt}`;if(resumedCheckpoints.current.has(checkpoint))return;
     resumedCheckpoints.current.add(checkpoint);
     void api(endpoint,{method:"POST",body:JSON.stringify({action:"resume",runId:paused.id})}).then(load).catch(e=>setError(e as Error));
   },[state,endpoint,load]);
-  useEffect(()=>{let alive=true;void api<AiStudioState>(endpoint).then(data=>{if(alive){setState(data);setLoaded(true);}}).catch(e=>{if(alive){setError(e);setLoaded(true);}});return()=>{alive=false;};},[endpoint]);
+  useEffect(()=>{let alive=true;void api<AiStudioState>(endpoint).then(data=>{if(alive){const requested=new URLSearchParams(window.location.search).get("run");const current=data.runs.find(r=>r.id===requested)||data.runs.find(active);if(current){setSelected(current.id);setRole(current.steps.find(s=>s.status==="running")?.role||current.steps[0]?.role||"intake");if(active(current))autoResume.current=current.id;}setState(data);setLoaded(true);}}).catch(e=>{if(alive){setError(e);setLoaded(true);}});return()=>{alive=false;};},[endpoint]);
   useEffect(()=>{
     if(!state?.authorized)return;
     let stopped=false;let timer:ReturnType<typeof setTimeout>;
     const poll=async()=>{
       if(stopped)return;
-      if(!document.hidden)try{const data=await api<AiStudioState>(endpoint);if(!stopped)setState(data);}catch(e){if(!stopped)setError(e as Error);}
-      if(!stopped)timer=setTimeout(poll,running?3000:15000);
+      try{const data=await api<AiStudioState>(endpoint);if(!stopped)setState(data);}catch(e){if(!stopped)setError(e as Error);}
+      if(!stopped)timer=setTimeout(poll,running?(document.hidden?10000:3000):15000);
     };
     timer=setTimeout(poll,running?2000:15000);return()=>{stopped=true;clearTimeout(timer);};
   },[endpoint,state?.authorized,!!running]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -85,7 +88,7 @@ export function AiStudio() {
     const attemptId=requestId||crypto.randomUUID();setRequestId(attemptId);
     const submitted={mode,brief,parent,requestId:attemptId};
     const result=await perform({action:"create",payload:{mode:submitted.mode,brief:submitted.brief,requestId:submitted.requestId,parentRunId:submitted.parent}}) as {id:string}|undefined;
-    if(result){autoResume.current=result.id;setSelected(result.id);setRole(submitted.mode==="experiments"?"experimenter":"researcher");setBrief(current=>current===submitted.brief?"":current);setParent(current=>current===submitted.parent?null:current);setRequestId(current=>current===submitted.requestId?null:current);notify("Brief saved. The team has started.");}
+    if(result){autoResume.current=result.id;setSelected(result.id);setRole(modeRoles[submitted.mode][0]);setBrief(current=>current===submitted.brief?"":current);setParent(current=>current===submitted.parent?null:current);setRequestId(current=>current===submitted.requestId?null:current);notify("Brief saved. The team has started.");}
   };
   const apply=async()=>{
     if(!run||!review)return;

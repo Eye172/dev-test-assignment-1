@@ -10,7 +10,7 @@ function initialSession(){return {step:"confirm",path:"guided",text:"",files:[],
 test("clarification drafts and malformed nested recovery survive reload without a crash",async({page})=>{
   await page.goto("/startups/new");await page.getByRole("button",{name:/^Free form/}).click();
   await page.getByLabel("Your startup in your own words").fill("A B2B SaaS idea for teams. Manual updates are scattered.");
-  await page.getByRole("button",{name:"Continue",exact:true}).click();
+  await page.getByRole("button",{name:"Continue without AI",exact:true}).click();
   await page.getByLabel("What is the startup called?").fill("A name still being edited");await page.reload();
   await expect(page.getByLabel("What is the startup called?")).toHaveValue("A name still being edited");
   await page.evaluate(()=>{const k="orbit:onboarding:v1",s=JSON.parse(sessionStorage.getItem(k)!);s.step="guided";s.guided={markets:null,roles:42};s.pending={name:{value:null,multi:8}};sessionStorage.setItem(k,JSON.stringify(s));});
@@ -46,10 +46,36 @@ test("explicit preflight retries use a new ID and preserve unknowns over outdate
   });
   await page.goto("/startups/new");await page.getByRole("button",{name:/^Free form/}).click();await page.getByLabel("Your startup in your own words").fill(brief);
   await page.locator('input[type="file"]').setInputFiles({name:"old.txt",mimeType:"text/plain",buffer:Buffer.from("Old deck: we have revenue and paying customers.")});await expect(page.getByText(/Text read ·/)).toBeVisible();
-  await page.getByRole("button",{name:"Interpret with AI",exact:true}).click();await expect(page.getByLabel("Owner access code",{exact:true})).toBeVisible();expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await page.getByLabel("Owner access code",{exact:true}).fill("ci-studio-code-no-production-access");await page.getByRole("button",{name:"Unlock AI",exact:true}).click();
-  await page.getByRole("button",{name:"Interpret with AI",exact:true}).click();await expect(page.getByRole("alert").filter({hasText:"Synthetic provider failure"})).toBeVisible();
-  await page.getByRole("button",{name:"Start a new paid interpretation",exact:true}).click();await expect(page.getByText(/Interpretation ready/)).toBeVisible();expect(ids).toHaveLength(2);expect(ids[0]).not.toBe(ids[1]);
-  await page.getByRole("button",{name:"Continue",exact:true}).click();await expect(page.getByRole("heading",{name:"Where are you today?",exact:true})).toBeVisible();
+  await page.getByRole("button",{name:"Continue with AI",exact:true}).click();await expect(page.getByLabel("Owner access code",{exact:true})).toBeVisible();expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await page.getByLabel("Owner access code",{exact:true}).fill("ci-studio-code-no-production-access");await page.getByRole("button",{name:"Unlock and analyze",exact:true}).click();
+  await expect(page.getByRole("alert").filter({hasText:"Synthetic provider failure"})).toBeVisible();expect(ids).toHaveLength(1);
+  await page.getByRole("button",{name:"Start a new paid interpretation",exact:true}).click();await expect(page.getByRole("heading",{name:"Where are you today?",exact:true})).toBeVisible();expect(ids).toHaveLength(2);expect(ids[0]).not.toBe(ids[1]);
+});
+
+test("AI discovery uses generated decision questions, skips known facts and carries answers into launch",async({page})=>{
+  let analyses=0;let launch:Record<string,unknown>|undefined;
+  await page.route("**/api/intake",async route=>{
+    if(route.request().method()!=="POST"||route.request().postDataJSON().action!=="analyze"){await route.continue();return;}
+    analyses++;const {payload}=route.request().postDataJSON();
+    await route.fulfill({status:202,json:{data:{id:crypto.randomUUID(),requestId:payload.requestId,status:"completed",draft:{profile:{...baseProfile,customerSegment:"Courier operations managers"},hints:{painPoint:"Manual dispatch is slow",outcome:"",price:"",pricingModel:"",channels:[]},origin:{name:"ai"}},uncertainties:[],questions:[
+      {id:"known_market",field:"targetMarket",text:"Which market do you start in?",why:"A known profile fact",kind:"text",options:[],placeholder:"",multi:false},
+      {id:"dispatch_workaround",field:"context",text:"How do your couriers turn voice notes into dispatch records today?",why:"We need a real workaround to compare with your idea.",kind:"text",options:[],placeholder:"Describe today's workflow",multi:false}],error:null,inputTokens:200,outputTokens:100,estimatedMicros:1400}}});
+  });
+  await page.route("**/api/startups/*/ai",async route=>{if(route.request().method()==="POST"&&route.request().postDataJSON().action==="create"){launch=route.request().postDataJSON().payload;await route.fulfill({status:201,json:{data:{id:crypto.randomUUID()}}});return;}await route.continue();});
+  await page.goto("/startups/new");await page.getByRole("button",{name:/^Free form/}).click();await page.getByLabel("Your startup in your own words").fill(brief);
+  await page.getByRole("button",{name:"Continue with AI",exact:true}).click();await page.getByLabel("Owner access code",{exact:true}).fill("ci-studio-code-no-production-access");await page.getByRole("button",{name:"Unlock and analyze",exact:true}).click();
+  const question="How do your couriers turn voice notes into dispatch records today?";
+  await expect(page.getByRole("heading",{name:question,exact:true})).toBeVisible();await expect(page.getByText("Which market do you start in?",{exact:true})).toHaveCount(0);expect(analyses).toBe(1);
+  await page.getByLabel(question,{exact:true}).fill("A dispatcher copies each message into an Excel sheet.");await page.reload();await expect(page.getByLabel(question,{exact:true})).toHaveValue("A dispatcher copies each message into an Excel sheet.");
+  await page.getByRole("button",{name:"Answer",exact:true}).click();await expect(page.getByRole("heading",{name:"Is this your startup?",exact:true})).toBeVisible();await expect(page.getByRole("checkbox",{name:/Run the AI specialists/})).toBeChecked();
+  await page.getByRole("button",{name:/Create and launch/}).click();await expect.poll(()=>launch).toBeTruthy();expect(JSON.stringify(launch)).toContain("Excel sheet");
+  await expect(page.getByRole("heading",{name:"Your specialists are working.",exact:true})).toBeVisible();await expect(page.getByRole("heading",{name:"Your workspace is ready.",exact:true})).toHaveCount(0);
+  await page.getByRole("button",{name:"Open AI results",exact:true}).click();await expect(page).toHaveURL(/\/ai\?run=/);
+});
+
+test("a failed AI access check remains visible and can recover through the primary action",async({page})=>{
+  let reads=0;await page.route("**/api/intake",async route=>{if(route.request().method()==="GET"&&++reads===1){await route.fulfill({status:503,json:{error:{code:"UNAVAILABLE",message:"Synthetic temporary outage"}}});return;}await route.continue();});
+  await page.goto("/startups/new");await page.getByRole("button",{name:/^Free form/}).click();await page.getByLabel("Your startup in your own words").fill(brief);
+  await page.getByRole("button",{name:"Continue with AI",exact:true}).click();await expect(page.getByLabel("Owner access code",{exact:true})).toBeVisible();expect(reads).toBeGreaterThan(1);
 });
 
 test("lost creation acknowledgement recovers one workspace; latest consent and confirmed buyer win",async({page})=>{

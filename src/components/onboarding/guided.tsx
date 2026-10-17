@@ -1,6 +1,5 @@
 "use client";
-import { useState } from "react";
-import { AnimatePresence, motion } from "motion/react";
+import { motion } from "motion/react";
 import { ArrowLeft, ArrowRight, Check } from "lucide-react";
 import { emptyDraft, type IntakeDraft, type Model, type Stage } from "../intake/extract";
 import { FileAttach, type Attached } from "./files";
@@ -39,14 +38,13 @@ export function guidedToDraft(g: GuidedState): IntakeDraft {
 const topics = ["Basics", "Who pays", "Stage", "Market", "First customer", "Problem and price", "Material"] as const;
 const ease = [0.22, 1, 0.36, 1] as const;
 
-export function GuidedBrief({ value: g, onChange, onBack, onDone, files, onFiles,topic=0,onTopic,readingFiles=false,onReading }: { value: GuidedState; onChange: (g: GuidedState) => void; onBack: () => void; onDone: () => void; files: Attached[]; onFiles: (f: Attached[]) => void;topic?:number;onTopic?:(n:number)=>void;readingFiles?:boolean;onReading?:(busy:boolean)=>void }) {
+export function GuidedBrief({ value: g, onChange, onBack, onDone,onManualDone, files, onFiles,topic=0,onTopic,readingFiles=false,onReading }: { value: GuidedState; onChange: (g: GuidedState) => void; onBack: () => void; onDone: () => void;onManualDone:()=>void; files: Attached[]; onFiles: (f: Attached[]) => void;topic?:number;onTopic?:(n:number)=>void;readingFiles?:boolean;onReading?:(busy:boolean)=>void }) {
   const i=topic;
-  const [dir, setDir] = useState(1);
   const set = (p: Partial<GuidedState>) => onChange({ ...g, ...p });
   const toggle = (k: "types" | "signals" | "markets" | "roles" | "sizes" | "channels", v: string, max = 99) =>
     set({ [k]: g[k].includes(v) ? g[k].filter(x => x !== v) : g[k].length < max ? [...g[k], v] : g[k] } as Partial<GuidedState>);
   const done = [!!(g.name.trim() && g.oneLiner.trim()), !!g.model, !!g.stage, !!(g.markets.length || g.otherMarket.trim()), !!composedSegment(g), !!(g.pain || g.price || g.channels.length), files.length > 0];
-  const move = (n: number) => { if(readingFiles)return;setDir(n > i ? 1 : -1); onTopic?.(n); };
+  const move = (n: number) => { if(readingFiles)return;onTopic?.(n); };
   const next = () => {if(readingFiles)return;if(i < topics.length - 1)move(i+1);else onDone();};
   // Plain render helpers (not components), so inputs keep focus and state across renders.
   const chips = (k: "types" | "signals" | "markets" | "roles" | "sizes" | "channels", options: string[], max?: number) =>
@@ -65,8 +63,7 @@ export function GuidedBrief({ value: g, onChange, onBack, onDone, files, onFiles
         <button type="button" aria-current={n === i ? "step" : undefined} className={`${n === i ? "now" : ""} ${done[n] ? "done" : ""}`} onClick={() => move(n)}>
           <span className="rail-n" aria-hidden>{done[n] ? <Check size={12} strokeWidth={3}/> : n + 1}</span>{t}</button></li>)}</ol></nav>
       <div className="guided-stage">
-        <AnimatePresence mode="wait" custom={dir} initial={false}>
-          <motion.div key={i} custom={dir} variants={{ a: (d: number) => ({ opacity: 0, y: 14 * d }), b: { opacity: 1, y: 0 }, c: (d: number) => ({ opacity: 0, y: -10 * d }) }} initial="a" animate="b" exit="c" transition={{ duration: 0.26, ease }}
+          <motion.div key={i} initial={{opacity:0,y:4}} animate={{opacity:1,y:0}} transition={{ duration: 0.14, ease }}
             className="guided-topic" onKeyDown={e => { if (e.key === "Enter" && (e.target as HTMLElement).tagName === "INPUT") { e.preventDefault(); next(); } }}>
             {i === 0 && <>
               <h2>What is it called, and what does it do?</h2>
@@ -118,9 +115,9 @@ export function GuidedBrief({ value: g, onChange, onBack, onDone, files, onFiles
               <FileAttach files={files} onChange={onFiles} onReading={onReading}/>
             </>}
           </motion.div>
-        </AnimatePresence>
         <div className="flow-actions">
-          <button type="button" className="button primary" disabled={readingFiles} onClick={next}>{i < topics.length - 1 ? "Next" : "Review profile"}<ArrowRight size={17} aria-hidden className="arrow"/></button>
+          <button type="button" className="button primary" disabled={readingFiles} onClick={next}>{i < topics.length - 1 ? "Next" : "Continue with AI"}<ArrowRight size={17} aria-hidden className="arrow"/></button>
+          {i===topics.length-1&&<button type="button" className="button ghost" disabled={readingFiles} onClick={onManualDone}>Review profile without AI</button>}
           {i < topics.length - 1 && !done[i] && <button type="button" className="button ghost" onClick={next}>Skip for now</button>}
         </div>
       </div>

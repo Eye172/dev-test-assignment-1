@@ -4,7 +4,8 @@ import { createDatabase, type Database } from "@/server/database";
 import { Store } from "@/server/store";
 import { AiStore } from "@/server/ai/store";
 import { IntakeStore } from "@/server/ai/intake";
-import { emptyDraft, extract, nextQuestion } from "@/lib/domain/intake";
+import { emptyDraft, extract, nextQuestion,nextIntakeQuestion,answer, type Question } from "@/lib/domain/intake";
+import { intakeDraftSchema } from "@/lib/domain/intake-api";
 import { demoProfile } from "@/server/demo";
 import { executionInput } from "@/server/ai/context";
 
@@ -22,6 +23,19 @@ describe("onboarding interpretation and safe recovery",()=>{
   it("acknowledges the same startup creation once and detects changed retries",async()=>{
     const id=randomUUID();const a=await store.createStartupOnce(demoProfile,id),b=await store.createStartupOnce(demoProfile,id);expect(b.id).toBe(a.id);
     await expect(store.createStartupOnce({...demoProfile,name:"Changed"},id)).rejects.toMatchObject({code:"CREATION_CHANGED",fields:{createdStartupId:a.id}});
+  });
+  it("asks generated business questions after a complete profile and skips facts already supplied",()=>{
+    const d=emptyDraft();const {name,description,businessModel,stage,targetMarket,customerSegment}=demoProfile;d.profile={name,description,businessModel,stage,targetMarket,customerSegment,websiteUrl:""};
+    const questions:Question[]=[{id:"known_market",field:"targetMarket",text:"Which country?",why:"A required field",kind:"text"},{id:"dispatch_workflow",field:"context",text:"How are courier voice notes turned into a dispatch record today?",why:"The next experiment must compare against that workflow.",kind:"text"}];
+    expect(nextIntakeQuestion(d,[],questions)?.id).toBe("dispatch_workflow");
+    expect(nextIntakeQuestion(d,["dispatch_workflow"],questions)).toBeNull();
+    expect(nextIntakeQuestion(d,Array.from({length:7},(_,i)=>String(i)),questions)).toBeNull();
+    expect(nextIntakeQuestion(d,[],[])).toBeNull();
+    d.profile.name="";
+    const named:Question={id:"startup_name",field:"name",text:"What is the dispatch product called?",why:"Name the workspace",kind:"text"};
+    expect(nextIntakeQuestion(d,["startup_name"],[named])).toBeNull();
+    expect(intakeDraftSchema.safeParse(answer(d,"businessModel","Small companies")).success).toBe(true);
+    expect(intakeDraftSchema.safeParse(answer(d,"stage","Testing it now")).success).toBe(true);
   });
   it("persists extraction input, fences duplicate workers and settles shared budget once",async()=>{
     const p=material(),a=await intake.create(p),b=await intake.create(p);expect(b.id).toBe(a.id);
@@ -41,13 +55,14 @@ describe("onboarding interpretation and safe recovery",()=>{
   });
   it("freezes readable private material, keeps confirmed values authoritative and scopes intake to its startup",async()=>{
     const input=material(),record=await intake.create(input);await intake.claim(record.id);
-    const d=emptyDraft();d.profile.customerSegment="Earlier extracted segment";await intake.complete(record.id,{profile:d.profile,hints:d.hints,uncertainties:["Founder must confirm the first buyer."]});
+    const d=emptyDraft();d.profile.customerSegment="Earlier extracted segment";await intake.complete(record.id,{profile:d.profile,hints:d.hints,uncertainties:["Founder must confirm the first buyer."],questions:[]});
     const startup=await store.createStartup({...demoProfile,customerSegment:"Confirmed courier managers"});
-    const payload={mode:"experiments",brief:"Use my confirmed profile",requestId:randomUUID(),intakeId:record.id,material:{text:input.text,files:input.files}};
+    const payload={mode:"experiments",brief:"Use my confirmed profile",requestId:randomUUID(),intakeId:record.id,material:{text:"x".repeat(16000),files:input.files,answers:[{question:"What is the actual dispatch workaround?",answer:"A private dispatcher spreadsheet; never lose this answer."}]}};
     const created=await ai.create(startup.id,payload);expect(await ai.create(startup.id,payload)).toMatchObject({id:created.id,created:false});
     await expect(ai.create(startup.id,{...payload,material:{...payload.material,text:"Changed content"}})).rejects.toMatchObject({code:"IDEMPOTENCY_CONFLICT"});
     const run=(await ai.lease(created.id))!,step=(await ai.steps(run.id))[0],view=await executionInput(ai,run,step,[]);
     expect(view.snapshot.workspace.startup.customerSegment).toBe("Confirmed courier managers");expect(view.snapshot.founderMaterial?.files[0].text).toContain("Private extraction");expect(view.instruction).toContain("confirmed saved profile is authoritative");
+    expect(view.snapshot.founderMaterial?.text).toHaveLength(16000);expect(view.snapshot.founderMaterial?.answers).toEqual(payload.material.answers);
     expect(JSON.stringify(await store.workspace(startup.id))).not.toContain("Private extraction");expect(JSON.stringify(await ai.export(startup.id))).toContain("Private extraction");
     await ai.cancel(startup.id,run.id);
     const other=await store.createStartup(demoProfile);await expect(ai.create(other.id,{...payload,requestId:randomUUID()})).rejects.toMatchObject({status:404});

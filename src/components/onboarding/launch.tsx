@@ -37,7 +37,7 @@ function seedDrafts(startup: Startup, d: IntakeDraft): {seeded:SectionKey[];inva
   return {seeded,invalid};
 }
 
-type Attempt={seeded?:boolean;planReady?:boolean;runId?:string;payload?:{mode:"full";brief:string;requestId:string;intakeId?:string;material:{text:string;files:Attached[]}}};
+type Attempt={seeded?:boolean;planReady?:boolean;runId?:string;payload?:{mode:"full";brief:string;requestId:string;intakeId?:string;material:import("@/lib/domain/intake-api").FounderMaterial}};
 const attemptKey=(id:string)=>`orbit:launch:v2:${id}`;
 function readAttempt(id:string):Attempt {try{const v=JSON.parse(sessionStorage.getItem(attemptKey(id))||"{}");return v&&typeof v==='object'?v:{};}catch{return {};}}
 function saveAttempt(id:string,p:Attempt){try{sessionStorage.setItem(attemptKey(id),JSON.stringify(p));}catch{/* Current component keeps the attempt if storage is unavailable. */}}
@@ -46,7 +46,7 @@ function saveAttempt(id:string,p:Attempt){try{sessionStorage.setItem(attemptKey(
  * The transition after creation. Every segment lights only when its real step finishes; AI segments follow the
  * server's run journal. It never blocks: the workspace is one click away from the first second.
  */
-export function LaunchSequence({ startup, draft, brief, files,runAi=false,intakeId }: { startup: Startup; draft: IntakeDraft; brief: string; files: Attached[];runAi?:boolean;intakeId?:string }) {
+export function LaunchSequence({ startup, draft, brief,materialText,answers, files,runAi=false,intakeId }: { startup: Startup; draft: IntakeDraft; brief: string;materialText:string;answers:{q:string;a:string}[]; files: Attached[];runAi?:boolean;intakeId?:string }) {
   const router = useRouter();
   const base = `/startups/${startup.id}`;
   const [steps, setSteps] = useState<LaunchStep[]>([
@@ -75,11 +75,12 @@ export function LaunchSequence({ startup, draft, brief, files,runAi=false,intake
     set("ai", "run");
     try {
       const state = await api<AiStudioState>(`/api/startups/${startup.id}/ai`);
-      if (!state.configured || !state.authorized) { setNeedsCode(state.configured); set("ai", "skip", state.configured ? "Locked — unlock below or later" : "Not configured on this deployment"); setFinished(true); return; }
+      if (!state.configured || !state.authorized) { setNeedsCode(state.configured); set("ai", "fail", state.configured ? "AI has not started. Unlock to continue." : "AI is not configured on this deployment."); setFinished(true); return; }
       setNeedsCode(false);
-      if(!attempt.current.payload)updateAttempt({payload:{mode:"full",brief:brief.slice(0,6000),requestId:crypto.randomUUID(),...(intakeId?{intakeId}:{}),material:{text:brief,files}}});
+      if(!attempt.current.payload)updateAttempt({payload:{mode:"full",brief:brief.slice(0,6000),requestId:crypto.randomUUID(),...(intakeId?{intakeId}:{}),material:{text:materialText,files,answers:answers.map(x=>({question:x.q,answer:x.a}))}}});
       const created = await api<{ id: string }>(`/api/startups/${startup.id}/ai`, { method: "POST", body: JSON.stringify({ action: "create", payload: attempt.current.payload }) });
       updateAttempt({runId:created.id});
+      setRun((await api<AiStudioState>(`/api/startups/${startup.id}/ai`)).runs.find(r=>r.id===created.id)||null);
       set("ai", "run", "Working — you can keep going");
       setFinished(true);
       const checkpoints=new Set<string>();
@@ -114,35 +115,27 @@ export function LaunchSequence({ startup, draft, brief, files,runAi=false,intake
       set("material", files.length ? (read === files.length ? "done" : "skip") : "skip",
         files.length ? `${read} text extracts · ${files.length-read} unread; extraction limits retained` : "Nothing attached");
       set("drafts", result?.seeded.length ? "done" : "skip", result?`${result.seeded.length} drafts to review${result.invalid.length?`; ${result.invalid.join(", ")} hints need editing; original material retained`:""}`:"Previous setup retained; newer drafts preserved");
-      set("plan", "run");
-      try { if(!attempt.current.planReady){await api<Workspace>(`/api/startups/${startup.id}/roadmap`, { method: "POST" });updateAttempt({planReady:true});} set("plan", "done", "Generated from your profile"); }
-      catch { set("plan", "fail", "Couldn’t generate — try again on the roadmap"); }
+      if(runAi||attempt.current.payload)set("plan","skip","The experiment designer will propose a plan for your review.");
+      else{set("plan", "run");
+        try { if(!attempt.current.planReady){await api<Workspace>(`/api/startups/${startup.id}/roadmap`, { method: "POST" });updateAttempt({planReady:true});} set("plan", "done", "Provisional rule plan; save strategy to tailor it."); }
+        catch { set("plan", "fail", "Couldn’t generate — try again on the roadmap"); }}
       if(runAi||attempt.current.payload)await startAi();else{set("ai","skip","Optional — run below or from AI studio");setFinished(true);}
     })();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const open = () => router.push(`${base}?from=onboarding`);
+  const open = () => router.push(run||runAi||attempt.current.payload?`${base}/ai${attempt.current.runId?`?run=${attempt.current.runId}`:""}`:`${base}?from=onboarding`);
   const segments = run ? run.steps.filter(s => s.round === 0) : [];
-  const doneCount = steps.filter(s => s.state === "done" || s.state === "skip" || s.state === "fail").length;
+  const aiState=steps.find(s=>s.id==="ai")?.state;
+  const title=needsCode?"Unlock AI to continue.":aiState==="fail"?"AI stopped. Your brief is saved.":run?.status==="completed"?"Your AI draft is ready to review.":run?.status==="needs_attention"?"Review the team’s concerns.":aiState==="run"?"Your specialists are working.":finished?"Your workspace is ready.":"Saving your workspace…";
   return <section className="launch" aria-labelledby="launch-title">
-    <div className="launch-orbit" aria-hidden>
-      <svg viewBox="-110 -110 220 220">
-        <circle r="96" className="lo-track"/>
-        {steps.map((st, i) => {
-          const len = 2 * Math.PI * 96 / steps.length;
-          return <circle key={st.id} r="96" className={`lo-seg ${st.state}`} strokeDasharray={`${len - 6} ${2 * Math.PI * 96 - len + 6}`} strokeDashoffset={-i * len} transform="rotate(-90)"/>;
-        })}
-        {segments.length > 0 && segments.map((st, i) => {
-          const len = 2 * Math.PI * 70 / segments.length;
-          return <circle key={st.id} r="70" className={`lo-seg inner ${st.status === "completed" ? "done" : st.status === "running" ? "run" : st.status === "failed" ? "fail" : "wait"}`} strokeDasharray={`${len - 5} ${2 * Math.PI * 70 - len + 5}`} strokeDashoffset={-i * len} transform="rotate(-90)"/>;
-        })}
-        <g className="lo-core"><circle r="34"/></g>
-      </svg>
-      <span className="lo-count num">{doneCount}<small>/{steps.length}</small></span>
+    <div className="launch-context plate">
+      <p className="eyebrow">Your startup brief</p><h2>{startup.name}</h2><p>{startup.description}</p>
+      <p className="field-help">{startup.customerSegment} · {startup.targetMarket} · {startup.stage}</p>
+      {run&&<p role="status">{run.steps.filter(s=>s.status==="completed").length} of {run.steps.length} specialist steps saved. {run.status==="paused"?"Continuing from the saved checkpoint.":run.status.replaceAll("_"," ")}</p>}
     </div>
     <div className="launch-copy">
       <p className="eyebrow">{startup.name}</p>
-      <h1 id="launch-title" tabIndex={-1}>{finished ? "Your workspace is ready." : "Setting up your workspace…"}</h1>
+      <h1 id="launch-title" tabIndex={-1}>{title}</h1>
       <ol className="launch-steps" aria-live="polite">{steps.map(st => <li key={st.id} className={st.state}>
         <span className="ls-icon" aria-hidden>{st.state === "done" ? <Check size={13} strokeWidth={3}/> : st.state === "skip" ? <Minus size={13}/> : st.state === "fail" ? <X size={13}/> : <span className="ls-dot"/>}</span>
         <span className="ls-label">{st.label}</span>{st.note && <span className="ls-note">{st.note}</span>}
@@ -157,7 +150,7 @@ export function LaunchSequence({ startup, draft, brief, files,runAi=false,intake
       <p className="field-help">AI sends your confirmed profile and extracted material to OpenAI. It uses credits and saves proposals for your review. Read text, sources, assumptions and decisions in AI studio.</p>
       {segments.length > 0 && <ul className="launch-agents">{segments.map(st => <li key={st.id} className={st.status}>{agentCatalog[st.role].short}</li>)}</ul>}
       <div className="flow-actions">
-        <button type="button" className="button primary" onClick={open}>{finished ? "See what was prepared" : "Open workspace now"}<ArrowRight size={17} aria-hidden className="arrow"/></button>
+        <button type="button" className="button primary" onClick={open}>{run||runAi||aiState==="run"?"Open AI results":finished?"See what was prepared":"Open workspace now"}<ArrowRight size={17} aria-hidden className="arrow"/></button>
         {run && !["completed", "needs_attention", "failed", "cancelled"].includes(run.status) && <span className="field-help">Work is saved at checkpoints. Reopen AI studio to continue and review the results.</span>}
       </div>
     </div>

@@ -24,7 +24,7 @@ function canonical(v:unknown):unknown {
 }
 export const hash = (v: unknown) => createHash("sha256").update(JSON.stringify(canonical(v))).digest("hex");
 type Vector = { profile: string; sections: Record<string, number>; tasks: Record<string, number>; evidence: string[]; memory?:Record<string,string> };
-export type AiSnapshot = { workspace: Workspace; evidence: AiEvidence[]; parent: { role: AiRole; result: AiResult; runId?:string; stepId?:string; asOf?:string }[]; parentSources:AiSource[]; memory?:MemoryItem[]; pages?:SourcePage[]; findings?:StoredFinding[]; founderMaterial?:{text:string;files:import("@/lib/domain/intake-api").Attachment[]}; intake?:{id:string;inputHash:string;result:unknown;promptVersion:string;model:string} };
+export type AiSnapshot = { workspace: Workspace; evidence: AiEvidence[]; parent: { role: AiRole; result: AiResult; runId?:string; stepId?:string; asOf?:string }[]; parentSources:AiSource[]; memory?:MemoryItem[]; pages?:SourcePage[]; findings?:StoredFinding[]; founderMaterial?:import("@/lib/domain/intake-api").FounderMaterial; intake?:{id:string;inputHash:string;result:unknown;promptVersion:string;model:string} };
 export type LeasedRun = { id: string; token: string; snapshot: AiSnapshot; mode: AiRun["mode"]; brief: string };
 export function revisionVector(workspace: Workspace, evidence: AiEvidence[], memory:MemoryItem[]=[]): Vector {
   const profile = { ...currentProfile(workspace.startup), preferences: undefined };

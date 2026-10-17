@@ -1,11 +1,11 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
-import { AnimatePresence, motion, MotionConfig } from "motion/react";
+import { motion, MotionConfig } from "motion/react";
 import { ArrowLeft, ArrowRight, Check, ListChecks, MessagesSquare, SkipForward } from "lucide-react";
 import type { Startup } from "@/lib/domain/types";
 import { ProfileForm, type ProfileSeed } from "../profile-form";
 import { useHydrated } from "../ui";
-import { answer, emptyDraft, extract, missing, nextQuestion, type IntakeDraft, type Question } from "../intake/extract";
+import { answer, emptyDraft, extract, missing, nextQuestion, nextIntakeQuestion, type IntakeDraft, type Question } from "../intake/extract";
 import { FileAttach, type Attached } from "./files";
 import { GuidedBrief, guidedToDraft, emptyGuided, type GuidedState } from "./guided";
 import { LaunchSequence } from "./launch";
@@ -14,15 +14,31 @@ import { attachmentSchema, intakeDraftSchema, intakeRecordSchema, type IntakeRec
 import { startupInputSchema } from "@/lib/domain/schemas";
 import { z } from "zod";
 
-type Step = "choose" | "free" | "clarify" | "guided" | "confirm" | "launch";
+type Step = "choose" | "free" | "interpret" | "clarify" | "guided" | "confirm" | "launch";
 type Saved = { step: Step; path: "free" | "guided" | null; text: string; files: Attached[]; asked: string[]; answers: { q: string; a: string }[]; draft: IntakeDraft; guided: GuidedState;
   sessionId:string; creationRequestId:string; created:Startup|null; pending:Record<string,{value:string;multi:string[]}>; guidedTopic:number; runAi:boolean;
-  intake?:IntakeRecord; intakeAttempt?:{requestId:string;materialKey:string}; intakeMaterialKey?:string;
+  intake?:IntakeRecord; intakeAttempt?:{requestId:string;materialKey:string}; intakeMaterialKey?:string;intakeAdvance?:boolean;answerMaterialKey?:string;
 };
 const storeKey = "orbit:onboarding:v1";
 const ease = [0.22, 1, 0.36, 1] as const;
 const initial: Saved = { step: "choose", path: null, text: "", files: [], asked: [], answers: [], draft: emptyDraft(), guided: emptyGuided,sessionId:"",creationRequestId:"",created:null,pending:{},guidedTopic:0,runAi:false };
 const materialKey=(text:string,files:Attached[])=>{let h=2166136261;for(const c of JSON.stringify([text,files])){h^=c.charCodeAt(0);h=Math.imul(h,16777619);}return (h>>>0).toString(16);};
+const analysisOf=(s:Saved)=>s.path==="guided"?`Founder guided answers:\n${JSON.stringify(s.guided)}`:s.text;
+function draftOf(s:Saved):IntakeDraft{
+  const key=materialKey(analysisOf(s),s.files), interpretation=s.intakeMaterialKey===key&&s.intake?.status==="completed"?s.intake.draft:null;
+  const text=interpretation??extract(s.text),files=extract(s.files.filter(f=>f.kind==="text").map(f=>f.text).join("\n\n"));
+  let d=s.path==="guided"?guidedToDraft(s.guided):emptyDraft();
+  for(const field of Object.keys(d.profile) as (keyof IntakeDraft["profile"])[]){const value=d.profile[field]||(interpretation?text.profile[field]:text.profile[field]||files.profile[field]);(d.profile as Record<string,string>)[field]=value;if(value&&!d.origin[field])d.origin[field]=interpretation?"ai":text.profile[field]?"text":"file";}
+  for(const field of ["painPoint","outcome","price","pricingModel"] as const){const value=d.hints[field]||(interpretation?text.hints[field]:text.hints[field]||files.hints[field]);d.hints[field]=value;if(value&&!d.origin[field])d.origin[field]=interpretation?"ai":text.hints[field]?"text":"file";}
+  if(!d.hints.channels.length)d.hints.channels=interpretation?text.hints.channels:text.hints.channels.length?text.hints.channels:files.hints.channels;
+  for(const [field,origin] of Object.entries(s.draft.origin))if(origin==="answer"&&(!s.answerMaterialKey||s.answerMaterialKey===key))d=answer(d,field as Question["field"],field==="channels"?s.draft.hints.channels:field in s.draft.profile?(s.draft.profile as Record<string,string>)[field]:(s.draft.hints as unknown as Record<string,string>)[field]);
+  return d;
+}
+function advanceReady(s:Saved):Saved{
+  if(s.step!=="interpret"||!s.intakeAdvance||s.intake?.status!=="completed"||s.intakeMaterialKey!==materialKey(analysisOf(s),s.files))return s;
+  const draft=draftOf(s),question=nextIntakeQuestion(draft,s.asked,s.intake.questions||[]);
+  return {...s,intakeAdvance:false,draft,step:question?"clarify":"confirm"};
+}
 function restore(raw:string|null):Saved {
   try {
     const v=raw?JSON.parse(raw):{};
@@ -31,15 +47,17 @@ function restore(raw:string|null):Saved {
     const files=recover(z.array(attachmentSchema).max(3),v.files,[]);
     const p=startupInputSchema.safeParse(v.created?Object.fromEntries(Object.entries(v.created).filter(([k])=>!['id','revision','createdAt','updatedAt'].includes(k))):null);
     const created=p.success&&z.uuid().safeParse(v.created?.id).success?{...v.created,...p.data} as Startup:null;
-    const step=recover(z.enum(['choose','free','clarify','guided','confirm','launch']),v.step,'choose');
+    const step=recover(z.enum(['choose','free','interpret','clarify','guided','confirm','launch']),v.step,'choose');
     const guidedShape=Object.fromEntries(Object.entries(emptyGuided).map(([k,val])=>[k,Array.isArray(val)?z.array(z.string().max(200)).max(30):z.string().max(k==='price'?500:3000)]));
     const guided={...emptyGuided,...recover(z.object(guidedShape),v.guided,{})} as GuidedState;
     if(!['','B2B','B2C','B2G'].includes(guided.model))guided.model='';if(!['','Idea','MVP','Early Traction'].includes(guided.stage))guided.stage='';
-    return {...initial,text:typeof v.text==='string'?v.text.slice(0,16000):"",files,created,step:step==='launch'&&!created?'confirm':step,path:recover(z.enum(['free','guided']).nullable(),v.path,null),runAi:v.runAi===true,
+    const saved:Saved={...initial,text:typeof v.text==='string'?v.text.slice(0,16000):"",files,created,step:step==='launch'&&!created?'confirm':step,path:recover(z.enum(['free','guided']).nullable(),v.path,null),runAi:v.runAi===true,
       sessionId:z.uuid().safeParse(v.sessionId).success?v.sessionId:crypto.randomUUID(),creationRequestId:z.uuid().safeParse(v.creationRequestId).success?v.creationRequestId:crypto.randomUUID(),
       asked:recover(z.array(z.string().max(40)).max(7),v.asked,[]),answers:recover(z.array(z.object({q:z.string().max(500),a:z.string().max(3000)})).max(7),v.answers,[]),
       draft:recover(intakeDraftSchema,v.draft,emptyDraft()),guided,pending:recover(z.record(z.string().max(40),z.object({value:z.string().max(3000),multi:z.array(z.string().max(120)).max(3)})),v.pending,{}),guidedTopic:Number.isInteger(v.guidedTopic)?Math.min(6,Math.max(0,v.guidedTopic)):0,
-      intake:recover(intakeRecordSchema.optional(),v.intake,undefined) as IntakeRecord|undefined,intakeAttempt:recover(z.object({requestId:z.uuid(),materialKey:z.string().max(16)}).optional(),v.intakeAttempt,undefined),intakeMaterialKey:recover(z.string().max(16).optional(),v.intakeMaterialKey,undefined)};
+      intake:recover(intakeRecordSchema.optional(),v.intake,undefined) as IntakeRecord|undefined,intakeAttempt:recover(z.object({requestId:z.uuid(),materialKey:z.string().max(16)}).optional(),v.intakeAttempt,undefined),intakeMaterialKey:recover(z.string().max(16).optional(),v.intakeMaterialKey,undefined),intakeAdvance:v.intakeAdvance===true,answerMaterialKey:recover(z.string().max(16).optional(),v.answerMaterialKey,undefined)};
+    saved.answerMaterialKey??=materialKey(analysisOf(saved),files);
+    return advanceReady(saved);
   } catch { return {...initial,sessionId:crypto.randomUUID(),creationRequestId:crypto.randomUUID()}; }
 }
 
@@ -59,7 +77,6 @@ const checklist: { key: string; label: string; ok: (d: IntakeDraft) => boolean }
 export function OnboardingFlow() {
   const [s, setS] = useState<Saved>(initial);
   const [restored, setRestored] = useState(false);
-  const [dir, setDir] = useState(1);
   const [readingFiles,setReadingFiles]=useState(false);
   // Survive a refresh: everything except the created startup lives in this tab's storage.
   useEffect(() => {
@@ -69,50 +86,37 @@ export function OnboardingFlow() {
     void Promise.resolve().then(() => { setS(restore(raw)); setRestored(true); });
   }, []);
   useEffect(() => { if (restored) try { sessionStorage.setItem(storeKey, JSON.stringify(s)); } catch { /* memory only */ } }, [s, restored]);
-  const go = (step: Step, back = false) => { if(readingFiles)return;setDir(back ? -1 : 1); setS(c => ({ ...c, step })); requestAnimationFrame(() => document.querySelector<HTMLElement>("main h1, main h2")?.focus({ preventScroll: true })); window.scrollTo({ top: 0 }); };
+  const go = (step: Step) => { if(readingFiles)return;setS(c => ({ ...c, step })); window.scrollTo({ top: 0 }); };
+  useEffect(()=>{if(!restored)return;const frame=requestAnimationFrame(()=>(document.querySelector<HTMLElement>(s.step==="clarify"?"#clarify-input":s.step==="free"?"#free-text":"main h1")??document.querySelector<HTMLElement>("main h1"))?.focus({preventScroll:true}));return()=>cancelAnimationFrame(frame);},[s.step,restored]);
   const patch = (p: Partial<Saved>) => setS(c => ({ ...c, ...p }));
   const [access,setAccess]=useState<{configured:boolean;authorized:boolean}|null>(null);
   const [code,setCode]=useState("");const [showUnlock,setShowUnlock]=useState(false);const [aiError,setAiError]=useState("");const [analyzing,setAnalyzing]=useState(false);
-  useEffect(()=>{void api<{configured:boolean;authorized:boolean}>("/api/intake").then(setAccess).catch(()=>{});},[]);
+  const checkAccess=()=>{setAiError("");return api<{configured:boolean;authorized:boolean}>("/api/intake").then(setAccess).catch(err=>setAiError(`AI access could not be checked. ${(err as Error).message}`));};
+  useEffect(()=>{void api<{configured:boolean;authorized:boolean}>("/api/intake").then(setAccess).catch(err=>setAiError(`AI access could not be checked. ${(err as Error).message}`));},[]);
   const persist=(next:Saved)=>{setS(next);try{sessionStorage.setItem(storeKey,JSON.stringify(next));}catch{/* in memory */}};
-  const key=materialKey(s.text,s.files);
-  async function analyze(newAttempt=false){
+  const analysisText=analysisOf(s);
+  const key=materialKey(analysisText,s.files);
+  async function analyze(newAttempt=false,unlocked=false){
     if(analyzing)return;setAiError("");
-    if(!access?.authorized){setShowUnlock(true);return;}
+    if(!access?.authorized&&!unlocked){setShowUnlock(true);return;}
     const attempt=!newAttempt&&s.intakeAttempt?.materialKey===key?s.intakeAttempt:{requestId:crypto.randomUUID(),materialKey:key};
-    persist({...s,intakeAttempt:attempt});setAnalyzing(true);
-    try{const result=await api<IntakeRecord>("/api/intake",{method:"POST",body:JSON.stringify({action:"analyze",payload:{requestId:attempt.requestId,text:s.text,files:s.files}})});setS(c=>({...c,intake:result,intakeMaterialKey:attempt.materialKey}));}
+    persist({...s,...(s.answerMaterialKey&&s.answerMaterialKey!==key?{asked:[],answers:[],pending:{},draft:emptyDraft()}:{}),answerMaterialKey:key,step:"interpret",runAi:true,intakeAdvance:true,intakeAttempt:attempt});setAnalyzing(true);
+    try{const result=await api<IntakeRecord>("/api/intake",{method:"POST",body:JSON.stringify({action:"analyze",payload:{requestId:attempt.requestId,text:analysisText,files:s.files}})});setS(c=>advanceReady({...c,intake:result,intakeMaterialKey:attempt.materialKey}));}
     catch(err){setAiError((err as Error).message);}finally{setAnalyzing(false);}
   }
   useEffect(()=>{
     const record=s.intake;if(!record||!["queued","running"].includes(record.status))return;
-    let alive=true;const timer=setInterval(()=>{void api<IntakeRecord>(`/api/intake?id=${record.id}`).then(r=>{if(alive)setS(c=>c.intake?.id===r.id?{...c,intake:r}:c);}).catch(err=>{if(alive)setAiError((err as Error).message);});},2500);
+    let alive=true;const timer=setInterval(()=>{void api<IntakeRecord>(`/api/intake?id=${record.id}`).then(r=>{if(alive)setS(c=>c.intake?.id===r.id?advanceReady({...c,intake:r}):c);}).catch(err=>{if(alive)setAiError((err as Error).message);});},2500);
     return()=>{alive=false;clearInterval(timer);};
   },[s.intake?.id,s.intake?.status]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fileText = s.files.filter(f => f.kind === "text").map(f => f.text).join("\n\n");
-  // Free text is re-read on every change; answers given in the clarifying step always win over extraction.
-  const freeDraft = useMemo(() => {
-    const interpretation=s.intakeMaterialKey===key&&s.intake?.status==="completed"?s.intake.draft:null;
-    const fromText = interpretation ?? extract(s.text);
-    const fromFiles = extract(fileText);
-    const merged = emptyDraft();
-    for (const k of Object.keys(merged.profile) as (keyof IntakeDraft["profile"])[]) {
-      const v = interpretation ? fromText.profile[k] : fromText.profile[k] || fromFiles.profile[k];
-      (merged.profile as Record<string, string>)[k] = v; if (v) merged.origin[k] = fromText.profile[k] ? interpretation?"ai":"text" : "file";
-    }
-    for (const k of ["painPoint", "outcome", "price", "pricingModel"] as const) { const v = interpretation ? fromText.hints[k] : fromText.hints[k] || fromFiles.hints[k]; merged.hints[k] = v; if (v) merged.origin[k] = fromText.hints[k] ? interpretation?"ai":"text" : "file"; }
-    merged.hints.channels = interpretation ? fromText.hints.channels : fromText.hints.channels.length ? fromText.hints.channels : fromFiles.hints.channels;
-    let d = merged;
-    for (const [field, value] of Object.entries(s.draft.origin)) if (value === "answer") {
-      d = answer(d, field as Question["field"], field === "channels" ? s.draft.hints.channels : field in s.draft.profile ? (s.draft.profile as Record<string, string>)[field] : (s.draft.hints as unknown as Record<string, string>)[field]);
-    }
-    return d;
-  }, [s.text, fileText, s.draft,s.intake,s.intakeMaterialKey,key]);
-  const draft = s.path === "guided" ? guidedToDraft(s.guided) : freeDraft;
-  const question = nextQuestion(freeDraft, s.asked);
-
-  function toConfirm() { patch({ draft: s.path === "guided" ? guidedToDraft(s.guided) : freeDraft }); go("confirm"); }
+  const freeDraft = useMemo(()=>draftOf(s),[s]);
+  const draft = freeDraft;
+  const question = nextIntakeQuestion(freeDraft,s.asked,s.runAi&&s.intakeMaterialKey===key&&s.intake?.status==="completed"?s.intake.questions||[]:[]);
+  function toConfirm() { patch({ draft: freeDraft,intakeAdvance:false }); go("confirm"); }
+  function manualContinue(){const changed=!!s.answerMaterialKey&&s.answerMaterialKey!==key;patch({runAi:false,intakeAdvance:false,draft:freeDraft,answerMaterialKey:key,...(changed?{asked:[],answers:[],pending:{}}:{})});go(nextQuestion(freeDraft,changed?[]:s.asked)?"clarify":"confirm");}
+  function prepareAi(){patch({runAi:true,intakeAdvance:true});go("interpret");void(async()=>{try{const flags=access??await api<{configured:boolean;authorized:boolean}>("/api/intake");setAccess(flags);if(flags.configured)await analyze(false,flags.authorized);}catch(err){setAiError(`AI access could not be checked. ${(err as Error).message}`);}})();}
   const seed: ProfileSeed = useMemo(() => {
     const p = draft.profile;
     const custom: Record<string, string> = {};
@@ -125,14 +129,11 @@ export function OnboardingFlow() {
   }, [draft, s.path, s.guided, s.text]);
 
   return <MotionConfig reducedMotion="user"><div className="flow">
-    <AnimatePresence mode="wait" custom={dir} initial={false}>
-      <motion.div key={s.step} custom={dir} className="flow-step"
-        variants={{ in: (d: number) => ({ opacity: 0, x: 24 * d }), on: { opacity: 1, x: 0 }, out: (d: number) => ({ opacity: 0, x: -16 * d }) }}
-        initial="in" animate="on" exit="out" transition={{ duration: 0.28, ease }}>
+      <motion.div key={s.step} className="flow-step" initial={false} animate={{opacity:1,y:0}} transition={{duration:0.14,ease}}>
         {s.step === "choose" && <Choose onPick={path => { patch({ path }); go(path === "free" ? "free" : "guided"); }}/>}
 
         {s.step === "free" && <section className="flow-panel" aria-labelledby="free-title">
-          <Back onClick={() => go("choose", true)}/>
+          <Back onClick={() => go("choose")}/>
           <p className="eyebrow">Free form</p>
           <h1 id="free-title" tabIndex={-1}>Tell us about your startup.</h1>
           <p className="lead">Write it the way you would explain it to a cofounder. Order doesn’t matter; half-sentences are fine.</p>
@@ -151,33 +152,45 @@ export function OnboardingFlow() {
             </aside>
           </div>
           <div className="flow-actions">
-            <button type="button" className="button primary" disabled={readingFiles||s.text.trim().length < 20 && !fileText} onClick={() => question ? go("clarify") : toConfirm()}>Continue<ArrowRight size={17} aria-hidden className="arrow"/></button>
+            <button type="button" className="button primary" disabled={readingFiles||s.text.trim().length < 20 && !fileText} onClick={prepareAi}>Continue with AI<ArrowRight size={17} aria-hidden className="arrow"/></button>
+            <button type="button" className="button ghost" disabled={readingFiles||s.text.trim().length < 20 && !fileText} onClick={manualContinue}>Continue without AI</button>
             <span className="field-help">{s.text.trim().length < 20 && !fileText ? "A couple of sentences is enough to start." : ""}</span>
-            {access?.configured&&<button type="button" className="button" disabled={readingFiles||analyzing||s.intakeMaterialKey===key&&["queued","running"].includes(s.intake?.status||"")||s.text.trim().length<20&&!fileText} onClick={()=>void analyze()}>{analyzing||s.intakeMaterialKey===key&&["queued","running"].includes(s.intake?.status||"")?"AI is interpreting…":"Interpret with AI"}</button>}
           </div>
-          {access?.configured&&<p className="field-help">Optional AI interpretation sends your text and readable attachment extracts to OpenAI and uses the shared daily AI budget. You review every field. Continue uses the local reader.</p>}
-          {showUnlock&&<form className="unlock" onSubmit={async e=>{e.preventDefault();setAiError("");try{await api("/api/intake",{method:"POST",body:JSON.stringify({action:"unlock",payload:{code}})});setAccess({configured:true,authorized:true});setShowUnlock(false);setCode("");}catch(err){setAiError((err as Error).message);}}}><label htmlFor="intake-code">Owner access code</label><input id="intake-code" className="input" type="password" autoComplete="off" value={code} onChange={e=>setCode(e.target.value)}/><button className="button small" disabled={!code}>Unlock AI</button></form>}
-          {(aiError||s.intakeMaterialKey===key&&s.intake?.error)&&<p className="field-error" role="alert">{aiError||s.intake?.error}</p>}
-          {s.intakeMaterialKey===key&&s.intake?.status==="failed"&&<button type="button" className="button small" disabled={analyzing||readingFiles} onClick={()=>void analyze(true)}>Start a new paid interpretation</button>}
-          {s.intakeMaterialKey===key&&s.intake?.status==="queued"&&<button type="button" className="button small" disabled={analyzing} onClick={()=>void analyze()}>Recover saved interpretation</button>}
-          {s.intakeMaterialKey===key&&s.intake?.status==="completed"&&<div className="info-notice">Interpretation ready. Confirm the extracted fields. {s.intake.uncertainties.join(" ")} <span className="num">Estimated usage: ${(s.intake.estimatedMicros/1e6).toFixed(4)}</span></div>}
+          <p className="field-help">AI reads your brief and asks only relevant unanswered questions. It sends text and readable attachment extracts to OpenAI and uses credits. The local reader is available without AI.</p>
         </section>}
 
-        {s.step === "clarify" && <Clarify draft={freeDraft} asked={s.asked} answers={s.answers} question={question} pending={s.pending} onPending={(id,value)=>patch({pending:{...s.pending,[id]:value}})}
-          onBack={() => go("free", true)} onDone={toConfirm}
+        {s.step === "interpret" && <section className="flow-panel narrow" aria-labelledby="interpret-title">
+          <Back onClick={()=>{patch({intakeAdvance:false});go(s.path==="guided"?"guided":"free");}}/>
+          <p className="eyebrow">Your brief · AI discovery</p>
+          <h1 id="interpret-title" tabIndex={-1}>{s.intakeMaterialKey===key&&["queued","running"].includes(s.intake?.status||"")?"Reading your startup brief…":"Let’s understand your startup."}</h1>
+          <p className="lead">We read your actual words and material, identify what matters for this case and ask only what remains unanswered.</p>
+          {(aiError||s.intakeMaterialKey===key&&s.intake?.error)&&<p className="field-error" role="alert">{aiError||s.intake?.error}</p>}
+          {!access&&<div><p role="status">{aiError?"The AI connection has not been checked.":"Checking AI access…"}</p><button className="button" onClick={()=>void checkAccess()}>Retry AI connection</button></div>}
+          {access&&!access.configured&&<p className="info-notice">AI is unavailable on this deployment. Your brief is retained. Configure OpenAI on the server or continue without AI.</p>}
+          {access?.configured&&(!access.authorized||showUnlock)&&<form className="unlock" onSubmit={async e=>{e.preventDefault();setAiError("");try{await api("/api/intake",{method:"POST",body:JSON.stringify({action:"unlock",payload:{code}})});setAccess({configured:true,authorized:true});setShowUnlock(false);setCode("");await analyze(false,true);}catch(err){setAiError((err as Error).message);}}}><label htmlFor="intake-code">Owner access code</label><input id="intake-code" className="input" type="password" autoComplete="current-password" value={code} onChange={e=>setCode(e.target.value)}/><button className="button" disabled={!code||analyzing}>Unlock and analyze</button></form>}
+          {access?.authorized&&<>
+            {s.intakeMaterialKey===key&&["queued","running"].includes(s.intake?.status||"")?<p role="status">{s.intake?.status==="queued"?"Brief saved; waiting for the AI reader.":"AI is extracting facts and writing case-specific questions."} You can leave this page; the analysis is saved.</p>:<button className="button primary" disabled={analyzing} onClick={()=>void analyze(s.intakeMaterialKey===key&&s.intake?.status==="failed")}>{analyzing?"Sending your brief…":s.intakeMaterialKey===key&&s.intake?.status==="failed"?"Start a new paid interpretation":"Analyze my brief"}</button>}
+            {s.intakeMaterialKey===key&&s.intake?.status==="queued"&&<button className="button small" disabled={analyzing} onClick={()=>void analyze()}>Recover saved interpretation</button>}
+          </>}
+          <p className="field-help">This analysis uses OpenAI credits. The server keeps the API key. AI work and documents require owner access; confirmed public demo fields remain editable by link.</p>
+          <button className="text-link" onClick={manualContinue}>Continue without AI</button>
+        </section>}
+
+        {s.step === "clarify" && <Clarify ai={s.runAi} draft={freeDraft} asked={s.asked} answers={s.answers} question={question} pending={s.pending} onPending={(id,value)=>patch({pending:{...s.pending,[id]:value}})}
+          onBack={() => go(s.path==="guided"?"guided":"free")} onDone={toConfirm}
           onAnswer={(q, value) => {
-            const asked = [...s.asked, q.field];
+            const asked = [...s.asked, q.id];
             const nextDraft = value === null ? s.draft : answer(s.draft, q.field, value);
             const merged = value === null ? freeDraft : answer(freeDraft, q.field, value);
             setS(c => ({ ...c, asked, answers: value === null ? c.answers : [...c.answers, { q: q.text, a: Array.isArray(value) ? value.join(", ") : value }], draft: nextDraft }));
             // Nothing left to ask: go straight to the confirmation, no extra screen.
-            if (!nextQuestion(merged, asked)) { setS(c => ({ ...c, draft: merged })); go("confirm"); }
+            if (!nextIntakeQuestion(merged,asked,s.runAi?s.intake?.questions||[]:[])) { setS(c => ({ ...c, draft: merged })); go("confirm"); }
           }}/>}
 
-        {s.step === "guided" && <GuidedBrief value={s.guided} onChange={guided => patch({ guided })} onBack={() => go("choose", true)} onDone={toConfirm} files={s.files} onFiles={files => patch({ files })} topic={s.guidedTopic} onTopic={guidedTopic=>patch({guidedTopic})} readingFiles={readingFiles} onReading={setReadingFiles}/>}
+        {s.step === "guided" && <GuidedBrief value={s.guided} onChange={guided => patch({ guided })} onBack={() => go("choose")} onDone={prepareAi} onManualDone={manualContinue} files={s.files} onFiles={files => patch({ files })} topic={s.guidedTopic} onTopic={guidedTopic=>patch({guidedTopic})} readingFiles={readingFiles} onReading={setReadingFiles}/>}
 
         {s.step === "confirm" && <section className="flow-panel narrow" aria-labelledby="confirm-title">
-          <Back onClick={() => go(s.path === "guided" ? "guided" : question ? "clarify" : "free", true)}/>
+          <Back onClick={() => go(s.path === "guided" ? "guided" : question ? "clarify" : "free")}/>
           <p className="eyebrow">Last check</p>
           <h1 id="confirm-title" tabIndex={-1}>Is this your startup?</h1>
           <p className="lead">Everything is editable. Tags show where each value came from; once you change it, it’s simply yours.</p>
@@ -190,10 +203,9 @@ export function OnboardingFlow() {
           </div>
         </section>}
 
-        {s.step === "launch" && s.created && <LaunchSequence startup={s.created} draft={draft} brief={briefOf(s)} files={s.files} runAi={s.runAi} intakeId={s.intakeMaterialKey===key&&s.intake?.status==="completed"?s.intake.id:undefined}/>}
+        {s.step === "launch" && s.created && <LaunchSequence startup={s.created} draft={draft} brief={briefOf(s)} materialText={analysisOf(s)} answers={s.answers} files={s.files} runAi={s.runAi} intakeId={s.intakeMaterialKey===key&&s.intake?.status==="completed"?s.intake.id:undefined}/>}
         {s.step==="launch"&&<button type="button" className="button ghost" onClick={()=>persist({...initial,sessionId:crypto.randomUUID(),creationRequestId:crypto.randomUUID()})}>Create another startup</button>}
       </motion.div>
-    </AnimatePresence>
   </div></MotionConfig>;
 }
 
@@ -232,19 +244,19 @@ function Choose({ onPick }: { onPick: (p: "free" | "guided") => void }) {
   </section>;
 }
 
-function Clarify({ draft, asked, answers, question, onAnswer, onBack, onDone,pending,onPending }: {
-  draft: IntakeDraft; asked: string[]; answers: { q: string; a: string }[]; question: Question | null;
+function Clarify({ ai,draft, asked, answers, question, onAnswer, onBack, onDone,pending,onPending }: {
+  ai:boolean;draft: IntakeDraft; asked: string[]; answers: { q: string; a: string }[]; question: Question | null;
   onAnswer: (q: Question, value: string | string[] | null) => void; onBack: () => void; onDone: () => void;
   pending:Saved["pending"];onPending:(id:string,value:{value:string;multi:string[]})=>void;
 }) {
   const left = missing(draft).length;
   return <section className="flow-panel narrow" aria-labelledby="clarify-title">
     <Back onClick={onBack}/>
-    <p className="eyebrow">A few details · rules, not AI</p>
+    <p className="eyebrow">{ai?"Questions for your case · AI":"Required profile details · without AI"}</p>
     <h1 id="clarify-title" tabIndex={-1} className="sr-only">Clarifying questions</h1>
     <ol className="clarify-dots" aria-label={`Question ${asked.length + 1} of at most 7`}>{Array.from({ length: 7 }, (_, i) => <li key={i} className={i < asked.length ? "done" : i === asked.length ? "now" : ""}/>)}</ol>
     {answers.length > 0 && <ul className="clarify-log" aria-label="Your answers">{answers.map((x, i) => <li key={i}><span className="faint">{x.q}</span><span>{x.a}</span></li>)}</ul>}
-    {question ? <AnimatePresence mode="wait"><QuestionCard key={question.id} question={question} left={left} onAnswer={onAnswer} onDone={onDone} pending={pending[question.id]} onPending={value=>onPending(question.id,value)}/></AnimatePresence>
+    {question ? <QuestionCard key={question.id} question={question} left={left} onAnswer={onAnswer} onDone={onDone} pending={pending[question.id]} onPending={value=>onPending(question.id,value)}/>
       : <div className="clarify-card"><h2 className="clarify-q">That’s everything we needed.</h2><button type="button" className="button primary" onClick={onDone}>Review profile<ArrowRight size={17} aria-hidden/></button></div>}
   </section>;
 }
@@ -254,21 +266,21 @@ function QuestionCard({ question, left, onAnswer, onDone,pending,onPending }: { 
   const setValue=(value:string)=>onPending({value,multi});
   const setMulti=(change:(v:string[])=>string[])=>onPending({value,multi:change(multi)});
   const submit = (v: string | string[]) => { if (Array.isArray(v) ? v.length : String(v).trim()) onAnswer(question, v); };
-  return <motion.div className="clarify-card" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.24, ease }}>
+  return <motion.div className="clarify-card" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.14, ease }}>
         <h2 className="clarify-q">{question.text}</h2>
         <p className="field-help">{question.why}</p>
         {question.kind === "choice"
           ? <div className="chip-row big" role="group" aria-label={question.text}>{question.options!.map(o => {
             const on = question.multi ? multi.includes(o) : false;
             return <button type="button" key={o} className={`chip ${on ? "on" : ""}`} aria-pressed={question.multi ? on : undefined}
-              onClick={() => question.multi ? setMulti(m => m.includes(o) ? m.filter(x => x !== o) : m.length < 3 ? [...m, o] : m) : submit(o)}>{o}</button>;
+              onClick={() => question.multi ? setMulti(m => m.includes(o) ? m.filter(x => x !== o) : m.length < (question.field==="channels"?3:8) ? [...m, o] : m) : submit(o)}>{o}</button>;
           })}</div>
           : <form className="clarify-form" onSubmit={e => { e.preventDefault(); submit(value); }}>
             <label className="sr-only" htmlFor="clarify-input">{question.text}</label>
-            <input id="clarify-input" autoFocus className="input" value={value} onChange={e => setValue(e.target.value)} placeholder={question.placeholder} maxLength={question.field==="description"?2000:question.field==="name"?120:question.field==="targetMarket"?200:500}/>
+            <textarea id="clarify-input" autoFocus className="input" rows={3} value={value} onChange={e => setValue(e.target.value)} placeholder={question.placeholder} maxLength={question.field==="context"?3000:question.field==="description"?2000:question.field==="name"?120:question.field==="targetMarket"?200:500}/>
             <button className="button primary" disabled={!value.trim()}>Answer</button>
           </form>}
-        {question.kind === "choice" && !question.multi && <form className="clarify-form other" onSubmit={e => { e.preventDefault(); submit(value); }}>
+        {question.kind === "choice" && <form className="clarify-form other" onSubmit={e => { e.preventDefault(); submit(question.multi?[...multi,value].filter(Boolean).slice(0,question.field==="channels"?3:8):value); }}>
           <label className="sr-only" htmlFor="clarify-other">Something else</label>
           <input id="clarify-other" className="input" value={value} onChange={e => setValue(e.target.value)} placeholder="Something else…"/>
           {value.trim() && <button className="button small">Use this</button>}

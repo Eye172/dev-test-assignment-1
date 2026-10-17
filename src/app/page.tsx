@@ -12,8 +12,6 @@ import { demoProfile, demoStrategy } from "@/server/demo";
 
 const exampleSections = sectionKeys.map(key => ({ ...emptySection(key), data: sectionSchemas[key].parse(demoStrategy[key]) }));
 const exampleTask = generateRoadmap(demoProfile, exampleSections).find(task => task.ruleKey === "icp-interviews")!;
-const words = (text: string, from = 0) => text.split(" ").map((w, i) =>
-  <span key={i}><span className="word" style={{ animationDelay: `${120 + (from + i) * 60}ms` }}><span>{w}</span></span>{" "}</span>);
 
 export default function Welcome() {
   return <div className="app-surface welcome">
@@ -21,14 +19,14 @@ export default function Welcome() {
       <OrbitScene className="hero-scene"/>
       <header className="hero-bar"><Brand/><nav aria-label="Welcome"><a href="#paths">How it works</a><span className="demo-tag"><span className="demo-dot" aria-hidden/>Demo mode</span></nav></header>
       <div className="hero-copy">
-        <p className="eyebrow reveal">Go-to-market studio for early-stage founders</p>
-        <h1 id="hero-title" tabIndex={-1} aria-label="Five decisions. Your first 30 days."><span aria-hidden>{words("Five decisions.")}<br/>{words("Your first 30 days.", 2)}</span></h1>
-        <p className="lead reveal" style={{ animationDelay: "420ms" }}>Tell us about your startup in your own words or answer a guided brief, attach the deck you already have, and get a reviewed strategy draft and a 30-day plan you can act on.</p>
-        <div className="hero-actions reveal" style={{ animationDelay: "520ms" }}>
+        <p className="eyebrow">Go-to-market studio for early-stage founders</p>
+        <h1 id="hero-title" tabIndex={-1}>Five decisions.<br/>Your first 30 days.</h1>
+        <p className="lead">Tell us about your startup in your own words or answer a guided brief, attach the deck you already have, and get a reviewed strategy draft and a 30-day plan you can act on.</p>
+        <div className="hero-actions">
           <Link href="/startups/new" className="button primary">Create startup<ArrowRight size={17} aria-hidden className="arrow"/></Link>
           <DemoButton/>
         </div>
-        <p className="hero-note reveal" style={{ animationDelay: "600ms" }}>Demo mode · no login · synthetic, non-sensitive data</p>
+        <p className="hero-note">Demo mode · no login · synthetic, non-sensitive data</p>
       </div>
       <a className="hero-scroll" href="#paths" aria-label="Scroll to how it works"><span/></a>
     </section>

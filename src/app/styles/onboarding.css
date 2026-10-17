@@ -106,7 +106,10 @@
 .origin-tag { justify-self: start; font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent-ink); background: var(--accent-soft); padding: 2px 8px; border-radius: var(--r-pill); }
 
 /* Launch: one ring, real steps, never blocks */
-.launch { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: clamp(28px, 5vw, 72px); align-items: center; min-height: 64vh; }
+.launch { display: grid; grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr); gap: clamp(24px, 4vw, 48px); align-items: start; }
+.launch-context { padding: 24px; display: grid; gap: 14px; }
+.launch-context h2 { font-size: 1.5rem; overflow-wrap: anywhere; }
+.launch-context p { overflow-wrap: anywhere; }
 .launch-orbit { position: relative; display: grid; place-items: center; aspect-ratio: 1; max-width: 420px; width: 100%; justify-self: center; }
 .launch-orbit svg { width: 100%; height: 100%; overflow: visible; }
 .lo-track { fill: none; stroke: var(--line); stroke-width: 2; }
@@ -130,7 +133,7 @@
 .launch-steps li.done .ls-icon { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 .launch-steps li.fail .ls-icon { border-color: var(--danger); color: var(--danger); }
 .ls-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
-.launch-steps li.run .ls-dot { animation: lo-pulse 1.1s ease-in-out infinite; }
+.launch-steps li.run .ls-dot { background: var(--accent-ink); }
 .ls-label { font-weight: 600; }
 .ls-note { justify-self: end; font-size: 0.8125rem; color: var(--faint); text-align: right; }
 .launch-agents { display: flex; flex-wrap: wrap; gap: 6px; }

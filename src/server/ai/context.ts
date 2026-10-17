@@ -44,7 +44,7 @@ export async function executionInput(store:AiStore,run:LeasedRun,step:AiStep,com
   const normalizationLedger=step.role==="critic"?await store.db.query("SELECT step_id,content FROM ai_messages WHERE run_id=$1 AND sender='resolve_task_references' ORDER BY created_at,id",[run.id]):undefined;
   const material=run.snapshot.founderMaterial;
   const textLimit=step.role==="intake"?16000:6000;
-  const founderMaterial=material?{text:material.text,files:material.files.map(f=>({...f,text:f.text.slice(0,textLimit),coverage:f.coverage+(f.text.length>textLimit?`; this role sees the first ${textLimit} characters; full extraction retained in private snapshot`:"")}))}:undefined;
+  const founderMaterial=material?{text:material.text,answers:material.answers||[],files:material.files.map(f=>({...f,text:f.text.slice(0,textLimit),coverage:f.coverage+(f.text.length>textLimit?`; this role sees the first ${textLimit} characters; full extraction retained in private snapshot`:"")}))}:undefined;
   return {
     asOf:new Date().toISOString(),role:step.role,round:step.round,brief:run.brief,
     snapshot:{workspace:{...workspace,tasks},evidence,currentDecisions,historicalDecisions,pendingDecisions:memory.filter(m=>m.status==="proposed"&&(m.revision>1||refs.has(m.id))),parentArtifacts,priorArtifactProposals,founderMaterial,intakeInterpretation:run.snapshot.intake?{id:run.snapshot.intake.id,result:run.snapshot.intake.result}:undefined},
